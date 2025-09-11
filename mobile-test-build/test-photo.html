@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Capture Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .camera-container { margin: 20px 0; }
+        video { width: 100%; max-width: 500px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        .captured-image { margin: 20px 0; }
+        img { max-width: 100%; border: 1px solid #ccc; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>📸 Simple Photo Capture Test</h1>
+    
+    <div class="camera-container">
+        <h2>Camera Test</h2>
+        <button id="startCamera">Start Camera</button>
+        <button id="stopCamera" disabled>Stop Camera</button>
+        <button id="capturePhoto" disabled>Capture Photo</button>
+    </div>
+
+    <div id="videoContainer" style="display: none;">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <div id="capturedImage" class="captured-image" style="display: none;">
+        <h3>Captured Photo:</h3>
+        <img id="capturedImg" alt="Captured photo">
+    </div>
+
+    <div class="debug">
+        <h3>Debug Info:</h3>
+        <div id="debugInfo"></div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startCamera');
+        const stopBtn = document.getElementById('stopCamera');
+        const captureBtn = document.getElementById('capturePhoto');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const videoContainer = document.getElementById('videoContainer');
+        const capturedImage = document.getElementById('capturedImage');
+        const capturedImg = document.getElementById('capturedImg');
+        const debugInfo = document.getElementById('debugInfo');
+
+        let stream = null;
+
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            debugInfo.innerHTML += `<div>[${time}] ${message}</div>`;
+            console.log(message);
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                log('Starting camera...');
+                
+                // Try different camera configurations
+                const configs = [
+                    { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
+                    { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } },
+                    { video: { width: { min: 640 }, height: { min: 480 } } },
+                    { video: true }
+                ];
+
+                let configIndex = 0;
+                while (!stream && configIndex < configs.length) {
+                    try {
+                        log(`Trying config ${configIndex + 1}: ${JSON.stringify(configs[configIndex])}`);
+                        stream = await navigator.mediaDevices.getUserMedia(configs[configIndex]);
+                        log(`Camera started with config ${configIndex + 1}`);
+                    } catch (err) {
+                        log(`Config ${configIndex + 1} failed: ${err.name} - ${err.message}`);
+                        configIndex++;
+                    }
+                }
+
+                if (!stream) {
+                    throw new Error('All camera configurations failed');
+                }
+
+                video.srcObject = stream;
+                videoContainer.style.display = 'block';
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                captureBtn.disabled = false;
+                
+                log('Camera started successfully');
+            } catch (error) {
+                log(`Camera error: ${error.name} - ${error.message}`);
+                alert(`Camera error: ${error.message}`);
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    log(`Stopped track: ${track.kind}`);
+                });
+                stream = null;
+            }
+            
+            video.srcObject = null;
+            videoContainer.style.display = 'none';
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            captureBtn.disabled = true;
+            
+            log('Camera stopped');
+        });
+
+        captureBtn.addEventListener('click', () => {
+            if (!video.videoWidth || !video.videoHeight) {
+                log('Video not ready yet');
+                return;
+            }
+
+            log('Capturing photo...');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg');
+            capturedImg.src = imageData;
+            capturedImage.style.display = 'block';
+            
+            log(`Photo captured: ${canvas.width}x${canvas.height}`);
+        });
+
+        // Check camera support
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            log('Camera API not supported');
+            startBtn.disabled = true;
+        } else {
+            log('Camera API supported');
+        }
+
+        // Check permissions
+        if (navigator.permissions) {
+            navigator.permissions.query({ name: 'camera' }).then(result => {
+                log(`Camera permission status: ${result.state}`);
+            });
+        }
+    </script>
+</body>
+</html>
+

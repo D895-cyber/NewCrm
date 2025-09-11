@@ -3,9 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, BarChart, Bar } from "recharts";
-import { Zap, BarChart3, Globe, TrendingUp, Eye, Calendar, Download, Filter, User, Wrench, AlertTriangle, CheckCircle, Clock, MapPin } from "lucide-react";
-import { Progress } from "../ui/progress";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from "recharts";
+import { BarChart3, TrendingUp, Download, Filter, User, AlertTriangle, MapPin } from "lucide-react";
+// import { Progress } from "../ui/progress";
 import { convertToCSV, downloadCSV } from "../../utils/export";
 import { apiClient } from "../../utils/api/client";
 import { LoadingSpinner } from "../ui/loading-spinner";

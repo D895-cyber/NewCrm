@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Basic Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial; text-align: center; padding: 20px; background: #f0f0f0;">
+    <h1 style="color: green;">✅ SUCCESS!</h1>
+    <h2>Mobile Connection Working</h2>
+    <p>If you can see this page, your mobile connection is working!</p>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3>📱 Device Info:</h3>
+        <p><strong>URL:</strong> <span id="url"></span></p>
+        <p><strong>Time:</strong> <span id="time"></span></p>
+        <p><strong>Screen:</strong> <span id="screen"></span></p>
+    </div>
+    
+    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+        <h3>🔗 Test Links:</h3>
+        <p><a href="simple-test.html" style="color: blue;">Simple Test Page</a></p>
+        <p><a href="test-connection.html" style="color: blue;">Full Connection Test</a></p>
+        <p><a href="file-upload-test.html" style="color: blue;">File Upload Test</a></p>
+    </div>
+    
+    <script>
+        document.getElementById('url').textContent = window.location.href;
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        document.getElementById('screen').textContent = window.innerWidth + ' x ' + window.innerHeight;
+    </script>
+</body>
+</html>

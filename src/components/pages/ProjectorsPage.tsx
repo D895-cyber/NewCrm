@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
 import { 
   Monitor, 
   Plus, 
   Search, 
-  Filter, 
   Calendar,
   MapPin,
   User,
@@ -15,13 +12,9 @@ import {
   Package,
   RotateCcw,
   AlertTriangle,
-  CheckCircle,
   Clock,
   FileText,
   History,
-  Tag,
-  Zap,
-  Eye,
   Download,
   Loader2,
   RefreshCw,
@@ -37,7 +30,7 @@ import { isDevelopment } from "../../utils/config";
 export function ProjectorsPage() {
   const [searchSerial, setSearchSerial] = useState("");
   const [selectedProjector, setSelectedProjector] = useState<any>(null);
-  const [searchResult, setSearchResult] = useState<any>(null);
+  const [, setSearchResult] = useState<any>(null);
   const [showAllProjectors, setShowAllProjectors] = useState(true);
   const [allProjectors, setAllProjectors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -314,7 +307,7 @@ export function ProjectorsPage() {
       const projectorData = {
         ...newProjector,
         installDate: newProjector.installDate ? new Date(newProjector.installDate) : new Date(),
-        warrantyStart: newProjector.warrantyStart ? new Date(newProjector.warrantyStart) : null,
+        warrantyStart: (newProjector as any).warrantyStart ? new Date((newProjector as any).warrantyStart) : null,
         warrantyEnd: newProjector.warrantyEnd ? new Date(newProjector.warrantyEnd) : null,
         lastService: newProjector.lastService ? new Date(newProjector.lastService) : null,
         nextService: newProjector.nextService ? new Date(newProjector.nextService) : null
@@ -329,10 +322,10 @@ export function ProjectorsPage() {
         model: "",
         brand: "",
         siteId: "",
-        site: "",
+        // site: "",
         location: "",
         installDate: "",
-        warrantyStart: "",
+        // warrantyStart: "",
         warrantyEnd: "",
         status: "Active",
         condition: "Good",
@@ -965,7 +958,7 @@ export function ProjectorsPage() {
                 
                 {selectedProjector.rmaHistory && selectedProjector.rmaHistory.length > 0 ? (
                   <div className="space-y-4">
-                    {selectedProjector.rmaHistory.map((rma: any, index: number) => (
+                    {selectedProjector.rmaHistory.map((rma: any, _index: number) => (
                       <div key={rma._id} className="p-4 bg-dark-bg rounded-lg border border-dark-color">
                         <div className="flex items-start justify-between mb-3">
                           <div>
@@ -1004,7 +997,7 @@ export function ProjectorsPage() {
                 
                 {selectedProjector.spareParts && selectedProjector.spareParts.length > 0 ? (
                   <div className="space-y-4">
-                    {selectedProjector.spareParts.map((part: any, index: number) => (
+                    {selectedProjector.spareParts.map((part: any, _index: number) => (
                       <div key={part._id} className="p-4 bg-dark-bg rounded-lg border border-dark-color">
                         <div className="flex items-start justify-between mb-3">
                           <div>
@@ -1075,7 +1068,7 @@ export function ProjectorsPage() {
               </div>
             ) : allProjectors.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {allProjectors.map((projector, index) => (
+                {allProjectors.map((projector, _index) => (
                   <div key={projector.serialNumber} className="dark-card hover:dark-shadow-lg transition-all duration-300">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -1265,7 +1258,7 @@ export function ProjectorsPage() {
                       value={newProjector.auditoriumId}
                       onChange={(e) => {
                         const selectedSite = sites.find(site => site._id === newProjector.siteId);
-                        const selectedAuditorium = selectedSite?.auditoriums?.find(audi => audi.audiNumber === e.target.value);
+                        const selectedAuditorium = selectedSite?.auditoriums?.find((audi: any) => audi.audiNumber === e.target.value);
                         setNewProjector({
                           ...newProjector, 
                           auditoriumId: e.target.value,

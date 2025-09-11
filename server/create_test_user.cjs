@@ -3,13 +3,13 @@ const User = require('./models/User');
 
 async function createTestUser() {
   try {
-    // Connect to MongoDB
-    await mongoose.connect('mongodb://localhost:27017/projector_warranty', {
+    // Connect to MongoDB Atlas
+    await mongoose.connect('mongodb+srv://dev:dev123@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0', {
       useNewUrlParser: true,
       useUnifiedTopology: true
     });
     
-    console.log('✅ Connected to MongoDB');
+    console.log('✅ Connected to MongoDB Atlas');
     
     // Check if test user already exists
     const existingUser = await User.findOne({ username: 'admin' });

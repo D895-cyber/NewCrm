@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import { 
-  Monitor, 
-  Clock, 
-  Search,
+  // Monitor,
+  // Clock,
+  // Search,
   Plus,
   Edit,
   Eye,
-  RefreshCw,
+  // RefreshCw,
   Wrench,
-  FileText,
+  // FileText,
   Download,
-  Building,
-  Users,
+  // Building,
+  // Users,
   Loader2,
-  X
+  // X
 } from "lucide-react";
 import { useData } from "../../contexts/DataContext";
 import { apiClient } from "../../utils/api/client";
@@ -82,10 +82,10 @@ export function ServiceManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const [, setSelectedService] = useState<any>(null);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [services, setServices] = useState<any[]>([]);
   
   // Site-based selection state for planning

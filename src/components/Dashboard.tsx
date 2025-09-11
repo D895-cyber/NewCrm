@@ -16,7 +16,9 @@ import {
   RotateCcw,
   Upload,
   Cloud,
-  LogOut
+  LogOut,
+  Menu,
+  X
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { NotificationBar } from "./ui/notification-bar";
@@ -82,10 +84,15 @@ const otherItems = [
   { icon: User, label: "Profile" },
 ];
 
-export function Dashboard() {
+interface DashboardProps {
+  isMobile?: boolean;
+}
+
+export function Dashboard({ isMobile = false }: DashboardProps) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const [reportIdFromHash, setReportIdFromHash] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   
   // Use shared data context
   const { dashboardData } = useData();
@@ -132,7 +139,12 @@ export function Dashboard() {
     return (
       <button
         key={item.label}
-        onClick={() => setActivePage(item.label)}
+        onClick={() => {
+          setActivePage(item.label);
+          if (isMobile) {
+            setSidebarOpen(false);
+          }
+        }}
         className={`dark-nav-item w-full text-left ${
           isActive ? "dark-nav-item-active" : ""
         }`}
@@ -194,10 +206,33 @@ export function Dashboard() {
 
   return (
     <div className="flex h-screen bg-dark-bg" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Mobile Header */}
+      {isMobile && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-dark-bg border-b border-dark-color p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center">
+              <Monitor className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-dark-primary">ProjectorCare</h1>
+              <p className="text-xs text-dark-secondary">Warranty Management</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            variant="ghost"
+            size="sm"
+            className="text-dark-secondary hover:text-dark-primary"
+          >
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </div>
+      )}
+
       {/* Sidebar */}
-      <div className="w-72 bg-dark-bg border-r border-dark-color flex flex-col">
+      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-in-out' : 'w-72'} bg-dark-bg border-r border-dark-color flex flex-col ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}>
         {/* Logo */}
-        <div className="p-8 border-b border-dark-color">
+        <div className={`${isMobile ? 'pt-20' : ''} p-8 border-b border-dark-color`}>
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center dark-shadow-lg relative overflow-hidden">
               <Monitor className="w-6 h-6 text-white" />
@@ -273,8 +308,16 @@ export function Dashboard() {
         </nav>
       </div>
 
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative">
+      <div className={`flex-1 flex flex-col relative ${isMobile ? 'ml-0' : ''}`}>
         {/* Notification Bar */}
         <NotificationBar
           notifications={notifications.filter(n => !dismissedNotifications.has(n.id))}
@@ -282,9 +325,9 @@ export function Dashboard() {
           onDismissAll={handleDismissAllNotifications}
         />
         
-        {/* Content with proper spacing for notification bar */}
-        <div className="flex-1 overflow-y-auto" style={{ 
-          paddingTop: notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 ? '60px' : '0' 
+        {/* Content with proper spacing for notification bar and mobile header */}
+        <div className={`flex-1 overflow-y-auto ${isMobile ? 'pt-20' : ''}`} style={{ 
+          paddingTop: notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 ? (isMobile ? '80px' : '60px') : (isMobile ? '80px' : '0')
         }}>
           {renderContent()}
         </div>

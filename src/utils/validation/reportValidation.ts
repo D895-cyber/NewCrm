@@ -362,9 +362,10 @@ export function validateEnvironmentalConditions(data: any): ValidationResult {
   const warnings: ValidationError[] = [];
   const suggestions: ValidationError[] = [];
   
-  // Validate temperature
-  if (data.temperature) {
-    const tempErrors = validateTemperature(data.temperature);
+  // Validate temperature - check both direct and nested paths
+  const temperature = data.temperature || (data.environmentalConditions && data.environmentalConditions.temperature);
+  if (temperature) {
+    const tempErrors = validateTemperature(temperature);
     tempErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -372,9 +373,10 @@ export function validateEnvironmentalConditions(data: any): ValidationResult {
     });
   }
   
-  // Validate humidity
-  if (data.humidity) {
-    const humidityErrors = validateHumidity(data.humidity);
+  // Validate humidity - check both direct and nested paths
+  const humidity = data.humidity || (data.environmentalConditions && data.environmentalConditions.humidity);
+  if (humidity) {
+    const humidityErrors = validateHumidity(humidity);
     humidityErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -382,11 +384,12 @@ export function validateEnvironmentalConditions(data: any): ValidationResult {
     });
   }
   
-  // Validate air quality parameters
+  // Validate air quality parameters - check both direct and nested paths
   const airQualityFields = ['hcho', 'tvoc', 'pm1', 'pm25', 'pm10'];
   airQualityFields.forEach(field => {
-    if (data[field]) {
-      const fieldErrors = validateAirQuality(field, data[field]);
+    const value = data[field] || (data.airPollutionLevel && data.airPollutionLevel[field]);
+    if (value) {
+      const fieldErrors = validateAirQuality(field, value);
       fieldErrors.forEach(error => {
         if (error.severity === 'error') errors.push(error);
         else if (error.severity === 'warning') warnings.push(error);
@@ -409,9 +412,10 @@ export function validateTechnicalParameters(data: any): ValidationResult {
   const warnings: ValidationError[] = [];
   const suggestions: ValidationError[] = [];
   
-  // Validate voltage parameters
-  if (data.voltagePN) {
-    const voltageErrors = validateVoltage(data.voltagePN);
+  // Validate voltage parameters - check both direct and nested paths
+  const voltagePN = data.voltagePN || (data.voltageParameters && data.voltageParameters.voltagePN);
+  if (voltagePN) {
+    const voltageErrors = validateVoltage(voltagePN);
     voltageErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -419,8 +423,9 @@ export function validateTechnicalParameters(data: any): ValidationResult {
     });
   }
   
-  if (data.voltagePE) {
-    const voltageErrors = validateVoltage(data.voltagePE);
+  const voltagePE = data.voltagePE || (data.voltageParameters && data.voltageParameters.voltagePE);
+  if (voltagePE) {
+    const voltageErrors = validateVoltage(voltagePE);
     voltageErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -428,8 +433,9 @@ export function validateTechnicalParameters(data: any): ValidationResult {
     });
   }
   
-  if (data.voltageNE) {
-    const voltageErrors = validateVoltage(data.voltageNE);
+  const voltageNE = data.voltageNE || (data.voltageParameters && data.voltageParameters.voltageNE);
+  if (voltageNE) {
+    const voltageErrors = validateVoltage(voltageNE);
     voltageErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -437,9 +443,10 @@ export function validateTechnicalParameters(data: any): ValidationResult {
     });
   }
   
-  // Validate running hours
-  if (data.projectorRunningHours) {
-    const hoursErrors = validateRunningHours(data.projectorRunningHours);
+  // Validate running hours - check both direct and nested paths
+  const projectorRunningHours = data.projectorRunningHours || (data.lampPowerMeasurements && data.lampPowerMeasurements.projectorRunningHours);
+  if (projectorRunningHours) {
+    const hoursErrors = validateRunningHours(projectorRunningHours);
     hoursErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);
@@ -447,8 +454,9 @@ export function validateTechnicalParameters(data: any): ValidationResult {
     });
   }
   
-  if (data.lampRunningHours) {
-    const hoursErrors = validateRunningHours(data.lampRunningHours);
+  const lampRunningHours = data.lampRunningHours || (data.lampPowerMeasurements && data.lampPowerMeasurements.lampRunningHours);
+  if (lampRunningHours) {
+    const hoursErrors = validateRunningHours(lampRunningHours);
     hoursErrors.forEach(error => {
       if (error.severity === 'error') errors.push(error);
       else if (error.severity === 'warning') warnings.push(error);

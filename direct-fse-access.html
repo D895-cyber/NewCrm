@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct FSE Access</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px 20px;
+            margin: 10px 0;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.success {
+            background: #28a745;
+        }
+        .btn.success:hover {
+            background: #1e7e34;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Direct FSE Portal Access</h1>
+        
+        <div class="status success">
+            ✅ Server is running on http://localhost:3000
+        </div>
+
+        <div class="info">
+            <strong>Quick Access:</strong> Click any button below to open the FSE portal directly in a new tab.
+        </div>
+
+        <a href="http://localhost:3000/#simple-fse" target="_blank" class="btn success">
+            🏠 Open Simple FSE Dashboard
+        </a>
+
+        <a href="http://localhost:3000/#mobile-fse" target="_blank" class="btn">
+            📱 Open Mobile FSE App
+        </a>
+
+        <a href="http://localhost:3000/#fse-workflow" target="_blank" class="btn">
+            🔄 Open FSE Workflow
+        </a>
+
+        <a href="http://localhost:3000/#fse-debug" target="_blank" class="btn">
+            🐛 Open Debug Panel
+        </a>
+
+        <a href="http://localhost:3000/#mobile-test" target="_blank" class="btn">
+            📱 Open Mobile Test
+        </a>
+
+        <div class="info">
+            <strong>For Mobile Devices:</strong><br>
+            Use: <code>http://192.168.1.42:3000/#simple-fse</code>
+        </div>
+
+        <div class="info">
+            <strong>If Still Not Working:</strong><br>
+            1. Make sure server is running: <code>npm run dev</code><br>
+            2. Check browser console for errors (F12)<br>
+            3. Try refreshing the page<br>
+            4. Clear browser cache
+        </div>
+    </div>
+
+    <script>
+        // Test server connectivity
+        fetch('http://localhost:3000/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Server is accessible');
+                } else {
+                    console.log('❌ Server error:', response.status);
+                }
+            })
+            .catch(error => {
+                console.log('❌ Cannot reach server:', error);
+                document.querySelector('.status.success').innerHTML = 
+                    '❌ Server not accessible. Please start with: <code>npm run dev</code>';
+                document.querySelector('.status.success').className = 'status error';
+            });
+
+        // Auto-open simple FSE dashboard after 2 seconds
+        setTimeout(() => {
+            if (confirm('Auto-open FSE Dashboard?')) {
+                window.open('http://localhost:3000/#simple-fse', '_blank');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

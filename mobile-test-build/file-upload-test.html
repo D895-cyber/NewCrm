@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Test - Photo Capture & Cloudinary Upload</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 3px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background: #e3f2fd;
+            border-color: #0056b3;
+        }
+        .upload-area.dragover {
+            background: #e3f2fd;
+            border-color: #28a745;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        button { 
+            padding: 12px 24px; 
+            margin: 8px; 
+            font-size: 16px; 
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { 
+            background: #007bff; 
+            color: white; 
+        }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { 
+            background: #6c757d; 
+            color: white; 
+        }
+        .btn-secondary:hover { background: #545b62; }
+        .btn-success { 
+            background: #28a745; 
+            color: white; 
+        }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-danger { 
+            background: #dc3545; 
+            color: white; 
+        }
+        .btn-danger:hover { background: #c82333; }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover { background: #e0a800; }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .photo-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .photo-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .status-pending { background: #ffc107; color: #212529; }
+        .status-uploading { background: #17a2b8; color: white; }
+        .status-success { background: #28a745; color: white; }
+        .status-error { background: #dc3545; color: white; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #f5c6cb;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+        .warning-message {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #ffeaa7;
+        }
+        .info-message {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #bee5eb;
+        }
+        .debug {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-input {
+            display: none;
+        }
+        .upload-stats {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .quick-action {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        .quick-action:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+        .quick-action-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 File Upload Test - Photo Capture & Cloudinary Upload</h1>
+            <p>Specialized for devices without camera API support - Test file upload and Cloudinary integration</p>
+        </div>
+
+        <!-- Device Information -->
+        <div class="test-section">
+            <h2>📱 Device & Browser Information</h2>
+            <div class="info-message">
+                <strong>Camera API Status:</strong> Not supported on this device/browser<br>
+                <strong>Solution:</strong> Using file upload for photo capture and Cloudinary integration
+            </div>
+            <div class="upload-stats">
+                <h3>Upload Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalPhotos">0</div>
+                        <div class="stat-label">Total Photos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="uploadedPhotos">0</div>
+                        <div class="stat-label">Uploaded</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="failedUploads">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalSize">0 MB</div>
+                        <div class="stat-label">Total Size</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Configuration -->
+        <div class="test-section">
+            <h2>⚙️ Test Configuration</h2>
+            <div class="form-group">
+                <label for="visitId">Test Visit ID:</label>
+                <input type="text" id="visitId" value="68aedcb174ff4b6b3f9a10d6" placeholder="Enter test visit ID">
+                <small style="color: #666;">Using existing visit ID: VISIT-1756290225731-9qkvtm</small>
+            </div>
+            <div class="form-group">
+                <label for="category">Photo Category:</label>
+                <select id="category">
+                    <option value="Before Service">Before Service</option>
+                    <option value="During Service">During Service</option>
+                    <option value="After Service">After Service</option>
+                    <option value="Issue Found">Issue Found</option>
+                    <option value="Parts Replacement">Parts Replacement</option>
+                    <option value="Quality Check">Quality Check</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="test-section">
+            <h2>🚀 Quick Actions</h2>
+            <div class="quick-actions">
+                <div class="quick-action" onclick="document.getElementById('fileUpload').click()">
+                    <div class="quick-action-icon">📁</div>
+                    <h3>Select Files</h3>
+                    <p>Choose photos from your device</p>
+                </div>
+                <div class="quick-action" onclick="document.getElementById('cameraUpload').click()">
+                    <div class="quick-action-icon">📷</div>
+                    <h3>Camera Capture</h3>
+                    <p>Use device camera app</p>
+                </div>
+                <div class="quick-action" onclick="uploadAllPhotos()">
+                    <div class="quick-action-icon">☁️</div>
+                    <h3>Upload to Cloud</h3>
+                    <p>Send to Cloudinary</p>
+                </div>
+                <div class="quick-action" onclick="clearAllPhotos()">
+                    <div class="quick-action-icon">🗑️</div>
+                    <h3>Clear All</h3>
+                    <p>Remove all photos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Area -->
+        <div class="test-section">
+            <h2>📁 File Upload</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Drag & Drop Photos Here</h3>
+                <p>or click to select files</p>
+                <button class="btn-primary" onclick="document.getElementById('fileUpload').click()">
+                    Select Photos
+                </button>
+                <button class="btn-warning" onclick="document.getElementById('cameraUpload').click()">
+                    Use Camera App
+                </button>
+            </div>
+            
+            <input type="file" id="fileUpload" class="file-input" accept="image/*" multiple>
+            <input type="file" id="cameraUpload" class="file-input" accept="image/*" capture="environment">
+            
+            <div class="info-message">
+                <strong>Supported Formats:</strong> JPG, PNG, GIF, WebP<br>
+                <strong>Max File Size:</strong> 10MB per file<br>
+                <strong>Tip:</strong> Use your device's camera app to take photos, then upload them here
+            </div>
+        </div>
+
+        <!-- Photos Display -->
+        <div id="photosSection" class="test-section" style="display: none;">
+            <h2>🖼️ Selected Photos</h2>
+            <div id="uploadProgress" style="display: none;">
+                <h3>Upload Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <p id="progressText">0%</p>
+            </div>
+            
+            <button id="uploadToCloudinary" class="btn-success">Upload to Cloudinary</button>
+            <button id="clearPhotos" class="btn-danger">Clear All Photos</button>
+            
+            <div id="photosGrid" class="photo-grid"></div>
+        </div>
+
+        <!-- Debug Information -->
+        <div class="test-section">
+            <h2>🔍 Debug Information</h2>
+            <button id="clearDebug" class="btn-secondary">Clear Debug Info</button>
+            <div id="debugInfo" class="debug">
+                <div>No debug information yet...</div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="test-section">
+            <h2>📋 How to Test Photo Capture & Upload</h2>
+            <ol>
+                <li><strong>Method 1 - File Selection:</strong> Click "Select Photos" to choose existing images from your device</li>
+                <li><strong>Method 2 - Camera App:</strong> Click "Use Camera App" to open your device's camera, take photos, then upload them</li>
+                <li><strong>Method 3 - Drag & Drop:</strong> Drag photos directly onto the upload area</li>
+                <li><strong>Organize Photos:</strong> Add descriptions and select categories for each photo</li>
+                <li><strong>Upload to Cloudinary:</strong> Click "Upload to Cloudinary" to test backend integration</li>
+                <li><strong>Monitor Progress:</strong> Watch upload progress and check debug information</li>
+            </ol>
+            
+            <div class="warning-message">
+                <strong>Note:</strong> Since your device doesn't support the camera API, this approach uses your device's native camera app, which often provides better photo quality and more features than web-based camera access.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let photos = [];
+        let isUploading = false;
+        let totalSize = 0;
+
+        // DOM elements
+        const fileUpload = document.getElementById('fileUpload');
+        const cameraUpload = document.getElementById('cameraUpload');
+        const uploadArea = document.getElementById('uploadArea');
+        const photosSection = document.getElementById('photosSection');
+        const photosGrid = document.getElementById('photosGrid');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const uploadBtn = document.getElementById('uploadToCloudinary');
+        const clearPhotosBtn = document.getElementById('clearPhotos');
+        const clearDebugBtn = document.getElementById('clearDebug');
+        const debugInfo = document.getElementById('debugInfo');
+        const visitIdInput = document.getElementById('visitId');
+        const categorySelect = document.getElementById('category');
+
+        // Stats elements
+        const totalPhotosEl = document.getElementById('totalPhotos');
+        const uploadedPhotosEl = document.getElementById('uploadedPhotos');
+        const failedUploadsEl = document.getElementById('failedUploads');
+        const totalSizeEl = document.getElementById('totalSize');
+
+        // Debug logging
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            const debugDiv = document.createElement('div');
+            debugDiv.textContent = `[${time}] ${message}`;
+            debugInfo.appendChild(debugDiv);
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+            console.log(message);
+        }
+
+        // Update statistics
+        function updateStats() {
+            const uploaded = photos.filter(p => p.status === 'success').length;
+            const failed = photos.filter(p => p.status === 'error').length;
+            
+            totalPhotosEl.textContent = photos.length;
+            uploadedPhotosEl.textContent = uploaded;
+            failedUploadsEl.textContent = failed;
+            totalSizeEl.textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // Handle file upload
+        function handleFileUpload(files) {
+            log(`Processing ${files.length} files...`);
+            
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    log(`Processing image: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                    
+                    const photo = {
+                        id: Date.now() + Math.random(),
+                        file: file,
+                        description: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                        category: categorySelect.value,
+                        status: 'pending',
+                        preview: URL.createObjectURL(file),
+                        size: file.size
+                    };
+                    
+                    photos.push(photo);
+                    totalSize += file.size;
+                    log(`Photo added: ${photo.description}`);
+                } else {
+                    log(`Skipping non-image file: ${file.name}`);
+                }
+            });
+            
+            updatePhotosDisplay();
+            updateStats();
+        }
+
+        // File upload event listeners
+        fileUpload.addEventListener('change', (event) => {
+            handleFileUpload(event.target.files);
+        });
+
+        cameraUpload.addEventListener('change', (event) => {
+            log('Camera app photo selected');
+            handleFileUpload(event.target.files);
+        });
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            log('Files dropped');
+            handleFileUpload(e.dataTransfer.files);
+        });
+
+        // Update photos display
+        function updatePhotosDisplay() {
+            if (photos.length === 0) {
+                photosSection.style.display = 'none';
+                return;
+            }
+            
+            photosSection.style.display = 'block';
+            photosGrid.innerHTML = '';
+            
+            photos.forEach(photo => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                
+                photoItem.innerHTML = `
+                    <img src="${photo.preview}" alt="${photo.description}">
+                    <div>
+                        <strong>${photo.description}</strong><br>
+                        <small>${(photo.size / 1024).toFixed(2)} KB</small><br>
+                        <span class="status-badge status-${photo.status}">${photo.status}</span>
+                        ${photo.cloudinaryUrl ? '<br><small>✅ Uploaded to Cloudinary</small>' : ''}
+                        ${photo.error ? '<br><small class="error-message">❌ ' + photo.error + '</small>' : ''}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <input type="text" placeholder="Description" value="${photo.description}" 
+                               onchange="updatePhotoDescription('${photo.id}', this.value)" style="width: 100%; margin-bottom: 5px;">
+                        <select onchange="updatePhotoCategory('${photo.id}', this.value)" style="width: 100%;">
+                            <option value="Before Service" ${photo.category === 'Before Service' ? 'selected' : ''}>Before Service</option>
+                            <option value="During Service" ${photo.category === 'During Service' ? 'selected' : ''}>During Service</option>
+                            <option value="After Service" ${photo.category === 'After Service' ? 'selected' : ''}>After Service</option>
+                            <option value="Issue Found" ${photo.category === 'Issue Found' ? 'selected' : ''}>Issue Found</option>
+                            <option value="Parts Replacement" ${photo.category === 'Parts Replacement' ? 'selected' : ''}>Parts Replacement</option>
+                            <option value="Quality Check" ${photo.category === 'Quality Check' ? 'selected' : ''}>Quality Check</option>
+                        </select>
+                    </div>
+                `;
+                
+                photosGrid.appendChild(photoItem);
+            });
+        }
+
+        // Update photo description
+        function updatePhotoDescription(id, description) {
+            const photo = photos.find(p => p.id === id);
+            if (photo) {
+                photo.description = description;
+                log(`Updated description for ${description}`);
+            }
+        }
+
+        // Update photo category
+        function updatePhotoCategory(id, category) {
+            const photo = photos.find(p => p.id === id);
+            if (photo) {
+                photo.category = category;
+                log(`Updated category for ${photo.description} to ${category}`);
+            }
+        }
+
+        // Upload to Backend API (which handles Cloudinary)
+        async function uploadToCloudinary(photo) {
+            try {
+                log(`Uploading ${photo.description} via backend API...`);
+                
+                const formData = new FormData();
+                formData.append('photo', photo.file); // Legacy route expects 'photo' field
+                formData.append('category', photo.category);
+                formData.append('description', photo.description);
+                
+                // Debug: Log what we're sending
+                log(`Sending photo with category: ${photo.category}`);
+                log(`FormData entries:`);
+                for (let [key, value] of formData.entries()) {
+                    log(`  ${key}: ${value}`);
+                }
+
+                // Use the working backend API endpoint (legacy route)
+                const response = await fetch(`http://192.168.1.42:4000/api/service-visits/${visitIdInput.value}/photos`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`Backend upload failed: ${response.statusText} - ${errorData.message || ''}`);
+                }
+
+                const result = await response.json();
+                log(`Upload successful via backend: ${result.photos ? result.photos.length : 0} photos uploaded`);
+                
+                return result.photos && result.photos.length > 0 ? result.photos[0].cloudUrl : 'Uploaded successfully';
+            } catch (error) {
+                log(`Upload failed: ${error.message}`);
+                throw error;
+            }
+        }
+
+        // Upload all photos
+        async function uploadAllPhotos() {
+            if (photos.length === 0) {
+                alert('No photos to upload');
+                return;
+            }
+
+            if (isUploading) return;
+            
+            isUploading = true;
+            uploadBtn.disabled = true;
+            uploadProgress.style.display = 'block';
+            
+            log(`Starting upload of ${photos.length} photos to Cloudinary`);
+
+            try {
+                // Update all photos to uploading status
+                photos.forEach(photo => photo.status = 'uploading');
+                updatePhotosDisplay();
+
+                // Upload each photo individually
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
+                    try {
+                        const cloudinaryUrl = await uploadToCloudinary(photo);
+                        photo.status = 'success';
+                        photo.cloudinaryUrl = cloudinaryUrl;
+                        log(`Photo ${i + 1}/${photos.length} uploaded successfully`);
+                    } catch (error) {
+                        photo.status = 'error';
+                        photo.error = error.message;
+                        log(`Photo ${i + 1}/${photos.length} upload failed: ${error.message}`);
+                    }
+                    
+                    // Update progress
+                    const progress = ((i + 1) / photos.length) * 100;
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = Math.round(progress) + '%';
+                    
+                    updatePhotosDisplay();
+                    updateStats();
+                }
+
+                log('All uploads completed');
+                alert(`Upload completed! Check debug info for details.`);
+
+            } catch (error) {
+                log(`Upload process failed: ${error.message}`);
+                alert(`Upload failed: ${error.message}`);
+            } finally {
+                isUploading = false;
+                uploadBtn.disabled = false;
+                uploadProgress.style.display = 'none';
+            }
+        }
+
+        // Clear all photos
+        function clearAllPhotos() {
+            photos.forEach(photo => URL.revokeObjectURL(photo.preview));
+            photos = [];
+            totalSize = 0;
+            updatePhotosDisplay();
+            updateStats();
+            log('All photos cleared');
+        }
+
+        // Clear debug info
+        clearDebugBtn.addEventListener('click', () => {
+            debugInfo.innerHTML = '<div>Debug info cleared...</div>';
+        });
+
+        // Event listeners
+        uploadBtn.addEventListener('click', uploadAllPhotos);
+        clearPhotosBtn.addEventListener('click', clearAllPhotos);
+
+        // Initialize
+        log('=== File Upload Test Page Loaded ===');
+        log('Camera API not supported - using file upload method');
+        log('Ready to test photo upload and Cloudinary integration');
+        updateStats();
+    </script>
+</body>
+</html>

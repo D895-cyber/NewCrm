@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Progress } from "../ui/progress";
+// import { Progress } from "../ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { 
@@ -10,9 +10,9 @@ import {
   XCircle, 
   Wrench, 
   TrendingUp, 
-  Clock,
-  Target,
-  Globe,
+  // Clock,
+  // Target,
+  // Globe,
   Eye,
   FileText,
   Shield,

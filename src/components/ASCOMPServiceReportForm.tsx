@@ -66,7 +66,7 @@ import { Progress } from './ui/progress';
 import { exportServiceReportToPDF } from '../utils/export';
 import { apiClient } from '../utils/api/client';
 import { EnvironmentalField, TechnicalField, ValidationSummary } from './ui/ValidationField';
-import { validateEnvironmentalConditions, validateTechnicalParameters, ValidationError } from '../utils/validation/reportValidation';
+import { validateServiceReport, validateEnvironmentalConditions, validateTechnicalParameters, ValidationError } from '../utils/validation/reportValidation';
 
 // Service Report Data Interface
 interface ServiceReportData {
@@ -311,7 +311,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
     },
     
     // Recommended Parts
-    recommendedParts: [],
+    recommendedParts: [] as Array<{ partName: string; partNumber: string; quantity: number; notes: string }>,
     
     // Measured Color Coordinates (MCGD)
     measuredColorCoordinates: [
@@ -431,6 +431,30 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
         [field]: value
       }));
     }
+    
+    // Run real-time validation for fields that need it
+    if (field.includes('environmentalConditions') || field.includes('airPollutionLevel') || 
+        field.includes('voltageParameters') || field.includes('projectorRunningHours') || 
+        field.includes('lampRunningHours')) {
+      
+      // Create a copy of the current form data with the new value
+      const updatedData: any = { ...formData };
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.');
+        if (!updatedData[parent]) updatedData[parent] = {};
+        updatedData[parent][child] = value;
+      } else {
+        updatedData[field] = value;
+      }
+      
+      // Run validation
+      const validationResult = validateServiceReport(updatedData);
+      setValidationErrors([
+        ...validationResult.errors,
+        ...validationResult.warnings,
+        ...validationResult.suggestions
+      ]);
+    }
   };
 
   const loadAvailableSpareParts = async () => {
@@ -509,21 +533,15 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       // Set success state
       setIsSubmitted(true);
       setSubmittedReport(formData);
-      setShowDownloadModal(true);
+      // Don't show download modal here - let parent component handle it
+      // setShowDownloadModal(true);
       
-      // Show success toast
-      (window as any).showToast?.({
-        type: 'success',
-        title: 'Report Submitted Successfully!',
-        message: 'Your service report has been completed and saved.'
-      });
+      // Don't show toast here - let the parent component handle it
+      // This prevents duplicate success/error messages
     } catch (error) {
       console.error('Error submitting report:', error);
-      (window as any).showToast?.({
-        type: 'error',
-        title: 'Submission Failed',
-        message: 'There was an error submitting your report. Please try again.'
-      });
+      // Don't show toast here - let the parent component handle it
+      // This prevents duplicate success/error messages
     } finally {
       setIsSubmitting(false);
     }
@@ -534,6 +552,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       exportServiceReportToPDF(submittedReport);
       setShowDownloadModal(false);
       
+      // Show download success toast
       (window as any).showToast?.({
         type: 'success',
         title: 'Report Downloaded',
@@ -671,6 +690,13 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
             <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
           </div>
         </div>
+
+        {/* Validation Summary */}
+        {validationErrors.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <ValidationSummary validationErrors={validationErrors} />
+          </div>
+        )}
 
         {/* Form Steps */}
         <div className="space-y-6">
@@ -1769,28 +1795,22 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                   <h3 className="font-semibold text-gray-900 mb-3">Environmental Conditions</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="temperature">Temperature</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="temperature"
-                          value={formData.environmentalConditions.temperature}
-                          onChange={(e) => handleInputChange('environmentalConditions.temperature', e.target.value)}
-                          placeholder="e.g., 25"
-                        />
-                        <span className="text-gray-500">°C</span>
-                      </div>
+                      <EnvironmentalField
+                        label="Temperature"
+                        value={formData.environmentalConditions.temperature}
+                        onChange={(value) => handleInputChange('environmentalConditions.temperature', value)}
+                        placeholder="e.g., 25"
+                        validationErrors={validationErrors}
+                      />
                     </div>
                     <div>
-                      <Label htmlFor="humidity">Humidity</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="humidity"
-                          value={formData.environmentalConditions.humidity}
-                          onChange={(e) => handleInputChange('environmentalConditions.humidity', e.target.value)}
-                          placeholder="e.g., 32"
-                        />
-                        <span className="text-gray-500">%</span>
-                      </div>
+                      <EnvironmentalField
+                        label="Humidity"
+                        value={formData.environmentalConditions.humidity}
+                        onChange={(value) => handleInputChange('environmentalConditions.humidity', value)}
+                        placeholder="e.g., 32"
+                        validationErrors={validationErrors}
+                      />
                     </div>
                   </div>
                 </div>
@@ -1985,57 +2005,57 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                   <h3 className="font-semibold text-gray-900 mb-3">Air Pollution Level</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="hcho">HCHO</Label>
-                      <Input
-                        id="hcho"
+                      <EnvironmentalField
+                        label="HCHO"
                         value={formData.airPollutionLevel.hcho}
-                        onChange={(e) => handleInputChange('airPollutionLevel.hcho', e.target.value)}
+                        onChange={(value) => handleInputChange('airPollutionLevel.hcho', value)}
                         placeholder="e.g., 0.108"
+                        validationErrors={validationErrors}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="tvoc">TVOC</Label>
-                      <Input
-                        id="tvoc"
+                      <EnvironmentalField
+                        label="TVOC"
                         value={formData.airPollutionLevel.tvoc}
-                        onChange={(e) => handleInputChange('airPollutionLevel.tvoc', e.target.value)}
+                        onChange={(value) => handleInputChange('airPollutionLevel.tvoc', value)}
                         placeholder="e.g., 0.456"
+                        validationErrors={validationErrors}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="pm1">PM 1.0</Label>
-                      <Input
-                        id="pm1"
+                      <EnvironmentalField
+                        label="PM 1.0"
                         value={formData.airPollutionLevel.pm1}
-                        onChange={(e) => handleInputChange('airPollutionLevel.pm1', e.target.value)}
+                        onChange={(value) => handleInputChange('airPollutionLevel.pm1', value)}
                         placeholder="e.g., 9"
+                        validationErrors={validationErrors}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="pm25">PM 2.5</Label>
-                      <Input
-                        id="pm25"
+                      <EnvironmentalField
+                        label="PM 2.5"
                         value={formData.airPollutionLevel.pm25}
-                        onChange={(e) => handleInputChange('airPollutionLevel.pm25', e.target.value)}
+                        onChange={(value) => handleInputChange('airPollutionLevel.pm25', value)}
                         placeholder="e.g., 12"
+                        validationErrors={validationErrors}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="pm10">PM 10</Label>
-                      <Input
-                        id="pm10"
+                      <EnvironmentalField
+                        label="PM 10"
                         value={formData.airPollutionLevel.pm10}
-                        onChange={(e) => handleInputChange('airPollutionLevel.pm10', e.target.value)}
-                        placeholder="e.g., 13"
+                        onChange={(value) => handleInputChange('airPollutionLevel.pm10', value)}
+                        placeholder="e.g., 30"
+                        validationErrors={validationErrors}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="overall">Overall Air Pollution Level</Label>
-                      <Input
-                        id="overall"
+                      <EnvironmentalField
+                        label="Overall Air Pollution Level"
                         value={formData.airPollutionLevel.overall}
-                        onChange={(e) => handleInputChange('airPollutionLevel.overall', e.target.value)}
+                        onChange={(value) => handleInputChange('airPollutionLevel.overall', value)}
                         placeholder="e.g., 30"
+                        validationErrors={validationErrors}
                       />
                     </div>
                   </div>

@@ -95,6 +95,11 @@ export function PromptsPage() {
     );
   };
 
+  const handleTogglePrompt = (promptId: number, checked: boolean) => {
+    // Handle prompt toggle logic here
+    console.log(`Toggling prompt ${promptId} to ${checked}`);
+  };
+
   const filteredPrompts = promptsData.filter(prompt =>
     prompt.text.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -197,7 +202,7 @@ export function PromptsPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={prompt.status}
-                            onCheckedChange={(checked) => handleTogglePrompt(prompt._id, checked)}
+                            onCheckedChange={(checked) => handleTogglePrompt(prompt.id, checked)}
                           />
                           {prompt.status ? (
                             <Play className="w-4 h-4 text-green-600" />

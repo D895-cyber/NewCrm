@@ -297,13 +297,50 @@ router.get('/lookup/projector/:serialNumber', auth, async (req, res) => {
       return res.status(404).json({ message: 'Site not found' });
     }
     
+    // Get service reports for this projector to calculate hours and service count
+    const ServiceReport = require('../models/ServiceReport');
+    const projectorReports = await ServiceReport.find({ 
+      projectorSerial: serialNumber 
+    }).sort({ date: -1 });
+    
+    // Calculate total hours from service reports
+    let totalHours = 0;
+    let totalServices = 0;
+    let lastServiceDate = null;
+    
+    if (projectorReports.length > 0) {
+      totalServices = projectorReports.length;
+      lastServiceDate = new Date(Math.max(...projectorReports.map(r => new Date(r.date).getTime())));
+      
+      // Sum up hours from all reports
+      projectorReports.forEach(report => {
+        if (report.projectorRunningHours && !isNaN(Number(report.projectorRunningHours))) {
+          totalHours += Number(report.projectorRunningHours);
+        }
+      });
+    }
+    
+    // Calculate life percentage based on expected life
+    const lifePercentage = projector.expectedLife ? Math.round((totalHours / projector.expectedLife) * 100) : 0;
+    
+    // Calculate next service date (estimate based on last service + typical interval)
+    const nextServiceDate = lastServiceDate 
+      ? new Date(lastServiceDate.getTime() + (90 * 24 * 60 * 60 * 1000)) // 90 days default
+      : null;
+    
     const projectorInfo = {
       serialNumber: projector.serialNumber,
       model: projector.model,
       brand: projector.brand,
       installDate: projector.installDate,
       warrantyEnd: projector.warrantyEnd,
-      lastService: projector.lastService,
+      lastService: lastServiceDate,
+      nextService: nextServiceDate,
+      totalServices,
+      hoursUsed: totalHours,
+      lifePercentage,
+      condition: projector.condition,
+      primaryTechnician: projector.primaryTechnician,
       site: {
         name: site.name,
         code: site.name,

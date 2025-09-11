@@ -160,6 +160,32 @@ export interface ServiceReport {
     description: string;
     category: string;
   }>;
+  airPollutionLevel?: {
+    overall?: string;
+    hcho?: string;
+    tvoc?: string;
+    pm1?: string;
+    pm25?: string;
+    pm10?: string;
+  };
+  environmentalConditions?: {
+    temperature?: string;
+    humidity?: string;
+  };
+  softwareVersion?: string;
+  projectorRunningHours?: string;
+  lampModel?: string;
+  lampRunningHours?: string;
+  currentLampHours?: string;
+  voltageParameters?: {
+    pVsN?: string;
+    pVsE?: string;
+    nVsE?: string;
+  };
+  lampPowerMeasurements?: {
+    flBeforePM?: string;
+    flAfterPM?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

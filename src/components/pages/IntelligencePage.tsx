@@ -1,9 +1,9 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+// import { Badge } from "../ui/badge";
+// import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, Award, Target, Brain } from "lucide-react";
 import { convertToCSV, downloadCSV } from "../../utils/export";
 
@@ -25,7 +25,7 @@ const averageRankData = [
   { date: "Jun 23", rank: 1.8 },
 ];
 
-const rankDistributionData = [
+const _rankDistributionData = [
   { rank: "Rank 1", ai8: 45, competitors: 15 },
   { rank: "Rank 2", ai8: 30, competitors: 25 },
   { rank: "Rank 3", ai8: 15, competitors: 35 },

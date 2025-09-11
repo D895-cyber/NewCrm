@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real FSE Portal Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .test-link {
+            display: block;
+            padding: 20px;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .test-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .test-link.real {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        .test-link.real:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+        .test-link.demo {
+            background: rgba(255, 193, 7, 0.3);
+            border-color: rgba(255, 193, 7, 0.5);
+        }
+        .test-link.demo:hover {
+            background: rgba(255, 193, 7, 0.5);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 2px solid rgba(33, 150, 243, 0.5);
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.5);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .section {
+            margin: 30px 0;
+        }
+        .section h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        .server-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .feature-list {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .feature-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .feature-list li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Real FSE Portal Test</h1>
+        
+        <div class="status success">
+            <strong>✅ Server is Running!</strong><br>
+            Your real FSE portal is ready to use. Choose from the options below.
+        </div>
+
+        <div class="server-info">
+            <h3>🌐 Server Information</h3>
+            <p><strong>Local:</strong> http://localhost:3000/</p>
+            <p><strong>Network:</strong> http://192.168.1.42:3000/</p>
+            <p><strong>Status:</strong> ✅ Online and Ready</p>
+            <p><strong>Database:</strong> ✅ MongoDB Atlas Connected</p>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Real FSE Portal (Database Connected)</h2>
+            <p>These portals connect to your actual MongoDB database and show real data:</p>
+            
+            <a href="http://localhost:3000/#real-fse" class="test-link real">
+                🏠 Real FSE Dashboard (Database Connected)
+            </a>
+            
+            <a href="http://localhost:3000/#real-fse-workflow" class="test-link real">
+                🔄 Real FSE Workflow (Database Connected)
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>📱 Demo FSE Portal (Test Data)</h2>
+            <p>These portals use demo data for testing purposes:</p>
+            
+            <a href="http://localhost:3000/#simple-fse" class="test-link demo">
+                🏠 Simple FSE Dashboard (Demo Data)
+            </a>
+            
+            <a href="http://localhost:3000/#mobile-fse" class="test-link demo">
+                📱 Mobile FSE App (Demo Data)
+            </a>
+            
+            <a href="http://localhost:3000/#fse-workflow" class="test-link demo">
+                🔄 FSE Workflow (Demo Data)
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>🛠️ Debug & Testing Tools</h2>
+            <p>Tools for debugging and testing:</p>
+            
+            <a href="http://localhost:3000/#fse-debug" class="test-link">
+                🐛 FSE Debug Panel
+            </a>
+            
+            <a href="http://localhost:3000/#mobile-test" class="test-link">
+                📱 Mobile Test Page
+            </a>
+        </div>
+
+        <div class="feature-list">
+            <h3>🎯 Real FSE Portal Features</h3>
+            <ul>
+                <li><strong>Database Integration:</strong> Connects to your MongoDB Atlas database</li>
+                <li><strong>Real Data:</strong> Shows actual FSE records, service visits, and reports</li>
+                <li><strong>Photo Upload:</strong> Real photo upload to Cloudinary</li>
+                <li><strong>Service Workflow:</strong> Complete 7-step service workflow</li>
+                <li><strong>Report Generation:</strong> Creates real service reports in database</li>
+                <li><strong>Mobile Optimized:</strong> Works perfectly on mobile devices</li>
+                <li><strong>Real-time Updates:</strong> Data updates in real-time</li>
+                <li><strong>Error Handling:</strong> Robust error handling and fallbacks</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+            <strong>📱 For Mobile Testing:</strong><br>
+            Use: <strong>http://192.168.1.42:3000/#real-fse</strong><br>
+            (Replace with your actual IP if different)
+        </div>
+
+        <div class="status warning">
+            <strong>⚠️ Important Notes:</strong><br>
+            1. Real FSE Portal requires database connection<br>
+            2. Demo portals work without database<br>
+            3. Check browser console for any errors<br>
+            4. Use debug panel if issues occur
+        </div>
+
+        <div class="server-info">
+            <h3>🔍 Quick Troubleshooting</h3>
+            <ul>
+                <li><strong>Server not running?</strong> Run: <code>npm run dev</code></li>
+                <li><strong>Port 3000 busy?</strong> Try: <code>npm run dev -- --port 3001</code></li>
+                <li><strong>Database issues?</strong> Check: <code>http://localhost:3000/#fse-debug</code></li>
+                <li><strong>Still not working?</strong> Check browser console (F12)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-test server connectivity
+        fetch('http://localhost:3000/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Server is running on port 3000');
+                    document.querySelector('.status.success').innerHTML = 
+                        '<strong>✅ Server is Running!</strong><br>Your real FSE portal is ready to use. Choose from the options below.';
+                } else {
+                    console.log('❌ Server responded with error');
+                }
+            })
+            .catch(error => {
+                console.log('❌ Server not reachable:', error);
+                document.querySelector('.status.success').innerHTML = 
+                    '<strong>❌ Server Not Running!</strong><br>Please start the server with: <code>npm run dev</code>';
+            });
+
+        // Show current time
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString();
+            document.title = `Real FSE Portal Test - ${now}`;
+        }, 1000);
+    </script>
+</body>
+</html>

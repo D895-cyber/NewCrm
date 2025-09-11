@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Photo-First Workflow Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .step {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .step.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        
+        .step.completed {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+        
+        .step-number {
+            position: absolute;
+            top: -10px;
+            left: 15px;
+            background: #2563eb;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .step.completed .step-number {
+            background: #10b981;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+        
+        .step-description {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        
+        .photo-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .category-btn {
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 8px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .category-btn.active {
+            background: #dbeafe;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        
+        .category-btn.completed {
+            background: #dcfce7;
+            border-color: #10b981;
+            color: #10b981;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            text-align: center;
+            margin: 10px 0;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+        
+        .file-input:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #1d4ed8;
+        }
+        
+        .btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        
+        .btn.secondary {
+            background: #64748b;
+        }
+        
+        .btn.secondary:hover {
+            background: #475569;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #2563eb;
+            transition: width 0.3s ease;
+        }
+        
+        .signature-canvas {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            width: 100%;
+            height: 150px;
+            cursor: crosshair;
+            background: white;
+        }
+        
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+        }
+        
+        .photo-item .remove {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .debug-info {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Photo-First Workflow Test</h1>
+        
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        
+        <!-- Step 1: Photo Capture -->
+        <div class="step active" id="step1">
+            <div class="step-number">1</div>
+            <div class="step-title">📸 Capture Photos</div>
+            <div class="step-description">Take photos for each category before proceeding</div>
+            
+            <div class="photo-categories">
+                <div class="category-btn" data-category="Before Service">
+                    📷 Before Service
+                </div>
+                <div class="category-btn" data-category="During Service">
+                    🔧 During Service
+                </div>
+                <div class="category-btn" data-category="After Service">
+                    ✅ After Service
+                </div>
+                <div class="category-btn" data-category="Issue Found">
+                    ⚠️ Issue Found
+                </div>
+            </div>
+            
+            <input type="file" id="photoInput" class="file-input" accept="image/*" multiple>
+            <div class="photo-preview" id="photoPreview"></div>
+            
+            <button class="btn" id="uploadPhotos" disabled>Upload Photos</button>
+        </div>
+        
+        <!-- Step 2: Service Work -->
+        <div class="step" id="step2">
+            <div class="step-number">2</div>
+            <div class="step-title">🔧 Service Work</div>
+            <div class="step-description">Complete the service work</div>
+            
+            <textarea placeholder="Describe the work performed..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin: 10px 0;"></textarea>
+            
+            <button class="btn" id="completeService" disabled>Complete Service</button>
+        </div>
+        
+        <!-- Step 3: Generate Report -->
+        <div class="step" id="step3">
+            <div class="step-number">3</div>
+            <div class="step-title">📄 Generate Report</div>
+            <div class="step-description">Create the service report</div>
+            
+            <button class="btn" id="generateReport" disabled>Generate Report</button>
+        </div>
+        
+        <!-- Step 4: Digital Signature -->
+        <div class="step" id="step4">
+            <div class="step-number">4</div>
+            <div class="step-title">✍️ Digital Signature</div>
+            <div class="step-description">Get site in-charge signature</div>
+            
+            <div style="margin: 15px 0;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Site In-Charge Name:</label>
+                <input type="text" id="siteInChargeName" placeholder="Enter name" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px;">
+            </div>
+            
+            <div style="margin: 15px 0;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Signature:</label>
+                <canvas class="signature-canvas" id="signatureCanvas"></canvas>
+                <button class="btn secondary" id="clearSignature" style="margin-top: 10px;">Clear Signature</button>
+            </div>
+            
+            <button class="btn" id="captureSignature" disabled>Capture Signature</button>
+        </div>
+        
+        <!-- Step 5: Complete -->
+        <div class="step" id="step5">
+            <div class="step-number">5</div>
+            <div class="step-title">✅ Complete</div>
+            <div class="step-description">Workflow completed successfully!</div>
+            
+            <button class="btn" id="finishWorkflow" disabled>Finish Workflow</button>
+        </div>
+        
+        <!-- Status Messages -->
+        <div id="statusMessages"></div>
+        
+        <!-- Debug Info -->
+        <div class="debug-info" id="debugInfo">
+            <div>🔍 Debug Information:</div>
+            <div id="debugContent">Ready to test...</div>
+        </div>
+        
+        <!-- Test Controls -->
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <h3 style="margin-bottom: 10px;">🧪 Test Controls</h3>
+            <button class="btn secondary" id="resetTest">Reset Test</button>
+            <button class="btn secondary" id="testAPI">Test API Connection</button>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentStep = 1;
+        let selectedCategory = null;
+        let uploadedPhotos = [];
+        let workflowData = {
+            photosCaptured: false,
+            serviceCompleted: false,
+            reportGenerated: false,
+            signatureCaptured: false
+        };
+        
+        // API Configuration
+        const API_BASE = 'http://192.168.1.42:3001/api'; // Your backend API port
+        const TEST_VISIT_ID = 'test-visit-001'; // You'll need to create a test visit first
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            updateProgress();
+            addDebugInfo('App initialized');
+        });
+        
+        function initializeEventListeners() {
+            // Category selection
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    selectedCategory = this.dataset.category;
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    addDebugInfo(`Selected category: ${selectedCategory}`);
+                });
+            });
+            
+            // Photo input
+            document.getElementById('photoInput').addEventListener('change', handlePhotoSelection);
+            
+            // Upload photos
+            document.getElementById('uploadPhotos').addEventListener('click', uploadPhotos);
+            
+            // Complete service
+            document.getElementById('completeService').addEventListener('click', completeService);
+            
+            // Generate report
+            document.getElementById('generateReport').addEventListener('click', generateReport);
+            
+            // Signature capture
+            document.getElementById('captureSignature').addEventListener('click', captureSignature);
+            document.getElementById('clearSignature').addEventListener('click', clearSignature);
+            
+            // Finish workflow
+            document.getElementById('finishWorkflow').addEventListener('click', finishWorkflow);
+            
+            // Test controls
+            document.getElementById('resetTest').addEventListener('click', resetTest);
+            document.getElementById('testAPI').addEventListener('click', testAPIConnection);
+            
+            // Initialize signature canvas
+            initializeSignatureCanvas();
+        }
+        
+        function handlePhotoSelection(event) {
+            const files = Array.from(event.target.files);
+            uploadedPhotos = [...uploadedPhotos, ...files];
+            displayPhotoPreviews();
+            updateUploadButton();
+            addDebugInfo(`Selected ${files.length} photos. Total: ${uploadedPhotos.length}`);
+        }
+        
+        function displayPhotoPreviews() {
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = '';
+            
+            uploadedPhotos.forEach((file, index) => {
+                const div = document.createElement('div');
+                div.className = 'photo-item';
+                
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => removePhoto(index);
+                
+                div.appendChild(img);
+                div.appendChild(removeBtn);
+                preview.appendChild(div);
+            });
+        }
+        
+        function removePhoto(index) {
+            uploadedPhotos.splice(index, 1);
+            displayPhotoPreviews();
+            updateUploadButton();
+            addDebugInfo(`Removed photo. Total: ${uploadedPhotos.length}`);
+        }
+        
+        function updateUploadButton() {
+            const btn = document.getElementById('uploadPhotos');
+            btn.disabled = !selectedCategory || uploadedPhotos.length === 0;
+        }
+        
+        async function uploadPhotos() {
+            if (!selectedCategory || uploadedPhotos.length === 0) {
+                showStatus('Please select a category and photos', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('Uploading photos...', 'info');
+                
+                const formData = new FormData();
+                formData.append('category', selectedCategory);
+                formData.append('description', `Photos for ${selectedCategory}`);
+                
+                uploadedPhotos.forEach(file => {
+                    formData.append('photos', file);
+                });
+                
+                const response = await fetch(`${API_BASE}/service-visits/${TEST_VISIT_ID}/photos/categorized`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus(`✅ Uploaded ${result.photos.length} photos successfully!`, 'success');
+                    
+                    // Mark category as completed
+                    document.querySelector(`[data-category="${selectedCategory}"]`).classList.add('completed');
+                    
+                    // Check if all categories are completed
+                    const allCategories = document.querySelectorAll('.category-btn');
+                    const completedCategories = document.querySelectorAll('.category-btn.completed');
+                    
+                    if (allCategories.length === completedCategories.length) {
+                        workflowData.photosCaptured = true;
+                        completeStep(1);
+                        enableStep(2);
+                    }
+                    
+                    addDebugInfo(`Upload successful: ${JSON.stringify(result)}`);
+                } else {
+                    throw new Error(`Upload failed: ${response.statusText}`);
+                }
+            } catch (error) {
+                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+                addDebugInfo(`Upload error: ${error.message}`);
+            }
+        }
+        
+        function completeService() {
+            workflowData.serviceCompleted = true;
+            completeStep(2);
+            enableStep(3);
+            showStatus('✅ Service work completed!', 'success');
+            addDebugInfo('Service work completed');
+        }
+        
+        function generateReport() {
+            workflowData.reportGenerated = true;
+            completeStep(3);
+            enableStep(4);
+            showStatus('✅ Report generated successfully!', 'success');
+            addDebugInfo('Report generated');
+        }
+        
+        function captureSignature() {
+            const name = document.getElementById('siteInChargeName').value;
+            const signature = document.getElementById('signatureCanvas').toDataURL();
+            
+            if (!name || !signature) {
+                showStatus('Please enter name and provide signature', 'error');
+                return;
+            }
+            
+            workflowData.signatureCaptured = true;
+            completeStep(4);
+            enableStep(5);
+            showStatus('✅ Signature captured successfully!', 'success');
+            addDebugInfo('Signature captured');
+        }
+        
+        function finishWorkflow() {
+            completeStep(5);
+            showStatus('🎉 Workflow completed successfully!', 'success');
+            addDebugInfo('Workflow completed');
+        }
+        
+        function completeStep(stepNumber) {
+            const step = document.getElementById(`step${stepNumber}`);
+            step.classList.remove('active');
+            step.classList.add('completed');
+            currentStep = stepNumber + 1;
+            updateProgress();
+        }
+        
+        function enableStep(stepNumber) {
+            const step = document.getElementById(`step${stepNumber}`);
+            step.classList.add('active');
+            
+            // Enable the button for this step
+            const button = step.querySelector('button');
+            if (button) {
+                button.disabled = false;
+            }
+        }
+        
+        function updateProgress() {
+            const progress = (currentStep - 1) / 5 * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+        
+        function initializeSignatureCanvas() {
+            const canvas = document.getElementById('signatureCanvas');
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('touchstart', startDrawing);
+            canvas.addEventListener('touchmove', draw);
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+            }
+        }
+        
+        function clearSignature() {
+            const canvas = document.getElementById('signatureCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessages');
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            statusDiv.appendChild(status);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                status.remove();
+            }, 5000);
+        }
+        
+        function addDebugInfo(message) {
+            const debugContent = document.getElementById('debugContent');
+            const timestamp = new Date().toLocaleTimeString();
+            debugContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            debugContent.scrollTop = debugContent.scrollHeight;
+        }
+        
+        function resetTest() {
+            // Reset all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active', 'completed');
+            });
+            
+            // Reset categories
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active', 'completed');
+            });
+            
+            // Reset state
+            currentStep = 1;
+            selectedCategory = null;
+            uploadedPhotos = [];
+            workflowData = {
+                photosCaptured: false,
+                serviceCompleted: false,
+                reportGenerated: false,
+                signatureCaptured: false
+            };
+            
+            // Clear UI
+            document.getElementById('photoPreview').innerHTML = '';
+            document.getElementById('photoInput').value = '';
+            document.getElementById('siteInChargeName').value = '';
+            clearSignature();
+            document.getElementById('statusMessages').innerHTML = '';
+            
+            // Enable first step
+            document.getElementById('step1').classList.add('active');
+            updateProgress();
+            
+            addDebugInfo('Test reset');
+        }
+        
+        async function testAPIConnection() {
+            try {
+                showStatus('Testing API connection...', 'info');
+                
+                const response = await fetch(`${API_BASE}/service-visits/stats/overview`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus('✅ API connection successful!', 'success');
+                    addDebugInfo(`API Response: ${JSON.stringify(data)}`);
+                } else {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+            } catch (error) {
+                showStatus(`❌ API connection failed: ${error.message}`, 'error');
+                addDebugInfo(`API Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

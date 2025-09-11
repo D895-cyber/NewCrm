@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSE Portal Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .test-link {
+            display: block;
+            padding: 20px;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .test-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 2px solid rgba(33, 150, 243, 0.5);
+        }
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.5);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .server-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 FSE Portal Test</h1>
+        
+        <div class="status success">
+            <strong>✅ Server is Running!</strong><br>
+            Your FSE portal is ready to use. Click any link below to test.
+        </div>
+
+        <div class="server-info">
+            <h3>🌐 Server Information</h3>
+            <p><strong>Local:</strong> http://localhost:3000/</p>
+            <p><strong>Network:</strong> http://192.168.1.42:3000/</p>
+            <p><strong>Status:</strong> ✅ Online and Ready</p>
+        </div>
+
+        <h2>🚀 FSE Portal Links</h2>
+        
+        <a href="http://localhost:3000/#simple-fse" class="test-link">
+            🏠 Simple FSE Dashboard (Recommended)
+        </a>
+        
+        <a href="http://localhost:3000/#mobile-fse" class="test-link">
+            📱 Mobile FSE App
+        </a>
+        
+        <a href="http://localhost:3000/#fse-workflow" class="test-link">
+            🔄 FSE Workflow (Service → Photo → Report → Signature)
+        </a>
+        
+        <a href="http://localhost:3000/#fse-debug" class="test-link">
+            🐛 FSE Debug Panel
+        </a>
+        
+        <a href="http://localhost:3000/#mobile-test" class="test-link">
+            📱 Mobile Test Page
+        </a>
+
+        <div class="status info">
+            <strong>📱 For Mobile Testing:</strong><br>
+            Use: <strong>http://192.168.1.42:3000/#simple-fse</strong><br>
+            (Replace with your actual IP if different)
+        </div>
+
+        <div class="status warning">
+            <strong>⚠️ If Links Don't Work:</strong><br>
+            1. Make sure the server is running<br>
+            2. Try refreshing the page<br>
+            3. Check browser console for errors<br>
+            4. Try the debug panel first
+        </div>
+
+        <h2>🔍 Troubleshooting</h2>
+        <div class="server-info">
+            <h3>Quick Fixes:</h3>
+            <ul>
+                <li><strong>Server not running?</strong> Run: <code>npm run dev</code></li>
+                <li><strong>Port 3000 busy?</strong> Try: <code>npm run dev -- --port 3001</code></li>
+                <li><strong>Still not working?</strong> Check: <code>http://localhost:3000/#fse-debug</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-test server connectivity
+        fetch('http://localhost:3000/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Server is running on port 3000');
+                    document.querySelector('.status.success').innerHTML = 
+                        '<strong>✅ Server is Running!</strong><br>Your FSE portal is ready to use. Click any link below to test.';
+                } else {
+                    console.log('❌ Server responded with error');
+                }
+            })
+            .catch(error => {
+                console.log('❌ Server not reachable:', error);
+                document.querySelector('.status.success').innerHTML = 
+                    '<strong>❌ Server Not Running!</strong><br>Please start the server with: <code>npm run dev</code>';
+            });
+
+        // Show current time
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString();
+            document.title = `FSE Portal Test - ${now}`;
+        }, 1000);
+    </script>
+</body>
+</html>

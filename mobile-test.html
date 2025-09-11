@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSE Mobile Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            display: block;
+            width: 100%;
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 FSE Mobile Test</h1>
+        
+        <div class="info">
+            <strong>Device Info:</strong><br>
+            <span id="deviceInfo">Loading...</span>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <a href="http://192.168.1.42:3000/#mobile-fse" class="button">
+            📱 Open FSE Mobile App
+        </a>
+
+        <a href="http://192.168.1.42:3000/#mobile-test" class="button">
+            🧪 Open Mobile Test Page
+        </a>
+
+        <a href="http://192.168.1.42:3000/#fse-workflow" class="button">
+            ⚙️ Open FSE Workflow
+        </a>
+
+        <a href="http://192.168.1.42:3000" class="button">
+            🏠 Open Main App
+        </a>
+
+        <div class="info">
+            <strong>Login Credentials:</strong><br>
+            Username: fse@example.com<br>
+            Password: password123
+        </div>
+
+        <div class="info">
+            <strong>If mobile app doesn't load:</strong><br>
+            1. Check network connection<br>
+            2. Make sure servers are running<br>
+            3. Try refreshing the page<br>
+            4. Check browser console for errors
+        </div>
+    </div>
+
+    <script>
+        // Device detection
+        function detectDevice() {
+            const userAgent = navigator.userAgent;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+            const isSmallScreen = window.innerWidth < 768;
+            const screenSize = `${window.innerWidth}x${window.innerHeight}`;
+            
+            document.getElementById('deviceInfo').innerHTML = `
+                Mobile Device: ${isMobile ? 'Yes' : 'No'}<br>
+                Small Screen: ${isSmallScreen ? 'Yes' : 'No'}<br>
+                Screen Size: ${screenSize}<br>
+                User Agent: ${userAgent.substring(0, 50)}...
+            `;
+
+            const statusDiv = document.getElementById('status');
+            if (isMobile || isSmallScreen) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Mobile device detected - Mobile app should work!';
+            } else {
+                statusDiv.className = 'status warning';
+                statusDiv.textContent = '⚠️ Desktop device detected - Mobile app may not show by default';
+            }
+        }
+
+        // Test server connectivity
+        async function testConnectivity() {
+            try {
+                const response = await fetch('http://192.168.1.42:4000/api/health');
+                if (response.ok) {
+                    console.log('✅ Backend server is accessible');
+                } else {
+                    console.log('❌ Backend server returned error:', response.status);
+                }
+            } catch (error) {
+                console.log('❌ Backend server not accessible:', error.message);
+            }
+        }
+
+        // Initialize
+        detectDevice();
+        testConnectivity();
+
+        // Update on resize
+        window.addEventListener('resize', detectDevice);
+    </script>
+</body>
+</html>

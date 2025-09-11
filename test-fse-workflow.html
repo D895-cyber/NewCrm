@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSE Workflow Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+        }
+        .test-step h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        .test-step p {
+            margin: 5px 0;
+            color: #333;
+        }
+        .button {
+            background: #2196f3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .success {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+        .success h3 {
+            color: #2e7d32;
+        }
+        .warning {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        .warning h3 {
+            color: #f57c00;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            color: #666;
+        }
+        .checklist li.checked:before {
+            content: "☑ ";
+            color: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 FSE Workflow Integration Test</h1>
+        <p>This page helps you test the integrated FSE workflow with ASCOMP report form.</p>
+        
+        <div class="test-step success">
+            <h3>✅ Integration Complete</h3>
+            <p>The FSEWorkflow now properly integrates with ASCOMPServiceReportForm. FSEs can follow a structured workflow and fill out comprehensive ASCOMP reports.</p>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>🚀 Quick Test Steps</h2>
+        
+        <div class="test-step">
+            <h3>Step 1: Access FSE Workflow</h3>
+            <p>Navigate to the FSE mobile portal and start the workflow:</p>
+            <a href="#mobile-fse" class="button">Open Mobile FSE Portal</a>
+            <div class="code">URL: http://localhost:3000/#mobile-fse</div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 2: Complete Workflow Steps 1-4</h3>
+            <ul class="checklist">
+                <li>Select a service visit</li>
+                <li>Start the service</li>
+                <li>Capture photos (at least 1 photo)</li>
+                <li>Record work details (work performed, issues, parts, recommendations)</li>
+            </ul>
+        </div>
+
+        <div class="test-step warning">
+            <h3>Step 3: Test ASCOMP Integration (KEY TEST)</h3>
+            <p>In Step 5 (Generate Report), you should see TWO options:</p>
+            <ul class="checklist">
+                <li>Generate Basic Report</li>
+                <li>Fill ASCOMP Report ← <strong>Test this one!</strong></li>
+            </ul>
+            <p><strong>Expected Behavior:</strong> Clicking "Fill ASCOMP Report" should open the comprehensive ASCOMP form with pre-filled data from the workflow.</p>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 4: Verify Pre-filled Data</h3>
+            <p>In the ASCOMP form, verify these fields are pre-filled:</p>
+            <ul class="checklist">
+                <li>Engineer name, phone, email</li>
+                <li>Site name</li>
+                <li>Projector serial and model</li>
+                <li>Work performed (from Step 4)</li>
+                <li>Issues found (from Step 4)</li>
+                <li>Parts used (from Step 4)</li>
+                <li>Recommendations (from Step 4)</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 5: Complete ASCOMP Report</h3>
+            <ul class="checklist">
+                <li>Fill out technical details in all 11 steps</li>
+                <li>Submit the report</li>
+                <li>Verify success message</li>
+                <li>Check that workflow continues to Step 6</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 6: Complete Workflow</h3>
+            <ul class="checklist">
+                <li>Capture site in-charge signature</li>
+                <li>Complete the service</li>
+                <li>Verify final success message</li>
+                <li>Check that visit status is updated to "Completed"</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>🔍 What to Look For</h2>
+        
+        <div class="test-step success">
+            <h3>✅ Success Indicators</h3>
+            <ul>
+                <li>ASCOMP form opens in a modal when clicking "Fill ASCOMP Report"</li>
+                <li>All workflow data is pre-filled in the ASCOMP form</li>
+                <li>Report submission is successful</li>
+                <li>Workflow continues seamlessly after report submission</li>
+                <li>Service visit is marked as completed</li>
+                <li>No console errors</li>
+            </ul>
+        </div>
+
+        <div class="test-step warning">
+            <h3>⚠️ Common Issues to Check</h3>
+            <ul>
+                <li>ASCOMP form doesn't open → Check console for errors</li>
+                <li>Data not pre-filled → Ensure Steps 1-4 are completed</li>
+                <li>Report submission fails → Check network tab for API errors</li>
+                <li>Photos not included → Verify photos were captured in Step 3</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>📊 Test Results</h2>
+        <p>Use this checklist to track your test results:</p>
+        
+        <ul class="checklist">
+            <li>FSE Workflow loads correctly</li>
+            <li>All 7 workflow steps are accessible</li>
+            <li>ASCOMP form integration works</li>
+            <li>Data flows from workflow to ASCOMP form</li>
+            <li>Report submission is successful</li>
+            <li>Service visit status updates correctly</li>
+            <li>No JavaScript errors in console</li>
+            <li>Mobile responsiveness works</li>
+        </ul>
+    </div>
+
+    <div class="test-container">
+        <h2>🛠️ Debug Information</h2>
+        <p>If you encounter issues, check these:</p>
+        
+        <div class="code">
+// Check if global function is set
+console.log(window.openASCOMPForm);
+
+// Check workflow data
+console.log('Selected Visit:', selectedVisit);
+console.log('Workflow Data:', workflowData);
+
+// Check for errors
+console.error('Any errors will appear here');
+        </div>
+        
+        <p><strong>Network Tab:</strong> Check for failed API calls to `/api/service-reports`</p>
+        <p><strong>Console Tab:</strong> Look for JavaScript errors or warnings</p>
+    </div>
+
+    <script>
+        // Add some basic functionality to help with testing
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for checklist items
+            const checklistItems = document.querySelectorAll('.checklist li');
+            checklistItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    this.classList.toggle('checked');
+                });
+            });
+
+            // Add a test button to check if we're in the right environment
+            const testButton = document.createElement('button');
+            testButton.textContent = 'Check Environment';
+            testButton.className = 'button';
+            testButton.onclick = function() {
+                alert('Environment check:\n' +
+                      'Current URL: ' + window.location.href + '\n' +
+                      'User Agent: ' + navigator.userAgent + '\n' +
+                      'Local Storage: ' + (localStorage ? 'Available' : 'Not Available'));
+            };
+            document.querySelector('.test-container').appendChild(testButton);
+        });
+    </script>
+</body>
+</html>

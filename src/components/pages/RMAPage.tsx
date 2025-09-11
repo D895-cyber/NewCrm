@@ -307,10 +307,8 @@ export function RMAPage() {
             return 'Expired';
           case 'Expiring Soon':
             return 'Extended Warranty';
-          case 'In Warranty':
           case 'Extended Warranty':
           case 'Out of Warranty':
-          case 'Expired':
             return status;
           default:
             return 'In Warranty';

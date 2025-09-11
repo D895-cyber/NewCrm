@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/christie.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>ProjectorCare FSE Portal</title>
+    <meta name="description" content="Mobile portal for Field Service Engineers to manage service reports and photo uploads" />
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="FSE Portal" />
+    <link rel="apple-touch-icon" href="/christie.svg" />
+    
+    <!-- Mobile Optimizations -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Prevent zoom on input focus for mobile -->
+    <style>
+      input[type="text"], input[type="email"], input[type="password"], textarea, select {
+        font-size: 16px !important;
+      }
+      /* Prevent horizontal scroll on mobile */
+      body { overflow-x: hidden; }
+      /* Optimize touch targets */
+      button, [role="button"] { min-height: 44px; min-width: 44px; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-c6ac7dcc.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-db496f33.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-e1f20b50.js">
+    <link rel="modulepreload" crossorigin href="/assets/charts-bcd97ba2.js">
+    <link rel="stylesheet" href="/assets/index-f00be570.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Add to home screen prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show install button or prompt
+        console.log('App can be installed');
+      });
+    </script>
+  </body>
+</html> 

@@ -128,6 +128,27 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-weight: 400;
+    /* Mobile-first: Prevent horizontal scroll */
+    overflow-x: hidden;
+  }
+
+  /* Mobile-first responsive design */
+  html {
+    /* Ensure proper mobile viewport */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Touch-friendly tap targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Mobile-optimized scrolling */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 }
 
@@ -216,23 +237,53 @@ html {
   .border-dark-color { border-color: var(--color-dark-border); }
 }
 
-/* Enhanced component styling for dark theme */
+/* Enhanced component styling for dark theme with mobile-first approach */
 @layer components {
   .dark-card {
     border-radius: 0.75rem;
     border: 1px solid var(--color-dark-border);
-    padding: 1.5rem;
+    padding: 1rem; /* Mobile-first: smaller padding */
     background-color: var(--color-dark-card);
     box-shadow: rgba(0, 0, 0, 0.25) 0px 4px 12px;
+  }
+
+  /* Mobile-first responsive padding */
+  @media (min-width: 640px) {
+    .dark-card {
+      padding: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dark-card {
+      padding: 1.5rem;
+    }
   }
   
   .dark-button-primary {
     font-weight: 600;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem; /* Mobile-first: smaller padding */
     border-radius: 0.75rem;
     transition: all 0.2s ease;
     color: #FFFFFF;
     background-color: var(--color-dark-cta);
+    min-height: 44px; /* Touch-friendly */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Mobile-first responsive button padding */
+  @media (min-width: 640px) {
+    .dark-button-primary {
+      padding: 0.75rem 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dark-button-primary {
+      padding: 0.75rem 1.5rem;
+    }
   }
   
   .dark-button-primary:hover {
@@ -242,12 +293,29 @@ html {
   
   .dark-button-secondary {
     font-weight: 600;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem; /* Mobile-first: smaller padding */
     border-radius: 0.75rem;
     transition: all 0.2s ease;
     background-color: transparent;
     color: var(--color-dark-cta);
     border: 1px solid var(--color-dark-cta);
+    min-height: 44px; /* Touch-friendly */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Mobile-first responsive button padding */
+  @media (min-width: 640px) {
+    .dark-button-secondary {
+      padding: 0.75rem 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dark-button-secondary {
+      padding: 0.75rem 1.5rem;
+    }
   }
   
   .dark-button-secondary:hover {
@@ -264,6 +332,9 @@ html {
     font-weight: 500;
     transition: all 0.2s ease;
     color: var(--color-dark-secondary-text);
+    min-height: 44px; /* Touch-friendly */
+    width: 100%;
+    text-align: left;
   }
   
   .dark-nav-item-active {
@@ -275,6 +346,15 @@ html {
   .dark-nav-item:hover {
     background-color: var(--color-dark-hover);
     color: var(--color-dark-primary-text);
+  }
+
+  /* Mobile-first responsive navigation */
+  @media (max-width: 767px) {
+    .dark-nav-item {
+      padding: 1rem;
+      font-size: 1rem;
+      gap: 1rem;
+    }
   }
 
   .dark-shadow {
@@ -300,5 +380,99 @@ html {
   
   .dark-metric-negative {
     color: var(--color-dark-negative);
+  }
+
+  /* Mobile-first responsive utilities */
+  .mobile-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .mobile-container {
+      max-width: 640px;
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .mobile-container {
+      max-width: 768px;
+      padding: 0 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-container {
+      max-width: 1024px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .mobile-container {
+      max-width: 1280px;
+    }
+  }
+
+  /* Mobile-first grid system */
+  .mobile-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .mobile-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+  }
+
+  /* Mobile-first text sizing */
+  .mobile-text-xs { font-size: 0.75rem; }
+  .mobile-text-sm { font-size: 0.875rem; }
+  .mobile-text-base { font-size: 1rem; }
+  .mobile-text-lg { font-size: 1.125rem; }
+  .mobile-text-xl { font-size: 1.25rem; }
+
+  @media (min-width: 640px) {
+    .mobile-text-xs { font-size: 0.75rem; }
+    .mobile-text-sm { font-size: 0.875rem; }
+    .mobile-text-base { font-size: 1rem; }
+    .mobile-text-lg { font-size: 1.25rem; }
+    .mobile-text-xl { font-size: 1.5rem; }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-text-lg { font-size: 1.5rem; }
+    .mobile-text-xl { font-size: 1.875rem; }
+  }
+
+  /* Mobile-first spacing */
+  .mobile-p-2 { padding: 0.5rem; }
+  .mobile-p-4 { padding: 1rem; }
+  .mobile-p-6 { padding: 1.5rem; }
+  .mobile-p-8 { padding: 2rem; }
+
+  @media (min-width: 640px) {
+    .mobile-p-2 { padding: 0.75rem; }
+    .mobile-p-4 { padding: 1.25rem; }
+    .mobile-p-6 { padding: 2rem; }
+    .mobile-p-8 { padding: 2.5rem; }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-p-4 { padding: 1.5rem; }
+    .mobile-p-6 { padding: 2.5rem; }
+    .mobile-p-8 { padding: 3rem; }
   }
 }

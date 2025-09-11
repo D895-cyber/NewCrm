@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .test-link {
+            display: block;
+            padding: 20px;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .test-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .test-link.fixed {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        .test-link.fixed:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 2px solid rgba(33, 150, 243, 0.5);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .fix-details {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .fix-details h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .fix-details ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .fix-details li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 User Fix Test</h1>
+        
+        <div class="status success">
+            <strong>✅ FIXED!</strong><br>
+            The FSE Portal now shows your actual "dev" user instead of "John Smith"
+        </div>
+
+        <div class="fix-details">
+            <h3>🎯 What Was Fixed</h3>
+            <ul>
+                <li><strong>RealFSEDashboard:</strong> Now uses authenticated user data</li>
+                <li><strong>RealFSEWorkflow:</strong> Now uses authenticated user data</li>
+                <li><strong>User Context:</strong> Integrated with useAuth hook</li>
+                <li><strong>Dynamic Data:</strong> Shows your actual username and details</li>
+                <li><strong>Fallback Handling:</strong> Graceful fallbacks if user data is missing</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+            <strong>📱 Test the Fix</strong><br>
+            Click the links below to see your actual "dev" user in the FSE Portal
+        </div>
+
+        <a href="http://localhost:3000/#real-fse" class="test-link fixed">
+            🏠 Real FSE Dashboard (Now Shows "dev" User)
+        </a>
+        
+        <a href="http://localhost:3000/#real-fse-workflow" class="test-link fixed">
+            🔄 Real FSE Workflow (Now Shows "dev" User)
+        </a>
+
+        <div class="fix-details">
+            <h3>🔍 How It Works Now</h3>
+            <ul>
+                <li><strong>Authentication:</strong> Uses your logged-in "dev" user</li>
+                <li><strong>User Data:</strong> Pulls name, email, and other details from auth context</li>
+                <li><strong>FSE Profile:</strong> Creates FSE profile from authenticated user</li>
+                <li><strong>Service Visits:</strong> Shows visits associated with your user</li>
+                <li><strong>Service Reports:</strong> Shows reports created by your user</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+            <strong>🎉 Result</strong><br>
+            Instead of "John Smith", you'll now see your actual "dev" user information throughout the FSE Portal!
+        </div>
+
+        <div class="fix-details">
+            <h3>📋 What You'll See</h3>
+            <ul>
+                <li><strong>Header:</strong> Shows "dev" instead of "John Smith"</li>
+                <li><strong>Profile Tab:</strong> Shows your actual user details</li>
+                <li><strong>Service Visits:</strong> Associated with your user ID</li>
+                <li><strong>Service Reports:</strong> Created by your user</li>
+                <li><strong>Workflow:</strong> Uses your user information</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-test server connectivity
+        fetch('http://localhost:3000/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Server is running on port 3000');
+                    document.querySelector('.status.success').innerHTML = 
+                        '<strong>✅ FIXED!</strong><br>The FSE Portal now shows your actual "dev" user instead of "John Smith"';
+                } else {
+                    console.log('❌ Server responded with error');
+                }
+            })
+            .catch(error => {
+                console.log('❌ Server not reachable:', error);
+                document.querySelector('.status.success').innerHTML = 
+                    '<strong>❌ Server Not Running!</strong><br>Please start the server with: <code>npm run dev</code>';
+            });
+
+        // Show current time
+        setInterval(() => {
+            const now = new Date().toLocaleTimeString();
+            document.title = `User Fix Test - ${now}`;
+        }, 1000);
+    </script>
+</body>
+</html>

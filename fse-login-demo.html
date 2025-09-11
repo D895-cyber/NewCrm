@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSE Login Demo - What FSE Users See</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .demo-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .demo-step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+        }
+        .demo-step h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        .demo-step p {
+            margin: 5px 0;
+            color: #333;
+        }
+        .button {
+            background: #2196f3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .button.success {
+            background: #4caf50;
+        }
+        .button.warning {
+            background: #ff9800;
+        }
+        .button.error {
+            background: #f44336;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        .status.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .status.warning {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            color: #ef6c00;
+        }
+        .status.info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #1565c0;
+        }
+        .mockup {
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .mockup .header {
+            background: #2196f3;
+            color: white;
+            padding: 10px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 6px 6px 0 0;
+        }
+        .mockup .content {
+            line-height: 1.6;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🔧 FSE Login Demo - What FSE Users See</h1>
+        <p>This shows exactly what happens when an FSE user logs into the system.</p>
+        
+        <div class="status success">
+            <strong>✅ Fixed:</strong> FSE users now automatically see the mobile FSE app when they log in
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>📱 What FSE Users See After Login</h2>
+        
+        <div class="demo-step">
+            <h3>Step 1: FSE User Logs In</h3>
+            <p>When an FSE user logs in, they are automatically redirected to the <strong>FSEMobileApp</strong> component.</p>
+            <div class="mockup">
+                <div class="header">FSE Login Flow</div>
+                <div class="content">
+1. User enters FSE credentials
+2. System detects user.role === 'fse'
+3. <span class="highlight">Automatically shows FSEMobileApp</span>
+4. No need to navigate to #mobile-fse manually
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-step">
+            <h3>Step 2: FSE Mobile App Interface</h3>
+            <p>The FSE sees a mobile-first interface with:</p>
+            <div class="mockup">
+                <div class="header">ProjectorCare FSE</div>
+                <div class="content">
+┌─────────────────────────────────┐
+│ 🔧 ProjectorCare FSE            │
+│ Welcome, [FSE Name]             │
+│ [🔄] [🔧] [🔔] [⚙️]            │
+├─────────────────────────────────┤
+│ Quick Actions                   │
+│ ┌─────────────┐ ┌─────────────┐ │
+│ │▶️ Start      │ │📄 Quick     │ │
+│ │  Workflow   │ │  Report     │ │
+│ └─────────────┘ └─────────────┘ │
+│                                 │
+│ Today's Schedule (X)            │
+│ • Site Visit - [Site Name]      │
+│   [Visit Type] [Status]         │
+│                                 │
+│ Recent Reports (X)              │
+│ • [Visit ID] - [Site] [Status]  │
+│                                 │
+│ This Week                       │
+│ [Total] [Completed] [Pending]   │
+└─────────────────────────────────┘
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-step">
+            <h3>Step 3: Available Actions</h3>
+            <p>FSE users can:</p>
+            <ul>
+                <li><strong>Start Workflow:</strong> Begin the step-by-step service process</li>
+                <li><strong>Quick Report:</strong> Fill out ASCOMP service reports directly</li>
+                <li><strong>View Schedule:</strong> See today's assigned visits</li>
+                <li><strong>Check Reports:</strong> View recent service reports</li>
+                <li><strong>Switch to Desktop:</strong> Access desktop dashboard if needed</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🔄 Navigation Options for FSE Users</h2>
+        
+        <div class="demo-step">
+            <h3>Default View (After Login)</h3>
+            <p><strong>FSEMobileApp</strong> - Mobile-first interface with workflow integration</p>
+            <a href="#mobile-fse" class="button success">View Mobile FSE App</a>
+        </div>
+
+        <div class="demo-step">
+            <h3>Alternative Views</h3>
+            <p>FSE users can access different interfaces:</p>
+            <a href="#fse-desktop" class="button">Desktop Dashboard</a>
+            <a href="#fse-workflow" class="button">Direct Workflow</a>
+            <a href="#simple-fse" class="button warning">Simple Dashboard</a>
+            <a href="#real-fse" class="button warning">Real FSE Dashboard</a>
+        </div>
+
+        <div class="demo-step">
+            <h3>Workflow Integration</h3>
+            <p>From the mobile app, FSE users can:</p>
+            <ul>
+                <li>Click "Start Workflow" → Opens step-by-step process</li>
+                <li>Click "Quick Report" → Opens ASCOMP form directly</li>
+                <li>Complete workflow → Data flows into ASCOMP report</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🧪 Test the FSE Login Experience</h2>
+        
+        <div class="demo-step">
+            <h3>Method 1: Simulate FSE Login</h3>
+            <p>To test what FSE users see:</p>
+            <ol>
+                <li>Login as an FSE user (or admin)</li>
+                <li>You should automatically see the FSE Mobile App</li>
+                <li>If not, navigate to <code>#mobile-fse</code></li>
+            </ol>
+        </div>
+
+        <div class="demo-step">
+            <h3>Method 2: Direct Access</h3>
+            <p>Test the FSE interface directly:</p>
+            <a href="#mobile-fse" class="button success">FSE Mobile App</a>
+            <a href="#fse-workflow" class="button">FSE Workflow</a>
+            <a href="#fse-desktop" class="button">FSE Desktop</a>
+        </div>
+
+        <div class="demo-step">
+            <h3>Method 3: Test Workflow Integration</h3>
+            <p>Test the complete workflow:</p>
+            <ol>
+                <li>Go to FSE Mobile App</li>
+                <li>Click "Start Workflow"</li>
+                <li>Complete Steps 1-4</li>
+                <li>In Step 5, click "Fill ASCOMP Report"</li>
+                <li>Verify data is pre-filled</li>
+                <li>Submit the report</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>📊 Expected Results</h2>
+        
+        <div class="status info">
+            <strong>After Login:</strong> FSE users should automatically see the mobile FSE app with:
+        </div>
+        
+        <ul>
+            <li>✅ <strong>Welcome message</strong> with their name</li>
+            <li>✅ <strong>Quick Actions</strong> (Start Workflow, Quick Report)</li>
+            <li>✅ <strong>Today's Schedule</strong> with assigned visits</li>
+            <li>✅ <strong>Recent Reports</strong> section</li>
+            <li>✅ <strong>Weekly Stats</strong> (Total, Completed, Pending)</li>
+            <li>✅ <strong>Navigation buttons</strong> (Refresh, Desktop, Notifications, Settings)</li>
+            <li>✅ <strong>Bottom navigation</strong> (Dashboard, Schedule, Reports, Profile)</li>
+        </ul>
+
+        <div class="status success">
+            <strong>Key Features:</strong>
+            <ul>
+                <li>Mobile-first responsive design</li>
+                <li>Integrated workflow with ASCOMP reports</li>
+                <li>Real-time data loading with fallback demo data</li>
+                <li>Easy switching between mobile and desktop views</li>
+                <li>Comprehensive error handling</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-container">
+        <h2>🔧 Technical Details</h2>
+        
+        <div class="demo-step">
+            <h3>Routing Logic</h3>
+            <div class="code">// In App.tsx
+if (user?.role === 'fse') {
+  // Default: Show mobile FSE app for FSE users
+  return &lt;FSEMobileApp /&gt;;
+}</div>
+        </div>
+
+        <div class="demo-step">
+            <h3>Component Structure</h3>
+            <div class="code">FSEMobileApp
+├── Header (Welcome, Navigation)
+├── Quick Actions (Start Workflow, Quick Report)
+├── Today's Schedule
+├── Recent Reports
+├── Weekly Stats
+├── Bottom Navigation
+└── Modals (ASCOMP Form, Download)</div>
+        </div>
+
+        <div class="demo-step">
+            <h3>Data Flow</h3>
+            <div class="code">1. User logs in → App.tsx detects FSE role
+2. FSEMobileApp loads → loadFSEReports() called
+3. API calls made → Fallback to demo data if needed
+4. UI renders with real or demo data
+5. User can start workflow or fill reports</div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for demo buttons
+            const buttons = document.querySelectorAll('.button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    if (this.href && this.href.includes('#')) {
+                        e.preventDefault();
+                        const hash = this.href.split('#')[1];
+                        window.location.hash = '#' + hash;
+                        alert(`Navigating to: #${hash}\n\nThis will show the ${hash.replace('-', ' ')} interface.`);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

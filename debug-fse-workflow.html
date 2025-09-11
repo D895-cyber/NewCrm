@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSE Workflow Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .debug-step {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+        }
+        .debug-step h3 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        .debug-step p {
+            margin: 5px 0;
+            color: #333;
+        }
+        .button {
+            background: #2196f3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .button.success {
+            background: #4caf50;
+        }
+        .button.warning {
+            background: #ff9800;
+        }
+        .button.error {
+            background: #f44336;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        .status.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .status.warning {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            color: #ef6c00;
+        }
+        .test-results {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .test-results h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .test-results ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .test-results li {
+            margin: 5px 0;
+        }
+        .test-results li.pass {
+            color: #4caf50;
+        }
+        .test-results li.fail {
+            color: #f44336;
+        }
+        .test-results li.warning {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔧 FSE Workflow Debug Tool</h1>
+        <p>This tool helps diagnose issues with the FSE workflow integration.</p>
+        
+        <div class="status warning">
+            <strong>⚠️ Issue Reported:</strong> FSE workflow not working on mobile and laptop
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2>🔍 Diagnostic Steps</h2>
+        
+        <div class="debug-step">
+            <h3>Step 1: Check Current Environment</h3>
+            <p>Let's verify the current setup and identify any issues.</p>
+            <button class="button" onclick="checkEnvironment()">Check Environment</button>
+            <div id="environment-results" class="test-results" style="display: none;">
+                <h4>Environment Check Results:</h4>
+                <ul id="environment-list"></ul>
+            </div>
+        </div>
+
+        <div class="debug-step">
+            <h3>Step 2: Test Navigation</h3>
+            <p>Test different ways to access the FSE workflow.</p>
+            <button class="button" onclick="testNavigation()">Test Navigation</button>
+            <div id="navigation-results" class="test-results" style="display: none;">
+                <h4>Navigation Test Results:</h4>
+                <ul id="navigation-list"></ul>
+            </div>
+        </div>
+
+        <div class="debug-step">
+            <h3>Step 3: Check Component Loading</h3>
+            <p>Verify that the FSE components are loading correctly.</p>
+            <button class="button" onclick="checkComponents()">Check Components</button>
+            <div id="components-results" class="test-results" style="display: none;">
+                <h4>Component Check Results:</h4>
+                <ul id="components-list"></ul>
+            </div>
+        </div>
+
+        <div class="debug-step">
+            <h3>Step 4: Test API Connectivity</h3>
+            <p>Check if the backend APIs are accessible.</p>
+            <button class="button" onclick="testAPI()">Test API</button>
+            <div id="api-results" class="test-results" style="display: none;">
+                <h4>API Test Results:</h4>
+                <ul id="api-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2>🚀 Quick Fixes</h2>
+        
+        <div class="debug-step">
+            <h3>Fix 1: Direct Access Links</h3>
+            <p>Try these direct links to access the FSE workflow:</p>
+            <a href="#mobile-fse" class="button success">Mobile FSE Portal</a>
+            <a href="#fse-workflow" class="button success">Direct FSE Workflow</a>
+            <a href="#simple-fse" class="button warning">Simple FSE Dashboard</a>
+        </div>
+
+        <div class="debug-step">
+            <h3>Fix 2: Clear Cache and Reload</h3>
+            <p>Sometimes cached data can cause issues:</p>
+            <button class="button warning" onclick="clearCache()">Clear Cache & Reload</button>
+        </div>
+
+        <div class="debug-step">
+            <h3>Fix 3: Check Console Errors</h3>
+            <p>Open browser developer tools and check for JavaScript errors:</p>
+            <button class="button" onclick="checkConsole()">Check Console</button>
+            <div id="console-results" class="test-results" style="display: none;">
+                <h4>Console Check Results:</h4>
+                <ul id="console-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2>📋 Common Issues & Solutions</h2>
+        
+        <div class="debug-step">
+            <h3>Issue 1: "Component not found"</h3>
+            <p><strong>Solution:</strong> The routing has been fixed. Try accessing via <code>#mobile-fse</code></p>
+        </div>
+
+        <div class="debug-step">
+            <h3>Issue 2: "API errors"</h3>
+            <p><strong>Solution:</strong> The workflow now includes fallback demo data if APIs fail</p>
+        </div>
+
+        <div class="debug-step">
+            <h3>Issue 3: "ASCOMP form not opening"</h3>
+            <p><strong>Solution:</strong> The integration has been fixed. Make sure to complete Steps 1-4 first</p>
+        </div>
+
+        <div class="debug-step">
+            <h3>Issue 4: "Mobile responsiveness"</h3>
+            <p><strong>Solution:</strong> The components are now mobile-first responsive</p>
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <h2>📊 Test Results Summary</h2>
+        <div id="summary-results" class="test-results">
+            <h4>Overall Status:</h4>
+            <ul id="summary-list">
+                <li class="warning">Run diagnostic tests above to get detailed results</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function checkEnvironment() {
+            const results = document.getElementById('environment-results');
+            const list = document.getElementById('environment-list');
+            
+            results.style.display = 'block';
+            list.innerHTML = '';
+            
+            const tests = [
+                {
+                    name: 'Current URL',
+                    result: window.location.href,
+                    status: 'info'
+                },
+                {
+                    name: 'User Agent',
+                    result: navigator.userAgent,
+                    status: 'info'
+                },
+                {
+                    name: 'Local Storage Available',
+                    result: typeof(Storage) !== "undefined" ? 'Yes' : 'No',
+                    status: typeof(Storage) !== "undefined" ? 'pass' : 'fail'
+                },
+                {
+                    name: 'Hash Routing',
+                    result: window.location.hash || 'No hash',
+                    status: window.location.hash ? 'pass' : 'warning'
+                },
+                {
+                    name: 'Screen Size',
+                    result: `${window.innerWidth}x${window.innerHeight}`,
+                    status: 'info'
+                }
+            ];
+            
+            tests.forEach(test => {
+                const li = document.createElement('li');
+                li.className = test.status;
+                li.innerHTML = `<strong>${test.name}:</strong> ${test.result}`;
+                list.appendChild(li);
+            });
+        }
+
+        function testNavigation() {
+            const results = document.getElementById('navigation-results');
+            const list = document.getElementById('navigation-list');
+            
+            results.style.display = 'block';
+            list.innerHTML = '';
+            
+            const tests = [
+                {
+                    name: 'Hash Change Support',
+                    result: 'Testing hash change...',
+                    status: 'info'
+                }
+            ];
+            
+            tests.forEach(test => {
+                const li = document.createElement('li');
+                li.className = test.status;
+                li.innerHTML = `<strong>${test.name}:</strong> ${test.result}`;
+                list.appendChild(li);
+            });
+            
+            // Test hash change
+            const originalHash = window.location.hash;
+            window.location.hash = '#test-hash';
+            setTimeout(() => {
+                const hashChanged = window.location.hash === '#test-hash';
+                window.location.hash = originalHash;
+                
+                const li = list.querySelector('li');
+                li.className = hashChanged ? 'pass' : 'fail';
+                li.innerHTML = `<strong>Hash Change Support:</strong> ${hashChanged ? 'Working' : 'Not Working'}`;
+            }, 100);
+        }
+
+        function checkComponents() {
+            const results = document.getElementById('components-results');
+            const list = document.getElementById('components-list');
+            
+            results.style.display = 'block';
+            list.innerHTML = '';
+            
+            const tests = [
+                {
+                    name: 'React Available',
+                    result: typeof React !== 'undefined' ? 'Yes' : 'No',
+                    status: typeof React !== 'undefined' ? 'pass' : 'fail'
+                },
+                {
+                    name: 'DOM Ready',
+                    result: document.readyState,
+                    status: document.readyState === 'complete' ? 'pass' : 'warning'
+                }
+            ];
+            
+            tests.forEach(test => {
+                const li = document.createElement('li');
+                li.className = test.status;
+                li.innerHTML = `<strong>${test.name}:</strong> ${test.result}`;
+                list.appendChild(li);
+            });
+        }
+
+        function testAPI() {
+            const results = document.getElementById('api-results');
+            const list = document.getElementById('api-list');
+            
+            results.style.display = 'block';
+            list.innerHTML = '';
+            
+            const li = document.createElement('li');
+            li.className = 'warning';
+            li.innerHTML = '<strong>API Test:</strong> This requires the main application to be running';
+            list.appendChild(li);
+        }
+
+        function clearCache() {
+            if (confirm('This will clear the browser cache and reload the page. Continue?')) {
+                // Clear localStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear cache and reload
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => {
+                            caches.delete(name);
+                        });
+                    });
+                }
+                
+                // Reload page
+                window.location.reload(true);
+            }
+        }
+
+        function checkConsole() {
+            const results = document.getElementById('console-results');
+            const list = document.getElementById('console-list');
+            
+            results.style.display = 'block';
+            list.innerHTML = '';
+            
+            const li = document.createElement('li');
+            li.className = 'warning';
+            li.innerHTML = '<strong>Console Check:</strong> Open browser developer tools (F12) and check the Console tab for errors';
+            list.appendChild(li);
+        }
+
+        // Auto-run environment check on load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>

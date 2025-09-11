@@ -35,7 +35,15 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 app.use(cors({
   origin: NODE_ENV === 'production' 
     ? [process.env.FRONTEND_URL || 'https://yourdomain.com'] // Replace with your actual domain
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174'], // Development origins
+    : [
+        'http://localhost:3000', 
+        'http://localhost:5173', 
+        'http://localhost:5174',
+        /^http:\/\/192\.168\.1\.\d+:3000$/, // Allow any 192.168.1.x:3000
+        /^http:\/\/192\.168\.1\.\d+:5173$/, // Allow any 192.168.1.x:5173
+        /^http:\/\/192\.168\.1\.\d+:5174$/, // Allow any 192.168.1.x:5174
+        /^http:\/\/192\.168\.1\.\d+:8080$/  // Allow any 192.168.1.x:8080
+      ], // Development origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -56,8 +64,9 @@ app.use((req, res, next) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/projector_warranty';
-    console.log('Connecting to MongoDB...');
+    // Use MongoDB Atlas cloud database
+    const mongoURI = 'mongodb+srv://dev:dev123@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0';
+    console.log('Connecting to MongoDB Atlas...');
     
     await mongoose.connect(mongoURI, {
       maxPoolSize: 10,
@@ -65,10 +74,10 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
     });
     
-    console.log('MongoDB connected successfully');
+    console.log('MongoDB Atlas connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    console.error('Please check your MongoDB connection and try again.');
+    console.error('Please check your MongoDB Atlas connection and try again.');
     process.exit(1);
   }       
 };

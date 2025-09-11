@@ -25,6 +25,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false, // Disable sourcemaps for production
+    minify: 'terser', // Use terser for better minification
     rollupOptions: {
       output: {
         manualChunks: {
@@ -35,7 +36,11 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    // Optimize for production
+    target: 'es2015',
+    cssCodeSplit: true,
+    assetsInlineLimit: 4096
   },
   // For deployment on platforms like Vercel/Netlify
   base: process.env.NODE_ENV === 'production' ? '/' : '/'

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .status {
+            font-size: 24px;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .success { background: rgba(76, 175, 80, 0.3); }
+        .error { background: rgba(244, 67, 54, 0.3); }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Mobile Connection Test</h1>
+        <p>Testing your mobile device's connection to the CRM server</p>
+        
+        <div id="status" class="status">Testing connection...</div>
+        
+        <div class="info">
+            <h3>📋 Test Results:</h3>
+            <div id="results"></div>
+        </div>
+        
+        <button onclick="testConnection()">🔄 Test Again</button>
+        <button onclick="testCamera()">📸 Test Camera</button>
+        <button onclick="testFileUpload()">📁 Test File Upload</button>
+        
+        <div class="info">
+            <h3>🔗 Available Test Pages:</h3>
+            <ul>
+                <li><a href="file-upload-test.html" style="color: #fff;">📁 File Upload Test</a></li>
+                <li><a href="camera-fixed-test.html" style="color: #fff;">📸 Camera Test</a></li>
+                <li><a href="test-photo.html" style="color: #fff;">🖼️ Photo Test</a></li>
+                <li><a href="index.html" style="color: #fff;">🏠 Main Portal</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function testConnection() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            status.textContent = 'Testing connection...';
+            status.className = 'status';
+            
+            // Test basic connectivity
+            const startTime = Date.now();
+            fetch('/file-upload-test.html')
+                .then(response => {
+                    const endTime = Date.now();
+                    const latency = endTime - startTime;
+                    
+                    if (response.ok) {
+                        status.textContent = '✅ Connection Successful!';
+                        status.className = 'status success';
+                        results.innerHTML = `
+                            <p><strong>✅ Server Response:</strong> ${response.status} ${response.statusText}</p>
+                            <p><strong>⏱️ Latency:</strong> ${latency}ms</p>
+                            <p><strong>📱 User Agent:</strong> ${navigator.userAgent}</p>
+                            <p><strong>🌐 Platform:</strong> ${navigator.platform}</p>
+                            <p><strong>📱 Mobile:</strong> ${/Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'Yes' : 'No'}</p>
+                        `;
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                })
+                .catch(error => {
+                    status.textContent = '❌ Connection Failed';
+                    status.className = 'status error';
+                    results.innerHTML = `
+                        <p><strong>❌ Error:</strong> ${error.message}</p>
+                        <p><strong>📱 User Agent:</strong> ${navigator.userAgent}</p>
+                        <p><strong>🌐 Platform:</strong> ${navigator.platform}</p>
+                    `;
+                });
+        }
+        
+        function testCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        alert('✅ Camera access granted!');
+                        stream.getTracks().forEach(track => track.stop());
+                    })
+                    .catch(error => {
+                        alert('❌ Camera access denied: ' + error.message);
+                    });
+            } else {
+                alert('❌ Camera not supported on this device');
+            }
+        }
+        
+        function testFileUpload() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    alert(`✅ File selected: ${file.name} (${file.size} bytes)`);
+                }
+            };
+            input.click();
+        }
+        
+        // Auto-test on page load
+        window.onload = testConnection;
+    </script>
+</body>
+</html>

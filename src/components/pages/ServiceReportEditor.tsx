@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '../../utils/api/client';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Loader2, Save, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
 import { ValidationSummary } from '../ui/ValidationField';
 import { validateServiceReport, ValidationError } from '../../utils/validation/reportValidation';
@@ -21,7 +20,7 @@ function useDebouncedCallback<T extends (...args: any[]) => any>(cb: T, delay = 
 export function ServiceReportEditor({ reportId }: { reportId: string }) {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle'|'saving'|'saved'|'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [readOnly, setReadOnly] = useState(false);
@@ -70,7 +69,7 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
     }
   }, 800);
 
-  const update = (path: string, value: any) => {
+  const _update = (path: string, value: any) => {
     if (readOnly) return;
     if (!report) return;
     const clone = JSON.parse(JSON.stringify(report));
@@ -96,7 +95,7 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
     debouncedSave(clone);
   };
 
-  const addRecommendedPart = () => {
+  const _addRecommendedPart = () => {
     if (readOnly) return;
     if (!report) return;
     const next = { ...(report as any) };

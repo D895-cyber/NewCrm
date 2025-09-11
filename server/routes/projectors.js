@@ -40,6 +40,37 @@ router.get('/:serial', async (req, res) => {
     const amcContract = await AMCContract.findOne({ projectorSerial: serial })
       .sort({ contractStartDate: -1 });
 
+    // Get service reports for this projector to calculate hours and service count
+    const ServiceReport = require('../models/ServiceReport');
+    const projectorReports = await ServiceReport.find({ 
+      projectorSerial: serial 
+    }).sort({ date: -1 });
+
+    // Calculate total hours from service reports
+    let totalHours = 0;
+    let totalServices = 0;
+    let lastServiceDate = null;
+    
+    if (projectorReports.length > 0) {
+      totalServices = projectorReports.length;
+      lastServiceDate = new Date(Math.max(...projectorReports.map(r => new Date(r.date).getTime())));
+      
+      // Sum up hours from all reports
+      projectorReports.forEach(report => {
+        if (report.projectorRunningHours && !isNaN(Number(report.projectorRunningHours))) {
+          totalHours += Number(report.projectorRunningHours);
+        }
+      });
+    }
+
+    // Calculate life percentage based on expected life
+    const lifePercentage = projector.expectedLife ? Math.round((totalHours / projector.expectedLife) * 100) : 0;
+    
+    // Calculate next service date (estimate based on last service + typical interval)
+    const nextServiceDate = lastServiceDate 
+      ? new Date(lastServiceDate.getTime() + (90 * 24 * 60 * 60 * 1000)) // 90 days default
+      : null;
+
     // Get associated spare parts (parts used in services)
     const partNumbers = new Set();
     services.forEach(service => {
@@ -55,10 +86,14 @@ router.get('/:serial', async (req, res) => {
     // Combine all data
     const result = {
       ...projector.toObject(),
-      serviceHistory: services,
+      serviceHistory: projectorReports, // Use service reports instead of services
       rmaHistory: rmaRecords,
       spareParts: spareParts,
-      amcContract: amcContract
+      amcContract: amcContract,
+      totalServices,
+      hoursUsed: totalHours,
+      lifePercentage,
+      nextService: nextServiceDate
     };
 
     res.json(result);

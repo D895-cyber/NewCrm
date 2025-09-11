@@ -91,6 +91,188 @@ const serviceVisitSchema = new mongoose.Schema({
     },
     comments: String
   },
+  
+  // NEW: Photo-First Workflow Status Tracking
+  workflowStatus: {
+    photosCaptured: {
+      type: Boolean,
+      default: false
+    },
+    serviceCompleted: {
+      type: Boolean,
+      default: false
+    },
+    reportGenerated: {
+      type: Boolean,
+      default: false
+    },
+    signatureCaptured: {
+      type: Boolean,
+      default: false
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now
+    }
+  },
+
+  // ENHANCED: Photo Categories for Photo-First Workflow
+  photoCategories: {
+    beforeService: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      cloudUrl: String,
+      publicId: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      fileSize: Number,
+      mimeType: String,
+      cloudinaryData: {
+        assetId: String,
+        versionId: String,
+        signature: String,
+        format: String,
+        width: Number,
+        height: Number
+      }
+    }],
+    duringService: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      cloudUrl: String,
+      publicId: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      fileSize: Number,
+      mimeType: String,
+      cloudinaryData: {
+        assetId: String,
+        versionId: String,
+        signature: String,
+        format: String,
+        width: Number,
+        height: Number
+      }
+    }],
+    afterService: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      cloudUrl: String,
+      publicId: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      fileSize: Number,
+      mimeType: String,
+      cloudinaryData: {
+        assetId: String,
+        versionId: String,
+        signature: String,
+        format: String,
+        width: Number,
+        height: Number
+      }
+    }],
+    issuesFound: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      cloudUrl: String,
+      publicId: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      fileSize: Number,
+      mimeType: String,
+      cloudinaryData: {
+        assetId: String,
+        versionId: String,
+        signature: String,
+        format: String,
+        width: Number,
+        height: Number
+      }
+    }],
+    partsUsed: [{
+      filename: String,
+      originalName: String,
+      path: String,
+      cloudUrl: String,
+      publicId: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      },
+      description: String,
+      fileSize: Number,
+      mimeType: String,
+      cloudinaryData: {
+        assetId: String,
+        versionId: String,
+        signature: String,
+        format: String,
+        width: Number,
+        height: Number
+      }
+    }]
+  },
+
+  // NEW: Digital Signature Capture
+  digitalSignature: {
+    siteInCharge: {
+      name: String,
+      designation: String,
+      signature: String, // Base64 encoded signature
+      timestamp: Date,
+      location: {
+        latitude: Number,
+        longitude: Number,
+        address: String
+      },
+      verified: {
+        type: Boolean,
+        default: false
+      }
+    },
+    fse: {
+      name: String,
+      signature: String, // Base64 encoded signature
+      timestamp: Date,
+      location: {
+        latitude: Number,
+        longitude: Number,
+        address: String
+      }
+    }
+  },
+
+  // NEW: Site In-Charge Information
+  siteInCharge: {
+    name: String,
+    phone: String,
+    email: String,
+    designation: String,
+    department: String
+  },
+
+  // LEGACY: Keep existing photos array for backward compatibility
   photos: [{
     filename: String,
     originalName: String,
@@ -104,7 +286,10 @@ const serviceVisitSchema = new mongoose.Schema({
     description: String,
     category: {
       type: String,
-      enum: ['Before Service', 'During Service', 'After Service', 'Spare Parts', 'RMA', 'Issue Found', 'Parts Used', 'Other']
+      enum: [
+        'Before Service', 'During Service', 'After Service', 'Spare Parts', 'RMA', 'Issue Found', 'Parts Used', 'Service Photos', 'Other',
+        'BEFORE', 'DURING', 'AFTER', 'ISSUE', 'PARTS'  // Frontend categories
+      ]
     },
     fileSize: Number,
     mimeType: String,
@@ -160,9 +345,67 @@ const serviceVisitSchema = new mongoose.Schema({
   }
 });
 
+// NEW: Pre-save middleware to update workflow status and clean data
 serviceVisitSchema.pre('save', function(next) {
   this.updatedAt = new Date();
+  
+  // Clean up recommendations field - ensure it's always an array
+  if (this.recommendations === "" || this.recommendations === null || this.recommendations === undefined) {
+    this.recommendations = [];
+  } else if (!Array.isArray(this.recommendations)) {
+    this.recommendations = [];
+  }
+  
+  // Clean up issuesFound field - ensure it's always an array
+  if (this.issuesFound === "" || this.issuesFound === null || this.issuesFound === undefined) {
+    this.issuesFound = [];
+  } else if (!Array.isArray(this.issuesFound)) {
+    this.issuesFound = [];
+  }
+  
+  // Auto-update workflow status based on completion
+  if (this.workflowStatus) {
+    this.workflowStatus.lastUpdated = new Date();
+    
+    // Check if all workflow steps are completed
+    const allStepsComplete = 
+      this.workflowStatus.photosCaptured &&
+      this.workflowStatus.serviceCompleted &&
+      this.workflowStatus.reportGenerated &&
+      this.workflowStatus.signatureCaptured;
+    
+    if (allStepsComplete && !this.workflowStatus.completed) {
+      this.workflowStatus.completed = true;
+      this.status = 'Completed';
+    }
+  }
+  
   next();
 });
+
+// NEW: Instance method to check if photos are required
+serviceVisitSchema.methods.arePhotosRequired = function() {
+  return !this.workflowStatus.photosCaptured;
+};
+
+// NEW: Instance method to check if signature is required
+serviceVisitSchema.methods.isSignatureRequired = function() {
+  return this.workflowStatus.serviceCompleted && 
+         this.workflowStatus.reportGenerated && 
+         !this.workflowStatus.signatureCaptured;
+};
+
+// NEW: Instance method to get workflow progress percentage
+serviceVisitSchema.methods.getWorkflowProgress = function() {
+  const steps = [
+    this.workflowStatus.photosCaptured,
+    this.workflowStatus.serviceCompleted,
+    this.workflowStatus.reportGenerated,
+    this.workflowStatus.signatureCaptured
+  ];
+  
+  const completedSteps = steps.filter(step => step).length;
+  return Math.round((completedSteps / steps.length) * 100);
+};
 
 module.exports = mongoose.model('ServiceVisit', serviceVisitSchema); 

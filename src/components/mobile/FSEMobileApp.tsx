@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
+import { FSEWorkflow } from './FSEWorkflow';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Progress } from '../ui/progress';
 import { 
   FileText, 
-  Camera, 
   Wrench,
   User,
   Calendar,
@@ -16,9 +15,10 @@ import {
   List,
   RefreshCw,
   AlertTriangle,
-  Plus,
-  Eye,
-  Download
+  Download,
+  PlayCircle,
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
@@ -30,6 +30,7 @@ export function FSEMobileApp() {
   const { serviceVisits } = useData();
   const [currentView, setCurrentView] = useState('dashboard');
   const [showServiceReport, setShowServiceReport] = useState(false);
+  const [showWorkflow, setShowWorkflow] = useState(false);
   const [visits, setVisits] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,17 +46,70 @@ export function FSEMobileApp() {
   const loadFSEReports = async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      let response;
       if (user?.fseId) {
-        const response = await apiClient.getServiceVisitsByFSE(user.fseId);
-        setVisits(response);
+        console.log('Loading visits for FSE ID:', user.fseId);
+        try {
+          response = await Promise.race([
+            apiClient.getServiceVisitsByFSE(user.fseId),
+            timeoutPromise
+          ]);
+        } catch (fseError) {
+          console.warn('FSE-specific API failed, trying general API:', fseError);
+          response = await Promise.race([
+            apiClient.getAllServiceVisits(),
+            timeoutPromise
+          ]);
+        }
       } else {
-    
-        const response = await apiClient.getAllServiceVisits();
-        setVisits(response);
+        console.log('No FSE ID, loading all visits');
+        response = await Promise.race([
+          apiClient.getAllServiceVisits(),
+          timeoutPromise
+        ]);
       }
+      
+      console.log('FSE visits response:', response);
+      setVisits(Array.isArray(response) ? response : response?.data || []);
     } catch (err: any) {
       console.error('Error loading FSE reports:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to load service visits');
+      
+      // Provide fallback demo data
+      const demoVisits = [
+        {
+          _id: 'demo-1',
+          visitId: 'VISIT-001',
+          siteName: 'Demo Site 1',
+          projectorSerial: 'PROJ-001',
+          visitType: 'Maintenance',
+          scheduledDate: new Date().toISOString().split('T')[0],
+          status: 'Scheduled',
+          priority: 'Medium',
+          fseId: user?.fseId || 'FSE-001',
+          fseName: user?.profile?.firstName + ' ' + user?.profile?.lastName || user?.username || 'Demo FSE'
+        },
+        {
+          _id: 'demo-2',
+          visitId: 'VISIT-002',
+          siteName: 'Demo Site 2',
+          projectorSerial: 'PROJ-002',
+          visitType: 'Repair',
+          scheduledDate: new Date().toISOString().split('T')[0],
+          status: 'In Progress',
+          priority: 'High',
+          fseId: user?.fseId || 'FSE-001',
+          fseName: user?.profile?.firstName + ' ' + user?.profile?.lastName || user?.username || 'Demo FSE'
+        }
+      ];
+      setVisits(demoVisits);
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +119,12 @@ export function FSEMobileApp() {
     try {
       setIsSubmitting(true);
       console.log('ASCOMP Service Report Submitted:', data);
+      
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
       
       // Submit to backend using the new API
       const response = await apiClient.createServiceReport(data);
@@ -81,15 +141,26 @@ export function FSEMobileApp() {
       (window as any).showToast?.({
         type: 'success',
         title: 'Report Submitted Successfully!',
-        message: 'Your service report has been completed and saved.'
+        message: 'Your ASCOMP service report has been completed and saved.'
       });
     } catch (err: any) {
       console.error('Error submitting ASCOMP report:', err);
-      setError(err.message);
+      
+      // Handle specific error types
+      let errorMessage = 'There was an error submitting your report. Please try again.';
+      if (err.message?.includes('Authentication required')) {
+        errorMessage = 'Please log in again to submit the report.';
+      } else if (err.message?.includes('Invalid or expired token')) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (err.message?.includes('projectorModel')) {
+        errorMessage = 'Missing projector information. Please check your data.';
+      }
+      
+      setError(errorMessage);
       (window as any).showToast?.({
         type: 'error',
         title: 'Submission Failed',
-        message: 'There was an error submitting your report. Please try again.'
+        message: errorMessage
       });
     } finally {
       setIsSubmitting(false);
@@ -136,6 +207,9 @@ export function FSEMobileApp() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
+          <div className="mt-4 text-sm text-gray-500">
+            User: {user?.username || 'Unknown'} | Role: {user?.role || 'Unknown'}
+          </div>
         </div>
       </div>
     );
@@ -174,6 +248,33 @@ export function FSEMobileApp() {
     );
   }
 
+  if (showWorkflow) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Wrench className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">FSE Workflow</h1>
+                <p className="text-sm text-gray-600">Step-by-step service process</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowWorkflow(false)}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Dashboard</span>
+            </Button>
+          </div>
+        </div>
+        <FSEWorkflow />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -189,6 +290,14 @@ export function FSEMobileApp() {
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm" onClick={loadFSEReports}>
               <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => window.location.hash = '#fse-desktop'}
+              title="Switch to Desktop Dashboard"
+            >
+              <Wrench className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm">
               <Bell className="h-4 w-4" />
@@ -210,16 +319,29 @@ export function FSEMobileApp() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <Button 
+                onClick={() => setShowWorkflow(true)}
+                className="h-20 flex-col space-y-2 bg-green-600 hover:bg-green-700"
+              >
+                <PlayCircle className="h-6 w-6" />
+                <span>Start Workflow</span>
+              </Button>
+              <Button 
                 onClick={() => setShowServiceReport(true)}
                 className="h-20 flex-col space-y-2"
               >
                 <FileText className="h-6 w-6" />
-                <span>New Service Report</span>
+                <span>Quick Report</span>
               </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <Camera className="h-6 w-6" />
-                <span>Photo Capture</span>
-              </Button>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-blue-900">Recommended Workflow</span>
+              </div>
+              <p className="text-sm text-blue-700">
+                Use the step-by-step workflow for complete service process: 
+                Service → Photos → Report → Signature
+              </p>
             </div>
           </CardContent>
         </Card>
