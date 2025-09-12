@@ -1,166 +1,265 @@
-# Projector Warranty Management System
+# Projector Warranty CRM System
 
-A comprehensive React-based frontend application for managing projector warranties, with a Node.js/Express backend and MongoDB database.
+A comprehensive Customer Relationship Management system for projector warranty and service management, built with React frontend and Express.js backend.
+
+## 🏗️ Project Structure
+
+```
+projector-warranty-crm/
+├── frontend/                 # React frontend application
+│   ├── src/                 # Source code
+│   ├── public/              # Static assets
+│   ├── package.json         # Frontend dependencies
+│   ├── Dockerfile           # Frontend Docker configuration
+│   └── nginx.conf           # Nginx configuration
+├── backend/                 # Express.js backend API
+│   ├── server/              # Server code
+│   │   ├── models/          # Database models
+│   │   ├── routes/          # API routes
+│   │   ├── middleware/      # Custom middleware
+│   │   └── migrations/      # Database migrations
+│   ├── package.json         # Backend dependencies
+│   └── Dockerfile           # Backend Docker configuration
+├── deployment/              # Deployment configurations
+│   ├── docker-compose.yml   # Docker Compose configuration
+│   ├── mongodb-init.js      # MongoDB initialization
+│   └── nginx.conf           # Production Nginx config
+├── scripts/                 # Deployment and setup scripts
+│   ├── setup-dev.sh         # Development setup
+│   └── deploy-production.sh # Production deployment
+└── package.json             # Root package.json with workspace scripts
+```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Node.js** (v16 or higher)
-- **MongoDB** (v4.4 or higher)
-- **npm** or **yarn**
+- Node.js 16+ 
+- npm 8+
+- Docker & Docker Compose (for production deployment)
+- MongoDB (or use Docker)
 
-### 1. Install Dependencies
+### Development Setup
+
+1. **Clone and setup:**
+   ```bash
+   git clone <repository-url>
+   cd projector-warranty-crm
+   ./scripts/setup-dev.sh
+   ```
+
+2. **Configure environment:**
+   - Update `backend/.env` with your MongoDB connection string
+   - Update `frontend/.env` if needed
+
+3. **Start development servers:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Access the application:**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:4000
+   - API Health: http://localhost:4000/api/health
+
+### Production Deployment
+
+1. **Deploy with Docker:**
+   ```bash
+   ./scripts/deploy-production.sh
+   ```
+
+2. **Access the application:**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:4000
+
+## 📋 Available Scripts
+
+### Root Level Commands
 
 ```bash
-# Install frontend dependencies
-npm install
+# Development
+npm run dev                 # Start both frontend and backend
+npm run dev:frontend        # Start only frontend
+npm run dev:backend         # Start only backend
 
-# Install backend dependencies
-cd server
-npm install
-cd ..
+# Building
+npm run build               # Build both frontend and backend
+npm run build:frontend      # Build only frontend
+npm run build:backend       # Build only backend
+
+# Production
+npm run start               # Start production server
+npm run start:frontend      # Start frontend preview
+npm run start:backend       # Start backend server
+
+# Utilities
+npm run lint                # Lint both frontend and backend
+npm run type-check          # TypeScript type checking
+npm run clean               # Clean node_modules and build files
+npm run install:all         # Install all dependencies
 ```
 
-### 2. Backend Setup
+### Frontend Commands
 
 ```bash
-# Navigate to server directory
-cd server
-
-# Create environment file
-cp .env.example .env
-
-# Edit .env file with your configuration
-# MONGODB_URI=mongodb://localhost:27017/projector_warranty
-# PORT=5000
-# NODE_ENV=development
-# CORS_ORIGIN=http://localhost:3000
-
-# Start MongoDB (if not running as a service)
-# macOS: brew services start mongodb-community
-# Windows: net start MongoDB
-# Linux: sudo systemctl start mongod
-
-# Start the backend server
-npm run dev
+cd frontend
+npm run dev                 # Start Vite dev server
+npm run build               # Build for production
+npm run preview             # Preview production build
+npm run lint                # ESLint
+npm run type-check          # TypeScript check
 ```
 
-### 3. Frontend Setup
+### Backend Commands
 
 ```bash
-# In a new terminal, from the root directory
-npm run dev
+cd backend
+npm run dev                 # Start with nodemon
+npm start                   # Start production server
+npm run migrate             # Run database migrations
 ```
 
-The application will be available at:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
+## 🐳 Docker Deployment
 
-## 📁 Project Structure
+### Using Docker Compose (Recommended)
 
-```
-├── src/
-│   ├── components/          # React components
-│   │   ├── ui/             # Reusable UI components
-│   │   ├── pages/          # Page components
-│   │   └── Dashboard.tsx   # Main dashboard
-│   ├── utils/
-│   │   ├── api/            # API client
-│   │   └── config.ts       # Configuration
-│   ├── styles/
-│   │   └── globals.css     # Global styles
-│   ├── App.tsx             # Main app component
-│   └── main.tsx            # Entry point
-├── server/                 # Backend Express.js server
-│   ├── models/             # MongoDB models
-│   ├── routes/             # API routes
-│   └── index.js            # Server entry point
-├── package.json            # Frontend dependencies
-└── README.md              # This file
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild and restart
+docker-compose up -d --build
 ```
 
-## 🛠️ Available Scripts
+### Services Included
 
-### Frontend
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-
-### Backend
-- `npm run dev` - Start development server with nodemon
-- `npm start` - Start production server
+- **Frontend**: React app served by Nginx
+- **Backend**: Express.js API server
+- **MongoDB**: Database with initialization
+- **Nginx**: Reverse proxy (optional)
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file in the `server` directory:
-
+#### Backend (.env)
 ```env
-MONGODB_URI=mongodb://localhost:27017/projector_warranty
-PORT=5000
 NODE_ENV=development
-CORS_ORIGIN=http://localhost:3000
+PORT=4000
+MONGODB_URI=mongodb://localhost:27017/projector_warranty
+JWT_SECRET=your-secret-key
+FRONTEND_URL=http://localhost:5173
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-### API Configuration
+#### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:4000/api
+VITE_APP_NAME=Projector Warranty CRM
+VITE_APP_VERSION=1.0.0
+```
 
-The frontend is configured to connect to the backend at `http://localhost:5000/api`. You can modify this in `src/utils/config.ts`.
+## 📊 Features
 
-## 🎨 Features
+### Core CRM Features
+- **Site Management**: Manage customer sites and locations
+- **Projector Tracking**: Track projectors by model, serial number, and location
+- **Service Management**: Schedule and track service visits
+- **RMA Processing**: Handle Return Merchandise Authorization
+- **Spare Parts Management**: Inventory and ordering
+- **Purchase Orders**: Create and manage POs
+- **FSE Portal**: Field Service Engineer mobile interface
+- **Analytics Dashboard**: Performance metrics and insights
 
-- **Dashboard**: Overview with key metrics and charts
-- **Sites Management**: Manage customer sites and locations
-- **Projector Management**: Track projectors and warranties
-- **Service Planning**: Schedule and manage maintenance
-- **RMA Management**: Handle warranty claims and returns
-- **Spare Parts**: Inventory management
-- **Analytics**: Reports and insights
-- **Settings**: System configuration
+### Technical Features
+- **Responsive Design**: Mobile-first approach
+- **Real-time Updates**: Live data synchronization
+- **Photo Upload**: Cloudinary integration for service photos
+- **PDF Reports**: Generate service reports
+- **User Management**: Role-based access control
+- **API Documentation**: RESTful API with health checks
 
-## 🚀 Deployment
+## 🛠️ Development
 
-### Frontend
+### Adding New Features
+
+1. **Backend API:**
+   - Add routes in `backend/server/routes/`
+   - Create models in `backend/server/models/`
+   - Update API documentation
+
+2. **Frontend Components:**
+   - Add components in `frontend/src/components/`
+   - Create pages in `frontend/src/components/pages/`
+   - Update routing and navigation
+
+### Database Migrations
+
 ```bash
-npm run build
-# Deploy the `dist` folder to your hosting service
+cd backend
+npm run migrate
 ```
 
-### Backend
-```bash
-cd server
-npm start
-# Deploy to your server or cloud platform
-```
+### Code Quality
 
-## 📝 Development
+- ESLint for code linting
+- TypeScript for type safety
+- Prettier for code formatting
+- Husky for git hooks (optional)
 
-### Adding New Components
-1. Create your component in `src/components/`
-2. Import and use in the appropriate page
-3. Follow the existing component patterns
+## 🚀 Deployment Options
 
-### API Integration
-- Use the `apiClient` from `src/utils/api/client.ts`
-- All API calls are centralized and typed
-- Error handling is built-in
+### 1. Docker Compose (Recommended)
+- Single command deployment
+- Includes all services
+- Easy scaling and management
 
-### Styling
-- Uses Tailwind CSS with custom dark theme
-- Global styles in `src/styles/globals.css`
-- Component-specific styles use Tailwind classes
+### 2. Manual Deployment
+- Deploy frontend to static hosting (Netlify, Vercel)
+- Deploy backend to cloud provider (AWS, DigitalOcean)
+- Use managed MongoDB (MongoDB Atlas)
+
+### 3. Cloud Platforms
+- **AWS**: Use App Runner or ECS
+- **DigitalOcean**: Use App Platform
+- **Railway**: One-click deployment
+- **Heroku**: Traditional PaaS deployment
+
+## 📚 Documentation
+
+- [API Documentation](docs/api.md)
+- [Database Schema](docs/database.md)
+- [Deployment Guide](docs/deployment.md)
+- [Contributing Guide](docs/contributing.md)
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Add tests if applicable
 5. Submit a pull request
 
 ## 📄 License
 
-MIT License - see LICENSE file for details 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Create an issue in the repository
+- Check the documentation
+- Contact the development team
+
+---
+
+**Built with ❤️ by the ProjectorCare Team**

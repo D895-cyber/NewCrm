@@ -123,11 +123,11 @@ app.use('/cloud-storage', express.static('cloud-storage'));
 
 // Serve static files from React build in production
 if (NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
   
   // Handle React routing, return all requests to React app
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+    res.sendFile(path.join(__dirname, '../../frontend/dist', 'index.html'));
   });
 }
 
@@ -186,10 +186,48 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/api/health`);
-});
+// Start server with port conflict handling
+const startServer = async (port) => {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      console.log(`Health check: http://localhost:${port}/api/health`);
+      resolve(server);
+    });
+
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.log(`Port ${port} is already in use. Trying next available port...`);
+        reject(error);
+      } else {
+        reject(error);
+      }
+    });
+  });
+};
+
+// Try to start server with fallback ports
+const startServerWithFallback = async () => {
+  const ports = [PORT, 4001, 4002, 4003, 5000, 5001];
+  
+  for (const port of ports) {
+    try {
+      await startServer(port);
+      return; // Success, exit the function
+    } catch (error) {
+      if (error.code === 'EADDRINUSE') {
+        continue; // Try next port
+      } else {
+        console.error('Server startup error:', error);
+        process.exit(1);
+      }
+    }
+  }
+  
+  console.error('Could not find an available port. Please check your system.');
+  process.exit(1);
+};
+
+startServerWithFallback();
 
 module.exports = app;
