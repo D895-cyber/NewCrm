@@ -51,14 +51,36 @@ const fseSchema = new mongoose.Schema({
     validUntil: Date
   }],
   supervisor: {
-    name: String,
-    email: String,
-    phone: String
+    name: { type: String, default: '' },
+    email: { type: String, default: '' },
+    phone: { type: String, default: '' }
   },
   emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
+    name: { type: String, default: '' },
+    relationship: { type: String, default: '' },
+    phone: { type: String, default: '' }
+  },
+  emailPreferences: {
+    assignmentNotifications: {
+      type: Boolean,
+      default: true
+    },
+    dailyReminders: {
+      type: Boolean,
+      default: true
+    },
+    completionNotifications: {
+      type: Boolean,
+      default: true
+    },
+    updateNotifications: {
+      type: Boolean,
+      default: true
+    },
+    language: {
+      type: String,
+      default: 'en'
+    }
   },
   createdAt: {
     type: Date,

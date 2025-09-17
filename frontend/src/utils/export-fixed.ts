@@ -15,8 +15,7 @@ export const convertToCSV = (data: any[], headers?: string[]): string => {
   return csvContent;
 };
 
-// Simple text export as fallback (currently unused but kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Simple text export as fallback
 const exportAsText = (report: any): void => {
   console.log('📄 Exporting as text fallback...');
   
@@ -132,15 +131,15 @@ const printHtml = (title: string, htmlContent: string): void => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Unable to open print window. Please allow popups and try again.');
-      return;
-    }
-
+    return;
+  }
+  
   printWindow.document.write(`
     <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${title}</title>
-          <style>
+    <html>
+    <head>
+      <title>${title}</title>
+      <style>
         body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
         .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
         .company-info { flex: 1; }
@@ -148,7 +147,7 @@ const printHtml = (title: string, htmlContent: string): void => {
         .company-name { font-size: 18px; font-weight: bold; color: #0066cc; margin-bottom: 5px; }
         .website { font-weight: bold; color: #0066cc; }
         .right { text-align: right; }
-            .small { font-size: 10px; }
+        .small { font-size: 10px; }
         .report-title { font-size: 24px; font-weight: bold; text-align: center; margin: 15px 0; color: #0066cc; font-family: 'Times New Roman', serif; letter-spacing: 2px; }
         .subtitle { font-size: 14px; text-align: center; margin-bottom: 20px; color: #333; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
@@ -161,7 +160,7 @@ const printHtml = (title: string, htmlContent: string): void => {
         .compact-table th, .compact-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
         .compact-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
         .center { text-align: center; }
-            .right { text-align: right; }
+        .right { text-align: right; }
         .indent { margin-left: 20px; }
         .status-ok { color: #008000; font-weight: bold; }
         .muted { color: #666; font-style: italic; }
@@ -171,18 +170,18 @@ const printHtml = (title: string, htmlContent: string): void => {
         .small { font-size: 10px; }
         .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
         @media print { body { margin: 0; padding: 15px; } }
-          </style>
-        </head>
-        <body>
+      </style>
+    </head>
+    <body>
       ${htmlContent}
       <script>
         window.onload = function() {
           window.print();
         };
       </script>
-        </body>
-      </html>
-    `);
+    </body>
+    </html>
+  `);
   
   printWindow.document.close();
 };
@@ -302,25 +301,25 @@ const generateReportHTML = (report: any): string => {
         <tr><td>${safe(safeAccess(report, ['workPerformed']), 'Standard maintenance performed')}</td></tr>
       </tbody>
     </table>
-
+    
     <div class="section-title">ISSUES FOUND</div>
-        <table class="compact-table">
-          <tbody>
+    <table class="compact-table">
+      <tbody>
         ${(safeAccess(report, ['issuesFound']) || ['No issues found']).map((issue: any) => 
           `<tr><td>${typeof issue === 'string' ? issue : safe(issue?.description)}</td></tr>`
         ).join('')}
-          </tbody>
-        </table>
-        
+      </tbody>
+    </table>
+    
     <div class="section-title">PARTS USED</div>
-        <table class="compact-table">
-          <tbody>
+    <table class="compact-table">
+      <tbody>
         ${(safeAccess(report, ['partsUsed']) || ['No parts used']).map((part: any) => 
           `<tr><td>${typeof part === 'string' ? part : safe(part?.partName)}</td></tr>`
         ).join('')}
-          </tbody>
-        </table>
-        
+      </tbody>
+    </table>
+    
     <div class="section-title">RECOMMENDATIONS</div>
     <table class="compact-table">
       <tbody>
@@ -378,16 +377,16 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
     console.log('🔄 Attempting PDF export...');
     await generateAndDownloadPDF(report);
     console.log('✅ PDF export completed successfully');
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ PDF export failed with error:', error);
     console.error('Error details:', {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name
+      message: error.message,
+      stack: error.stack,
+      name: error.name
     });
     
     // Show user-friendly error message with options
-    const userChoice = confirm(`PDF generation failed: ${error?.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
+    const userChoice = confirm(`PDF generation failed: ${error.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
     
     if (userChoice) {
       // Fallback to HTML print version
@@ -407,10 +406,10 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
   const htmlContent = generateReportHTML(report);
   console.log('Generated HTML content length:', htmlContent.length);
 
-    // Create a temporary container for the HTML content
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
+  // Create a temporary container for the HTML content
+  const tempContainer = document.createElement('div');
+  tempContainer.style.position = 'absolute';
+  tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
   tempContainer.style.width = '800px';
   tempContainer.style.backgroundColor = 'white';
@@ -421,7 +420,7 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
   tempContainer.style.color = '#000';
   
   tempContainer.innerHTML = htmlContent;
-    document.body.appendChild(tempContainer);
+  document.body.appendChild(tempContainer);
 
   try {
     // Generate canvas from HTML
@@ -484,9 +483,9 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
     try {
       pdf.save(filename);
       console.log('✅ PDF generation and download completed successfully');
-    } catch (downloadError: any) {
+    } catch (downloadError) {
       console.error('❌ PDF download failed:', downloadError);
-      throw new Error(`Failed to download PDF: ${downloadError?.message || 'Unknown download error'}`);
+      throw new Error(`Failed to download PDF: ${downloadError.message || 'Unknown download error'}`);
     }
   } catch (error) {
     console.error('❌ Error generating PDF:', error);

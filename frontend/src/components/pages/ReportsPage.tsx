@@ -92,8 +92,8 @@ export function ReportsPage() {
         apiClient.getDetailedServiceReports(50, 0)
       ]);
 
-      setAnalyticsData(analyticsResponse.data);
-      setDetailedReports(detailedResponse.data || []);
+      setAnalyticsData(analyticsResponse);
+      setDetailedReports(detailedResponse || []);
     } catch (err: any) {
       console.error('Error loading analytics data:', err);
       
@@ -340,7 +340,7 @@ export function ReportsPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span>{fse.fseName}</span>
+                        <span className="text-gray-900">{fse.fseName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -417,7 +417,7 @@ export function ReportsPage() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium">{row.fseName}</span>
+                        <span className="font-medium text-gray-900">{row.fseName}</span>
                       </div>
                     </TableCell>
                     <TableCell>

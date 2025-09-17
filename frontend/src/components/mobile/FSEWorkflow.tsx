@@ -22,10 +22,12 @@ import {
   Building,
   Monitor,
   Calendar,
-  MapPin
+  MapPin,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../utils/api/client';
+import { exportServiceReportToPDF } from '../../utils/export';
 import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
 
 interface ServiceVisit {
@@ -574,6 +576,28 @@ export function FSEWorkflow() {
       console.log('Creating service report with data:', reportData);
       const reportResponse = await apiClient.createServiceReport(reportData);
       console.log('Service report created successfully:', reportResponse);
+      
+      // Generate PDF for the completed report
+      try {
+        console.log('🔄 Generating PDF for completed report...');
+        await exportServiceReportToPDF(reportResponse.data || reportResponse);
+        console.log('✅ PDF generated successfully');
+        
+        // Show PDF generation success message
+        (window as any).showToast?.({
+          type: 'success',
+          title: 'PDF Generated!',
+          message: 'Service report PDF has been downloaded successfully.'
+        });
+      } catch (pdfError) {
+        console.error('❌ PDF generation failed:', pdfError);
+        // Don't fail the entire process if PDF generation fails
+        (window as any).showToast?.({
+          type: 'warning',
+          title: 'PDF Generation Failed',
+          message: 'Service report was saved but PDF generation failed. You can export it later from the reports section.'
+        });
+      }
       
       // Update visit status after successful report creation
       if (selectedVisit) {
@@ -1270,6 +1294,7 @@ interface ReportGenerationStepProps {
 
 function ReportGenerationStep({ onReportGenerated, workflowData, visit }: ReportGenerationStepProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
@@ -1293,6 +1318,53 @@ function ReportGenerationStep({ onReportGenerated, workflowData, visit }: Report
     
     onReportGenerated(reportData);
     setIsGenerating(false);
+  };
+
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true);
+    
+    try {
+      // Create a preview report from current workflow data
+      const previewReport = {
+        reportNumber: `PREVIEW-${Date.now()}`,
+        reportTitle: `${visit?.visitType} Service Report Preview`,
+        reportType: 'First',
+        date: new Date().toISOString().split('T')[0],
+        siteName: visit?.siteName || 'Site Name',
+        projectorSerial: visit?.projectorSerial || 'Projector Serial',
+        projectorModel: 'Projector Model',
+        brand: 'Brand',
+        engineer: {
+          name: 'Engineer Name',
+          phone: 'Phone',
+          email: 'email@example.com'
+        },
+        workPerformed: workflowData.workPerformed || 'Service work performed',
+        issuesFound: workflowData.issuesFound || [],
+        partsUsed: workflowData.partsUsed || [],
+        recommendations: workflowData.recommendations || 'No recommendations',
+        photos: workflowData.photos || [],
+        serviceStartTime: workflowData.serviceStartTime,
+        serviceEndTime: new Date().toISOString()
+      };
+
+      await exportServiceReportToPDF(previewReport);
+      
+      (window as any).showToast?.({
+        type: 'success',
+        title: 'PDF Preview Generated!',
+        message: 'Preview PDF has been downloaded successfully.'
+      });
+    } catch (error) {
+      console.error('PDF preview generation failed:', error);
+      (window as any).showToast?.({
+        type: 'error',
+        title: 'PDF Generation Failed',
+        message: 'Failed to generate PDF preview. Please try again.'
+      });
+    } finally {
+      setIsExportingPDF(false);
+    }
   };
 
   return (
@@ -1375,6 +1447,27 @@ function ReportGenerationStep({ onReportGenerated, workflowData, visit }: Report
         >
           <FileText className="w-5 h-5 mr-2" />
           Fill ASCOMP Report
+        </Button>
+        
+        <div className="text-sm text-gray-500">OR</div>
+        
+        <Button 
+          onClick={handleExportPDF}
+          disabled={isExportingPDF}
+          size="lg"
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          {isExportingPDF ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download className="w-5 h-5 mr-2" />
+              Generate PDF Preview
+            </>
+          )}
         </Button>
       </div>
     </div>

@@ -208,16 +208,16 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
     },
     
     // Site Information
-    siteName: 'Default Site',
+    siteName: '',
     siteIncharge: {
-      name: 'Default In-charge',
-      contact: 'Default Contact'
+      name: '',
+      contact: ''
     },
     
     // Projector Information
-    projectorModel: 'Default Model',
-    projectorSerial: 'Default Serial',
-    brand: 'Default Brand',
+    projectorModel: '',
+    projectorSerial: '',
+    brand: '',
     softwareVersion: '',
     projectorRunningHours: '',
     
@@ -527,6 +527,19 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const handleSubmit = () => {
     setIsSubmitting(true);
     try {
+      // Validate required fields
+      const requiredFields = ['reportNumber', 'siteName', 'projectorSerial', 'projectorModel', 'brand'];
+      const missingFields = requiredFields.filter(field => !formData[field] || formData[field].trim() === '');
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Validate engineer information
+      if (!formData.engineer?.name || formData.engineer.name.trim() === '') {
+        throw new Error('Engineer name is required');
+      }
+      
       // Submit the report
       onSubmit(formData);
       
@@ -540,8 +553,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       // This prevents duplicate success/error messages
     } catch (error) {
       console.error('Error submitting report:', error);
-      // Don't show toast here - let the parent component handle it
-      // This prevents duplicate success/error messages
+      // Show validation error to user
+      (window as any).showToast?.({
+        type: 'error',
+        title: 'Validation Error',
+        message: error.message || 'Please fill in all required fields'
+      });
     } finally {
       setIsSubmitting(false);
     }

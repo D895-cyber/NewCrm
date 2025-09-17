@@ -739,25 +739,35 @@ export function FSEASCOMPReportsPage() {
                         size="sm"
                         onClick={async () => {
                           try {
+                            console.log('🔄 Fetching complete report data for comprehensive PDF generation...');
                             const full = await apiClient.getServiceReport(report._id);
-                            exportServiceReportToPDF(full);
+                            console.log('📊 Full report data received:', {
+                              hasSections: !!full.sections,
+                              sectionsKeys: full.sections ? Object.keys(full.sections) : 'No sections',
+                              hasImageEvaluation: !!full.imageEvaluation,
+                              hasObservations: !!full.observations,
+                              hasPhotos: !!full.photos,
+                              reportKeys: Object.keys(full)
+                            });
+                            
+                            await exportServiceReportToPDF(full);
                             (window as any).showToast?.({
                               type: 'success',
-                              title: 'Report Downloaded',
-                              message: 'Service report has been downloaded as PDF.'
+                              title: 'Comprehensive Report Downloaded',
+                              message: 'Complete ASCOMP service report with all sections has been downloaded as PDF.'
                             });
                           } catch (e) {
                             console.error('Export failed', e);
                             (window as any).showToast?.({ 
                               type: 'error', 
                               title: 'Export Failed', 
-                              message: 'Could not download report. Please try again.' 
+                              message: 'Could not download comprehensive report. Please try again.' 
                             });
                           }
                         }}
                       >
                         <Download className="h-4 w-4 mr-1" />
-                        Export
+                        Export Full PDF
                       </Button>
                       <Button 
                         variant="outline" 

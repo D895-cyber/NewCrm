@@ -303,6 +303,14 @@ export function ServiceReportsAnalysisPage() {
   };
 
   const exportSelectedReports = async () => {
+    // Ensure authentication token is set before making requests
+    if (!token) {
+      console.error('No authentication token available for bulk export');
+      return;
+    }
+    
+    apiClient.setAuthToken(token);
+    
     for (const reportId of selectedReports) {
       try {
         const report = await apiClient.getServiceReport(reportId);
@@ -372,6 +380,45 @@ export function ServiceReportsAnalysisPage() {
                 size="sm"
                 onClick={async () => {
                   try {
+                    // Ensure authentication token is set before making the request
+                    if (token) {
+                      apiClient.setAuthToken(token);
+                    } else {
+                      throw new Error('No authentication token available');
+                    }
+                    
+                    // First try to download original PDF if available
+                    try {
+                      const response = await fetch(`http://localhost:4000/api/service-reports/${report._id}/download-original-pdf`, {
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        }
+                      });
+                      
+                      if (response.ok) {
+                        // Original PDF found, download it
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `Original_${report.reportNumber}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                        
+                        (window as any).showToast?.({ 
+                          type: 'success', 
+                          title: 'Download', 
+                          message: 'Original FSE PDF downloaded successfully' 
+                        });
+                        return;
+                      }
+                    } catch (originalPdfError) {
+                      console.log('No original PDF found, generating new one...');
+                    }
+                    
+                    // Fallback: Generate new PDF from data
                     const full = await apiClient.getServiceReport(report._id);
                     exportServiceReportToPDF(full);
                   } catch (e) {
@@ -962,7 +1009,11 @@ export function ServiceReportsAnalysisPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.location.hash = `#/service-reports/${report._id}?readonly=1`}
+                        onClick={() => {
+                          console.log('🔍 Opening report for viewing:', report._id);
+                          console.log('🔗 Hash URL:', `#/service-reports/${report._id}?readonly=1`);
+                          window.location.hash = `#/service-reports/${report._id}?readonly=1`;
+                        }}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View
@@ -972,11 +1023,89 @@ export function ServiceReportsAnalysisPage() {
                         size="sm"
                         onClick={async () => {
                           try {
+                            console.log('📥 Starting ASCOMP report download for:', report._id);
+                            console.log('📋 Report details:', {
+                              reportNumber: report.reportNumber,
+                              siteName: report.siteName,
+                              engineer: report.engineer?.name
+                            });
+                            
+                            // Ensure authentication token is set before making the request
+                            if (token) {
+                              apiClient.setAuthToken(token);
+                            } else {
+                              throw new Error('No authentication token available');
+                            }
+                            
+                            // First try to download original PDF if available
+                            try {
+                              const response = await fetch(`http://localhost:4000/api/service-reports/${report._id}/download-original-pdf`, {
+                                headers: {
+                                  'Authorization': `Bearer ${token}`
+                                }
+                              });
+                              
+                              if (response.ok) {
+                                // Original PDF found, download it
+                                const blob = await response.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `Original_${report.reportNumber}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                                
+                                (window as any).showToast?.({ 
+                                  type: 'success', 
+                                  title: 'Download', 
+                                  message: 'Original FSE PDF downloaded successfully' 
+                                });
+                                return;
+                              }
+                            } catch (originalPdfError) {
+                              console.log('No original PDF found, generating new one...');
+                            }
+                            
+                            // Generate comprehensive PDF from complete report data
+                            console.log('🔄 Fetching complete report data for comprehensive PDF generation...');
                             const full = await apiClient.getServiceReport(report._id);
-                            exportServiceReportToPDF(full);
-                          } catch (e) {
-                            console.error('Export failed', e);
-                            (window as any).showToast?.({ type: 'error', title: 'Export', message: 'Could not export report' });
+                            console.log('📊 Full report data received:', {
+                              hasSections: !!full.sections,
+                              sectionsKeys: full.sections ? Object.keys(full.sections) : 'No sections',
+                              hasImageEvaluation: !!full.imageEvaluation,
+                              hasObservations: !!full.observations,
+                              hasPhotos: !!full.photos,
+                              reportKeys: Object.keys(full)
+                            });
+                            
+                            // Validate report data
+                            if (!full || !full.reportNumber) {
+                              throw new Error('Invalid report data received from server');
+                            }
+                            
+                            await exportServiceReportToPDF(full);
+                            console.log('✅ Comprehensive ASCOMP PDF export initiated');
+                            
+                            (window as any).showToast?.({ 
+                              type: 'success', 
+                              title: 'Comprehensive Export Started', 
+                              message: 'Complete ASCOMP report with all sections download initiated. Check your downloads folder.' 
+                            });
+                          } catch (e: any) {
+                            console.error('❌ ASCOMP export failed:', e);
+                            console.error('❌ Error details:', {
+                              message: e.message,
+                              stack: e.stack,
+                              reportId: report._id
+                            });
+                            
+                            (window as any).showToast?.({ 
+                              type: 'error', 
+                              title: 'Export Failed', 
+                              message: `Could not export ASCOMP report: ${e.message || 'Unknown error'}` 
+                            });
                           }
                         }}
                       >

@@ -2,6 +2,43 @@ const express = require('express');
 const router = express.Router();
 const ServiceReport = require('../models/ServiceReport');
 const { authenticateToken } = require('../middleware/auth');
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure multer for PDF uploads
+const pdfUpload = multer({
+  storage: new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'projectorcare/service-reports/original-pdfs',
+      public_id: (req, file) => {
+        const timestamp = Date.now();
+        const uniqueId = Math.random().toString(36).substring(2, 8);
+        return `report_${timestamp}_${uniqueId}`;
+      },
+      resource_type: 'raw', // For PDF files
+      format: 'pdf'
+    }
+  }),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit for PDFs
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed!'), false);
+    }
+  }
+});
 
 // Get all service reports
 router.get('/', async (req, res) => {
@@ -79,6 +116,25 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new service report
 router.post('/', authenticateToken, async (req, res) => {
   try {
+    // Validate required fields
+    const requiredFields = ['reportNumber', 'siteName', 'projectorSerial', 'projectorModel', 'brand'];
+    const missingFields = requiredFields.filter(field => !req.body[field] || req.body[field].trim() === '');
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        error: `Missing required fields: ${missingFields.join(', ')}` 
+      });
+    }
+    
+    // Validate engineer information
+    if (!req.body.engineer?.name || req.body.engineer.name.trim() === '') {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        error: 'Engineer name is required' 
+      });
+    }
+    
     const reportData = {
       ...req.body,
       engineer: {
@@ -88,15 +144,40 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     };
 
+    console.log('Creating service report with data:', {
+      reportNumber: reportData.reportNumber,
+      siteName: reportData.siteName,
+      projectorSerial: reportData.projectorSerial,
+      projectorModel: reportData.projectorModel,
+      brand: reportData.brand,
+      engineerName: reportData.engineer.name
+    });
+
     const newReport = new ServiceReport(reportData);
     const savedReport = await newReport.save();
+    
+    console.log('Service report created successfully:', savedReport._id);
     
     res.status(201).json({
       message: 'Service report created successfully',
       report: savedReport
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating service report', error: error.message });
+    console.error('Error creating service report:', error);
+    
+    // Handle specific validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        error: validationErrors.join(', ') 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Error creating service report', 
+      error: error.message 
+    });
   }
 });
 
@@ -242,15 +323,24 @@ router.get('/stats/dashboard', async (req, res) => {
 // Get FSE analytics data
 router.get('/analytics/fse', authenticateToken, async (req, res) => {
   try {
-    // Get FSE performance data
+    // Get FSE performance data based on actual ServiceReport schema
     const fsePerformance = await ServiceReport.aggregate([
       {
         $group: {
           _id: '$engineer.name',
           totalReports: { $sum: 1 },
-          avgCompletionTime: { $avg: { $ifNull: ['$completionTime', 0] } },
-          avgSatisfaction: { $avg: { $ifNull: ['$customerSatisfaction', 0] } },
-          totalIssues: { $sum: { $ifNull: ['$issuesFound', 0] } },
+          avgCompletionTime: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          avgSatisfaction: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          totalIssues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          },
           lastReportDate: { $max: '$date' }
         }
       },
@@ -271,7 +361,7 @@ router.get('/analytics/fse', authenticateToken, async (req, res) => {
                     $multiply: [
                       {
                         $divide: [
-                          { $subtract: [100, { $multiply: ['$avgCompletionTime', 10] }] },
+                          { $subtract: [100, { $multiply: ['$avgCompletionTime', 0.1] }] },
                           100
                         ]
                       },
@@ -305,9 +395,18 @@ router.get('/analytics/fse', authenticateToken, async (req, res) => {
             $dateToString: { format: "%Y-%m-%d", date: "$date" }
           },
           reports: { $sum: 1 },
-          avgTime: { $avg: { $ifNull: ['$completionTime', 0] } },
-          satisfaction: { $avg: { $ifNull: ['$customerSatisfaction', 0] } },
-          issues: { $sum: { $ifNull: ['$issuesFound', 0] } }
+          avgTime: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          satisfaction: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          issues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          }
         }
       },
       {
@@ -328,8 +427,8 @@ router.get('/analytics/fse', authenticateToken, async (req, res) => {
         $group: {
           _id: '$reportType',
           count: { $sum: 1 },
-          avgTime: { $avg: { $ifNull: ['$completionTime', 0] } },
-          avgSatisfaction: { $avg: { $ifNull: ['$customerSatisfaction', 0] } }
+          avgTime: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          avgSatisfaction: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } }
         }
       },
       {
@@ -349,7 +448,7 @@ router.get('/analytics/fse', authenticateToken, async (req, res) => {
         $group: {
           _id: '$siteName',
           services: { $sum: 1 },
-          avgSatisfaction: { $avg: { $ifNull: ['$customerSatisfaction', 0] } },
+          avgSatisfaction: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
           lastVisit: { $max: '$date' }
         }
       },
@@ -365,11 +464,153 @@ router.get('/analytics/fse', authenticateToken, async (req, res) => {
       { $limit: 10 }
     ]);
 
+    // Get additional analytics data
+    const totalReports = await ServiceReport.countDocuments();
+    const totalFSEs = await ServiceReport.distinct('engineer.name').then(names => names.filter(name => name && name.trim() !== ''));
+    
+    // Get monthly trends for last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const monthlyTrends = await ServiceReport.aggregate([
+      {
+        $match: {
+          date: { $gte: sixMonthsAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' }
+          },
+          reports: { $sum: 1 },
+          avgTime: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          satisfaction: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          issues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          month: {
+            $dateToString: { format: "%Y-%m", date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: 1 } } }
+          },
+          reports: 1,
+          avgTime: { $round: ['$avgTime', 1] },
+          satisfaction: { $round: ['$satisfaction', 1] },
+          issues: 1
+        }
+      },
+      { $sort: { month: 1 } }
+    ]);
+
+    // Get issue analysis
+    const issueAnalysis = await ServiceReport.aggregate([
+      {
+        $unwind: '$observations'
+      },
+      {
+        $match: {
+          'observations.description': { $ne: '', $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$observations.description',
+          count: { $sum: 1 },
+          fseNames: { $addToSet: '$engineer.name' },
+          sites: { $addToSet: '$siteName' }
+        }
+      },
+      {
+        $project: {
+          issue: '$_id',
+          count: 1,
+          fseCount: { $size: '$fseNames' },
+          siteCount: { $size: '$sites' },
+          fseNames: 1,
+          sites: 1
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Get FSE efficiency metrics
+    const fseEfficiency = await ServiceReport.aggregate([
+      {
+        $group: {
+          _id: '$engineer.name',
+          totalReports: { $sum: 1 },
+          avgProjectorHours: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          avgLampPerformance: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          totalIssues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          },
+          lastReportDate: { $max: '$date' },
+          firstReportDate: { $min: '$date' }
+        }
+      },
+      {
+        $project: {
+          fseName: '$_id',
+          totalReports: 1,
+          avgProjectorHours: { $round: ['$avgProjectorHours', 1] },
+          avgLampPerformance: { $round: ['$avgLampPerformance', 1] },
+          totalIssues: 1,
+          issueRate: {
+            $round: [
+              {
+                $multiply: [
+                  { $divide: ['$totalIssues', '$totalReports'] },
+                  100
+                ]
+              },
+              1
+            ]
+          },
+          lastReportDate: 1,
+          firstReportDate: 1,
+          experienceDays: {
+            $divide: [
+              { $subtract: ['$lastReportDate', '$firstReportDate'] },
+              1000 * 60 * 60 * 24
+            ]
+          }
+        }
+      },
+      { $sort: { totalReports: -1 } }
+    ]);
+
     res.json({
       fsePerformance,
       dailyTrends,
       serviceTypeDistribution,
-      topSites
+      topSites,
+      summary: {
+        totalReports,
+        totalFSEs: totalFSEs.length,
+        avgReportsPerFSE: totalFSEs.length > 0 ? Math.round(totalReports / totalFSEs.length) : 0
+      },
+      monthlyTrends,
+      issueAnalysis,
+      fseEfficiency
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching FSE analytics', error: error.message });
@@ -382,7 +623,7 @@ router.get('/analytics/detailed', authenticateToken, async (req, res) => {
     const { limit = 50, skip = 0 } = req.query;
     
     const reports = await ServiceReport.find()
-      .select('date engineer siteName reportType serviceStatus completionTime customerSatisfaction issuesFound partsReplaced')
+      .select('date engineer siteName reportType projectorRunningHours lampPowerMeasurements observations')
       .sort({ date: -1 })
       .limit(parseInt(limit))
       .skip(parseInt(skip));
@@ -392,16 +633,220 @@ router.get('/analytics/detailed', authenticateToken, async (req, res) => {
       fseName: report.engineer?.name || 'Unknown',
       siteName: report.siteName,
       reportType: report.reportType,
-      serviceStatus: report.serviceStatus || 'Completed',
-      completionTime: report.completionTime || 0,
-      customerSatisfaction: report.customerSatisfaction || 0,
-      issuesFound: report.issuesFound || 0,
-      partsReplaced: report.partsReplaced || 0
+      serviceStatus: 'Completed',
+      completionTime: report.projectorRunningHours || 0,
+      customerSatisfaction: report.lampPowerMeasurements?.flAfterPM || 0,
+      issuesFound: report.observations?.filter(obs => obs.description && obs.description.trim() !== '').length || 0,
+      partsReplaced: 0 // This field doesn't exist in the current schema
     }));
 
     res.json(formattedReports);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching detailed reports', error: error.message });
+  }
+});
+
+// Get FSE-specific analytics for individual FSE performance
+router.get('/analytics/fse/:fseName', authenticateToken, async (req, res) => {
+  try {
+    const { fseName } = req.params;
+    
+    // Get FSE-specific performance data
+    const fseReports = await ServiceReport.find({ 'engineer.name': fseName })
+      .sort({ date: -1 });
+
+    if (fseReports.length === 0) {
+      return res.status(404).json({ message: 'FSE not found or no reports available' });
+    }
+
+    // Calculate FSE-specific metrics
+    const totalReports = fseReports.length;
+    const avgProjectorHours = fseReports.reduce((sum, report) => 
+      sum + (parseFloat(report.projectorRunningHours) || 0), 0) / totalReports;
+    const avgLampPerformance = fseReports.reduce((sum, report) => 
+      sum + (parseFloat(report.lampPowerMeasurements?.flAfterPM) || 0), 0) / totalReports;
+    
+    const totalIssues = fseReports.reduce((sum, report) => 
+      sum + (report.observations?.filter(obs => obs.description && obs.description.trim() !== '').length || 0), 0);
+    
+    const issueRate = (totalIssues / totalReports) * 100;
+
+    // Get monthly performance for this FSE
+    const monthlyPerformance = await ServiceReport.aggregate([
+      {
+        $match: { 'engineer.name': fseName }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' }
+          },
+          reports: { $sum: 1 },
+          avgProjectorHours: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          avgLampPerformance: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          issues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          month: {
+            $dateToString: { format: "%Y-%m", date: { $dateFromParts: { year: '$_id.year', month: '$_id.month', day: 1 } } }
+          },
+          reports: 1,
+          avgProjectorHours: { $round: ['$avgProjectorHours', 1] },
+          avgLampPerformance: { $round: ['$avgLampPerformance', 1] },
+          issues: 1
+        }
+      },
+      { $sort: { month: 1 } }
+    ]);
+
+    // Get site performance for this FSE
+    const sitePerformance = await ServiceReport.aggregate([
+      {
+        $match: { 'engineer.name': fseName }
+      },
+      {
+        $group: {
+          _id: '$siteName',
+          reports: { $sum: 1 },
+          avgProjectorHours: { $avg: { $ifNull: ['$projectorRunningHours', 0] } },
+          avgLampPerformance: { $avg: { $ifNull: ['$lampPowerMeasurements.flAfterPM', 0] } },
+          issues: { 
+            $sum: { 
+              $size: { 
+                $filter: {
+                  input: '$observations',
+                  cond: { $ne: ['$$this.description', ''] }
+                }
+              }
+            }
+          },
+          lastVisit: { $max: '$date' }
+        }
+      },
+      {
+        $project: {
+          siteName: '$_id',
+          reports: 1,
+          avgProjectorHours: { $round: ['$avgProjectorHours', 1] },
+          avgLampPerformance: { $round: ['$avgLampPerformance', 1] },
+          issues: 1,
+          lastVisit: 1
+        }
+      },
+      { $sort: { reports: -1 } }
+    ]);
+
+    // Get recent reports
+    const recentReports = fseReports.slice(0, 10).map(report => ({
+      reportNumber: report.reportNumber,
+      siteName: report.siteName,
+      date: report.date,
+      reportType: report.reportType,
+      projectorSerial: report.projectorSerial,
+      projectorModel: report.projectorModel,
+      projectorRunningHours: report.projectorRunningHours,
+      lampPerformance: report.lampPowerMeasurements?.flAfterPM,
+      issuesCount: report.observations?.filter(obs => obs.description && obs.description.trim() !== '').length || 0
+    }));
+
+    res.json({
+      fseName,
+      summary: {
+        totalReports,
+        avgProjectorHours: Math.round(avgProjectorHours * 10) / 10,
+        avgLampPerformance: Math.round(avgLampPerformance * 10) / 10,
+        totalIssues,
+        issueRate: Math.round(issueRate * 10) / 10,
+        firstReportDate: fseReports[fseReports.length - 1]?.date,
+        lastReportDate: fseReports[0]?.date
+      },
+      monthlyPerformance,
+      sitePerformance,
+      recentReports
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching FSE-specific analytics', error: error.message });
+  }
+});
+
+// Upload original PDF report (uploaded by FSE)
+router.post('/:id/upload-original-pdf', authenticateToken, pdfUpload.single('pdf'), async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const uploadedBy = req.user?.username || req.user?.name || 'Unknown FSE';
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No PDF file uploaded' });
+    }
+
+    const report = await ServiceReport.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ message: 'Service report not found' });
+    }
+
+    // Update the report with original PDF information
+    report.originalPdfReport = {
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      cloudUrl: req.file.path,
+      publicId: req.file.filename,
+      uploadedAt: new Date(),
+      uploadedBy: uploadedBy,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype
+    };
+
+    await report.save();
+
+    res.json({
+      message: 'Original PDF report uploaded successfully',
+      pdfInfo: {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        cloudUrl: req.file.path,
+        uploadedAt: report.originalPdfReport.uploadedAt,
+        uploadedBy: uploadedBy
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading original PDF:', error);
+    res.status(500).json({ message: 'Error uploading PDF', error: error.message });
+  }
+});
+
+// Download original PDF report
+router.get('/:id/download-original-pdf', authenticateToken, async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const report = await ServiceReport.findById(reportId);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Service report not found' });
+    }
+
+    if (!report.originalPdfReport || !report.originalPdfReport.cloudUrl) {
+      return res.status(404).json({ message: 'No original PDF report found for this service report' });
+    }
+
+    // Redirect to Cloudinary URL for direct download
+    res.redirect(report.originalPdfReport.cloudUrl);
+
+  } catch (error) {
+    console.error('Error downloading original PDF:', error);
+    res.status(500).json({ message: 'Error downloading PDF', error: error.message });
   }
 });
 

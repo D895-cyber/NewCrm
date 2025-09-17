@@ -14,6 +14,7 @@ import { SimpleFSEDashboard } from "./components/mobile/SimpleFSEDashboard";
 import { FSEMobileApp } from "./components/mobile/FSEMobileApp";
 import RealFSEDashboard from "./components/mobile/RealFSEDashboard";
 import RealFSEWorkflow from "./components/mobile/RealFSEWorkflow";
+import { AssignmentWorkflow } from "./components/mobile/AssignmentWorkflow";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -212,6 +213,19 @@ function AppContent() {
         <ErrorBoundary>
           <DataProvider>
             <RealFSEWorkflow />
+          </DataProvider>
+          <ToastContainer />
+        </ErrorBoundary>
+      );
+    }
+
+    // Check if user wants assignment workflow
+    if (window.location.hash === '#assignment-workflow') {
+      console.log('Showing assignment workflow');
+      return (
+        <ErrorBoundary>
+          <DataProvider>
+            <AssignmentWorkflow />
           </DataProvider>
           <ToastContainer />
         </ErrorBoundary>

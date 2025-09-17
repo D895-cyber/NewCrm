@@ -157,7 +157,9 @@ const RealFSEWorkflow: React.FC = () => {
       food: 0,
       accommodation: 0,
       other: 0
-    }
+    },
+    unableToCompleteReason: '',
+    unableToCompleteCategory: 'Other'
   });
 
   const steps = [
@@ -167,7 +169,8 @@ const RealFSEWorkflow: React.FC = () => {
     { id: 4, title: 'Record Work Details', description: 'Document work performed and parts used' },
     { id: 5, title: 'Generate Report', description: 'Create service report' },
     { id: 6, title: 'Site In-charge Signature', description: 'Get digital signature from site in-charge' },
-    { id: 7, title: 'Complete Service', description: 'Finish and submit service' }
+    { id: 7, title: 'Complete Service', description: 'Finish and submit service' },
+    { id: 8, title: 'Unable to Complete', description: 'Mark service as unable to complete with reason' }
   ];
 
   useEffect(() => {
@@ -184,37 +187,9 @@ const RealFSEWorkflow: React.FC = () => {
         const visits = await apiClient.getAllServiceVisits();
         setServiceVisits(visits || []);
       } catch (visitError) {
-        console.log('Service visits not available, using demo data');
-        // Create demo service visits with current user
-        const currentFSEId = user?.fseId || `FSE-${Date.now()}`;
-        const currentFSEName = user?.name || user?.username || 'FSE User';
-        
-        const demoVisits: ServiceVisit[] = [
-          {
-            _id: 'visit-1',
-            visitId: 'VISIT-001',
-            fseId: currentFSEId,
-            fseName: currentFSEName,
-            siteId: 'SITE-001',
-            siteName: 'Downtown Office Building',
-            projectorSerial: 'PROJ-001',
-            visitType: 'Scheduled Maintenance',
-            amcServiceInterval: 'First Service',
-            scheduledDate: new Date().toISOString(),
-            status: 'Scheduled',
-            priority: 'Medium',
-            description: 'Routine maintenance check',
-            partsUsed: [],
-            totalCost: 0,
-            photos: [],
-            issuesFound: [],
-            recommendations: [],
-            expenses: { fuel: 0, food: 0, accommodation: 0, other: 0 },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        setServiceVisits(demoVisits);
+        console.log('Service visits not available, showing empty state');
+        // Show empty state instead of demo data for new FSE users
+        setServiceVisits([]);
       }
 
       // Load sites
@@ -441,12 +416,87 @@ const RealFSEWorkflow: React.FC = () => {
           recommendations: [],
           photos: [],
           customerFeedback: { rating: 5, comments: '' },
-          expenses: { fuel: 0, food: 0, accommodation: 0, other: 0 }
+          expenses: { fuel: 0, food: 0, accommodation: 0, other: 0 },
+          unableToCompleteReason: ''
         });
       }
     } catch (err) {
       console.error('Error submitting service:', err);
       alert('Failed to submit service. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnableToComplete = async () => {
+    try {
+      setLoading(true);
+      
+      // Enhanced validation
+      if (!workflowData.unableToCompleteReason.trim()) {
+        alert('Please provide a reason for being unable to complete the service.');
+        return;
+      }
+
+      if (workflowData.unableToCompleteReason.trim().length < 10) {
+        alert('Please provide a more detailed reason (at least 10 characters).');
+        return;
+      }
+
+      if (workflowData.unableToCompleteReason.trim().length > 1000) {
+        alert('Reason is too long. Please keep it under 1000 characters.');
+        return;
+      }
+
+      if (selectedVisit) {
+        const result = await apiClient.markServiceVisitUnableToComplete(
+          selectedVisit._id, 
+          workflowData.unableToCompleteReason,
+          workflowData.unableToCompleteCategory
+        );
+
+        // Show success message with more details
+        alert(`Service marked as unable to complete successfully!\n\nVisit ID: ${result.visit.visitId}\nStatus: ${result.visit.status}\nUpdated by: ${result.visit.updatedBy || 'You'}`);
+        
+        // Reset form and go back to step 1
+        setCurrentStep(1);
+        setSelectedVisit(null);
+        setWorkflowData({
+          visitId: '',
+          siteId: '',
+          projectorSerial: '',
+          workPerformed: '',
+          partsUsed: [],
+          issuesFound: [],
+          recommendations: [],
+          photos: [],
+          customerFeedback: { rating: 5, comments: '' },
+          expenses: { fuel: 0, food: 0, accommodation: 0, other: 0 },
+          unableToCompleteReason: '',
+          unableToCompleteCategory: 'Other'
+        });
+      }
+    } catch (err: any) {
+      console.error('Error marking service as unable to complete:', err);
+      
+      // Enhanced error handling
+      let errorMessage = 'Failed to mark service as unable to complete. Please try again.';
+      
+      if (err.message) {
+        if (err.message.includes('ALREADY_COMPLETED')) {
+          errorMessage = 'This service has already been completed and cannot be marked as unable to complete.';
+        } else if (err.message.includes('ALREADY_CANCELLED')) {
+          errorMessage = 'This service has already been cancelled and cannot be marked as unable to complete.';
+        } else if (err.message.includes('REASON_TOO_SHORT')) {
+          errorMessage = 'Please provide a more detailed reason (at least 10 characters).';
+        } else if (err.message.includes('REASON_TOO_LONG')) {
+          errorMessage = 'Reason is too long. Please keep it under 1000 characters.';
+        } else if (err.message.includes('VISIT_NOT_FOUND')) {
+          errorMessage = 'Service visit not found. Please refresh and try again.';
+        }
+      }
+      
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -466,7 +516,8 @@ const RealFSEWorkflow: React.FC = () => {
       case 'In Progress': return 'text-blue-600 bg-blue-100';
       case 'Scheduled': return 'text-yellow-600 bg-yellow-100';
       case 'Cancelled': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'Unable to Complete': return 'text-orange-600 bg-orange-100';
+      default: return 'text-dark-secondary bg-gray-100';
     }
   };
 
@@ -475,7 +526,7 @@ const RealFSEWorkflow: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Clock className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading FSE Workflow...</p>
+          <p className="text-dark-secondary">Loading FSE Workflow...</p>
         </div>
       </div>
     );
@@ -499,21 +550,23 @@ const RealFSEWorkflow: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dark-bg" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-dark-bg shadow-sm border-b border-dark-color">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <Wrench className="h-8 w-8 text-blue-600 mr-3" />
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center mr-3">
+                <Wrench className="h-4 w-4 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">FSE Workflow</h1>
-                <p className="text-sm text-gray-600">Service → Photo → Report → Signature</p>
+                <h1 className="text-2xl font-bold text-dark-primary">FSE Workflow</h1>
+                <p className="text-sm text-dark-secondary">Service → Photo → Report → Signature</p>
               </div>
             </div>
             <button
               onClick={() => window.history.back()}
-              className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900"
+              className="flex items-center px-4 py-2 text-dark-secondary hover:text-dark-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -523,7 +576,7 @@ const RealFSEWorkflow: React.FC = () => {
       </div>
 
       {/* Progress Steps */}
-      <div className="bg-white border-b">
+      <div className="bg-dark-bg border-b border-dark-color">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             {steps.map((step, index) => (
@@ -531,7 +584,7 @@ const RealFSEWorkflow: React.FC = () => {
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                   currentStep >= step.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    : 'bg-gray-200 text-dark-secondary'
                 }`}>
                   {step.id}
                 </div>
@@ -558,30 +611,30 @@ const RealFSEWorkflow: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {currentStep === 1 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Select Service Visit</h2>
+            <h2 className="text-2xl font-bold text-dark-primary">Select Service Visit</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {serviceVisits.map((visit) => (
                 <div
                   key={visit._id}
                   onClick={() => handleVisitSelect(visit)}
-                  className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                  className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6 cursor-pointer hover:border-blue-500/50 hover:shadow-xl transition-all"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">{visit.siteName}</h3>
+                    <h3 className="text-lg font-medium text-dark-primary">{visit.siteName}</h3>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(visit.status)}`}>
                       {visit.status}
                     </span>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-dark-secondary">
                       <MapPin className="h-4 w-4 inline mr-2" />
                       {visit.projectorSerial}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-dark-secondary">
                       <Clock className="h-4 w-4 inline mr-2" />
                       {formatDate(visit.scheduledDate)}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-dark-secondary">
                       <Wrench className="h-4 w-4 inline mr-2" />
                       {visit.visitType}
                     </p>
@@ -594,36 +647,58 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 2 && selectedVisit && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Start Service</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Service Details</h3>
+            <h2 className="text-2xl font-bold text-dark-primary">Start Service</h2>
+            <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6">
+              <h3 className="text-lg font-medium text-dark-primary mb-4">Service Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Site</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedVisit.siteName}</p>
+                  <label className="block text-sm font-medium text-dark-secondary">Site</label>
+                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.siteName}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Projector</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedVisit.projectorSerial}</p>
+                  <label className="block text-sm font-medium text-dark-secondary">Projector</label>
+                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.projectorSerial}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Visit Type</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedVisit.visitType}</p>
+                  <label className="block text-sm font-medium text-dark-secondary">Visit Type</label>
+                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.visitType}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Priority</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedVisit.priority}</p>
+                  <label className="block text-sm font-medium text-dark-secondary">Priority</label>
+                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.priority}</p>
                 </div>
               </div>
               <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700">Work Performed</label>
+                <label className="block text-sm font-medium text-dark-secondary">Work Performed</label>
                 <textarea
                   value={workflowData.workPerformed}
                   onChange={(e) => setWorkflowData(prev => ({ ...prev, workPerformed: e.target.value }))}
                   rows={4}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Describe the work performed..."
                 />
+              </div>
+              
+              {/* Unable to Complete Quick Access */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-5 w-5 text-orange-600 mr-3" />
+                      <div>
+                        <h4 className="text-sm font-medium text-orange-900">Unable to Complete Service?</h4>
+                        <p className="text-xs text-orange-700">If you cannot complete this service, you can mark it as unable to complete.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCurrentStep(8)}
+                      className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 flex items-center"
+                    >
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Unable to Complete
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -631,10 +706,10 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 3 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Capture Photos</h2>
-            <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-dark-primary">Capture Photos</h2>
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Photos</label>
+                <label className="block text-sm font-medium text-dark-secondary mb-2">Upload Photos</label>
                 <input
                   type="file"
                   multiple
@@ -669,12 +744,12 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 4 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Record Work Details</h2>
+            <h2 className="text-2xl font-bold text-dark-primary">Record Work Details</h2>
             
             {/* Parts Used */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Parts Used</h3>
+                <h3 className="text-lg font-medium text-dark-primary">Parts Used</h3>
                 <button
                   onClick={handlePartAdd}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
@@ -691,28 +766,28 @@ const RealFSEWorkflow: React.FC = () => {
                       placeholder="Part Number"
                       value={part.partNumber}
                       onChange={(e) => handlePartUpdate(index, 'partNumber', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="text"
                       placeholder="Part Name"
                       value={part.partName}
                       onChange={(e) => handlePartUpdate(index, 'partName', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="number"
                       placeholder="Quantity"
                       value={part.quantity}
                       onChange={(e) => handlePartUpdate(index, 'quantity', parseInt(e.target.value) || 0)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="number"
                       placeholder="Cost"
                       value={part.cost}
                       onChange={(e) => handlePartUpdate(index, 'cost', parseFloat(e.target.value) || 0)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 ))}
@@ -720,9 +795,9 @@ const RealFSEWorkflow: React.FC = () => {
             </div>
 
             {/* Issues Found */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Issues Found</h3>
+                <h3 className="text-lg font-medium text-dark-primary">Issues Found</h3>
                 <button
                   onClick={handleIssueAdd}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
@@ -739,12 +814,12 @@ const RealFSEWorkflow: React.FC = () => {
                       placeholder="Issue Description"
                       value={issue.description}
                       onChange={(e) => handleIssueUpdate(index, 'description', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <select
                       value={issue.severity}
                       onChange={(e) => handleIssueUpdate(index, 'severity', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -766,9 +841,9 @@ const RealFSEWorkflow: React.FC = () => {
             </div>
 
             {/* Recommendations */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Recommendations</h3>
+                <h3 className="text-lg font-medium text-dark-primary">Recommendations</h3>
                 <button
                   onClick={handleRecommendationAdd}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
@@ -785,12 +860,12 @@ const RealFSEWorkflow: React.FC = () => {
                       placeholder="Recommendation Description"
                       value={rec.description}
                       onChange={(e) => handleRecommendationUpdate(index, 'description', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <select
                       value={rec.priority}
                       onChange={(e) => handleRecommendationUpdate(index, 'priority', e.target.value)}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -805,19 +880,19 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 5 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Generate Report</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Service Report Preview</h3>
+            <h2 className="text-2xl font-bold text-dark-primary">Generate Report</h2>
+            <div className="bg-dark-card rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-dark-primary mb-4">Service Report Preview</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer Feedback Rating</label>
+                  <label className="block text-sm font-medium text-dark-secondary">Customer Feedback Rating</label>
                   <select
                     value={workflowData.customerFeedback.rating}
                     onChange={(e) => setWorkflowData(prev => ({
                       ...prev,
                       customerFeedback: { ...prev.customerFeedback, rating: parseInt(e.target.value) }
                     }))}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value={1}>1 - Poor</option>
                     <option value={2}>2 - Fair</option>
@@ -827,7 +902,7 @@ const RealFSEWorkflow: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer Comments</label>
+                  <label className="block text-sm font-medium text-dark-secondary">Customer Comments</label>
                   <textarea
                     value={workflowData.customerFeedback.comments}
                     onChange={(e) => setWorkflowData(prev => ({
@@ -835,12 +910,12 @@ const RealFSEWorkflow: React.FC = () => {
                       customerFeedback: { ...prev.customerFeedback, comments: e.target.value }
                     }))}
                     rows={3}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Customer feedback comments..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Expenses</label>
+                  <label className="block text-sm font-medium text-dark-secondary">Expenses</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                     <input
                       type="number"
@@ -850,7 +925,7 @@ const RealFSEWorkflow: React.FC = () => {
                         ...prev,
                         expenses: { ...prev.expenses, fuel: parseFloat(e.target.value) || 0 }
                       }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="number"
@@ -860,7 +935,7 @@ const RealFSEWorkflow: React.FC = () => {
                         ...prev,
                         expenses: { ...prev.expenses, food: parseFloat(e.target.value) || 0 }
                       }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="number"
@@ -870,7 +945,7 @@ const RealFSEWorkflow: React.FC = () => {
                         ...prev,
                         expenses: { ...prev.expenses, accommodation: parseFloat(e.target.value) || 0 }
                       }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     <input
                       type="number"
@@ -880,7 +955,7 @@ const RealFSEWorkflow: React.FC = () => {
                         ...prev,
                         expenses: { ...prev.expenses, other: parseFloat(e.target.value) || 0 }
                       }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -891,12 +966,12 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 6 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Site In-charge Signature</h2>
-            <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-dark-primary">Site In-charge Signature</h2>
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="text-center">
                 <User className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Digital Signature Required</h3>
-                <p className="text-gray-600 mb-6">
+                <h3 className="text-lg font-medium text-dark-primary mb-2">Digital Signature Required</h3>
+                <p className="text-dark-secondary mb-6">
                   Please have the site in-charge sign this service report to confirm completion.
                 </p>
                 <div className="bg-gray-100 h-32 rounded-lg flex items-center justify-center">
@@ -912,12 +987,12 @@ const RealFSEWorkflow: React.FC = () => {
 
         {currentStep === 7 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Complete Service</h2>
-            <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-dark-primary">Complete Service</h2>
+            <div className="bg-dark-card rounded-lg shadow p-6">
               <div className="text-center">
                 <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-600" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Service Summary</h3>
-                <div className="space-y-2 text-sm text-gray-600 mb-6">
+                <h3 className="text-lg font-medium text-dark-primary mb-2">Service Summary</h3>
+                <div className="space-y-2 text-sm text-dark-secondary mb-6">
                   <p>Site: {selectedVisit?.siteName}</p>
                   <p>Projector: {selectedVisit?.projectorSerial}</p>
                   <p>Parts Used: {workflowData.partsUsed.length}</p>
@@ -942,12 +1017,98 @@ const RealFSEWorkflow: React.FC = () => {
           </div>
         )}
 
+        {currentStep === 8 && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-dark-primary">Unable to Complete Service</h2>
+            <div className="bg-dark-card rounded-lg shadow p-6">
+              <div className="text-center mb-6">
+                <AlertCircle className="h-16 w-16 mx-auto mb-4 text-orange-600" />
+                <h3 className="text-lg font-medium text-dark-primary mb-2">Service Cannot Be Completed</h3>
+                <p className="text-dark-secondary">
+                  Please provide a detailed reason why this service cannot be completed.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-secondary mb-2">
+                    Category *
+                  </label>
+                  <select
+                    value={workflowData.unableToCompleteCategory}
+                    onChange={(e) => setWorkflowData(prev => ({ 
+                      ...prev, 
+                      unableToCompleteCategory: e.target.value 
+                    }))}
+                    className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="Missing Parts">Missing Parts</option>
+                    <option value="Equipment Failure">Equipment Failure</option>
+                    <option value="Access Issues">Access Issues</option>
+                    <option value="Customer Request">Customer Request</option>
+                    <option value="Safety Concerns">Safety Concerns</option>
+                    <option value="Technical Complexity">Technical Complexity</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-dark-secondary mb-2">
+                    Reason for Unable to Complete *
+                  </label>
+                  <textarea
+                    value={workflowData.unableToCompleteReason}
+                    onChange={(e) => setWorkflowData(prev => ({ 
+                      ...prev, 
+                      unableToCompleteReason: e.target.value 
+                    }))}
+                    rows={6}
+                    className="block w-full border-dark-color rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Please provide a detailed explanation of why the service cannot be completed..."
+                    required
+                    maxLength={1000}
+                  />
+                  <div className="mt-1 text-sm text-gray-500">
+                    {workflowData.unableToCompleteReason.length}/1000 characters
+                  </div>
+                </div>
+                
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex">
+                    <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+                    <div className="text-sm text-orange-800">
+                      <p className="font-medium">Important:</p>
+                      <p>Once marked as "Unable to Complete", this service visit will be closed and may require rescheduling or alternative arrangements.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleUnableToComplete}
+                  disabled={loading || !workflowData.unableToCompleteReason.trim()}
+                  className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {loading ? (
+                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Mark as Unable to Complete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Buttons */}
         <div className="flex justify-between mt-8">
           <button
             onClick={handlePrevious}
             disabled={currentStep === 1}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-6 py-2 bg-gray-300 text-dark-secondary rounded-lg hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Previous

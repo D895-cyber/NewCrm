@@ -9,6 +9,7 @@ import { BarChart3, TrendingUp, Download, Filter, User, AlertTriangle, MapPin } 
 import { convertToCSV, downloadCSV } from "../../utils/export";
 import { apiClient } from "../../utils/api/client";
 import { LoadingSpinner } from "../ui/loading-spinner";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface FSEAnalyticsData {
   fsePerformance: Array<{
@@ -38,47 +39,135 @@ interface FSEAnalyticsData {
     avgSatisfaction: number;
     lastVisit: string;
   }>;
+  summary: {
+    totalReports: number;
+    totalFSEs: number;
+    avgReportsPerFSE: number;
+  };
+  monthlyTrends: Array<{
+    month: string;
+    reports: number;
+    avgTime: number;
+    satisfaction: number;
+    issues: number;
+  }>;
+  issueAnalysis: Array<{
+    issue: string;
+    count: number;
+    fseCount: number;
+    siteCount: number;
+    fseNames: string[];
+    sites: string[];
+  }>;
+  fseEfficiency: Array<{
+    fseName: string;
+    totalReports: number;
+    avgProjectorHours: number;
+    avgLampPerformance: number;
+    totalIssues: number;
+    issueRate: number;
+    lastReportDate: string;
+    firstReportDate: string;
+    experienceDays: number;
+  }>;
 }
 
 export function LLMTrafficPage() {
+  const { user, token, logout } = useAuth();
   const [analyticsData, setAnalyticsData] = useState<FSEAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if user is authenticated
+    if (!token) {
+      setError('Authentication required. Please log in again.');
+      setLoading(false);
+      return;
+    }
+    
+    // Set the auth token in the API client
+    apiClient.setAuthToken(token);
     loadAnalyticsData();
-  }, []);
+  }, [token]);
 
   const loadAnalyticsData = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Double-check authentication
+      if (!token) {
+        setError('Authentication required. Please log in again.');
+        return;
+      }
+      
+      // Ensure token is set in API client
+      apiClient.setAuthToken(token);
+      
+      console.log('🔍 Loading FSE Analytics Data...');
+      console.log('🔑 Token available:', !!token);
+      console.log('🌐 API Base URL:', apiClient.getBaseUrl());
+      
       const response = await apiClient.getFSEAnalytics();
-      setAnalyticsData(response.data);
+      console.log('📊 Analytics Response:', response);
+      console.log('📈 Analytics Data (direct):', response);
+      
+      // The API client returns the data directly, not wrapped in a 'data' property
+      setAnalyticsData(response);
     } catch (err: any) {
-      console.error('Error loading FSE analytics data:', err);
-      setError(err.message || 'Failed to load FSE analytics data');
+      console.error('❌ Error loading FSE analytics data:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        status: err.status,
+        response: err.response
+      });
+      
+      // Handle specific authentication errors
+      if (err.message?.includes('Access token required') || err.message?.includes('Unauthorized')) {
+        setError('Your session has expired. Please log in again.');
+        logout(); // Clear the invalid token
+      } else {
+        setError(err.message || 'Failed to load FSE analytics data');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   // Calculate summary statistics from real data
-  const totalServices = analyticsData?.dailyTrends.reduce((sum, day) => sum + day.reports, 0) || 0;
-  const avgServiceTime = analyticsData?.dailyTrends.length 
-    ? Math.round((analyticsData.dailyTrends.reduce((sum, day) => sum + day.avgTime, 0) / analyticsData.dailyTrends.length) * 10) / 10
+  const totalServices = analyticsData?.summary?.totalReports || 0;
+  const avgServiceTime = analyticsData?.fsePerformance.length 
+    ? Math.round((analyticsData.fsePerformance.reduce((sum, fse) => sum + fse.avgCompletionTime, 0) / analyticsData.fsePerformance.length) * 10) / 10
     : 0;
-  const avgSatisfaction = analyticsData?.dailyTrends.length
-    ? Math.round((analyticsData.dailyTrends.reduce((sum, day) => sum + day.satisfaction, 0) / analyticsData.dailyTrends.length) * 10) / 10
+  const avgSatisfaction = analyticsData?.fsePerformance.length
+    ? Math.round((analyticsData.fsePerformance.reduce((sum, fse) => sum + fse.avgSatisfaction, 0) / analyticsData.fsePerformance.length) * 10) / 10
     : 0;
-  const totalIssues = analyticsData?.dailyTrends.reduce((sum, day) => sum + day.issues, 0) || 0;
+  const totalIssues = analyticsData?.fsePerformance.reduce((sum, fse) => sum + fse.totalIssues, 0) || 0;
+
+  // Debug logging
+  console.log('🔍 Analytics Data Debug:', {
+    hasAnalyticsData: !!analyticsData,
+    summary: analyticsData?.summary,
+    fsePerformance: analyticsData?.fsePerformance,
+    totalServices,
+    avgServiceTime,
+    avgSatisfaction,
+    totalIssues
+  });
 
   if (loading) {
     return (
       <div className="flex-1 overflow-auto p-8">
         <div className="flex items-center justify-center h-64">
           <LoadingSpinner />
+        </div>
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-500">Loading FSE Analytics Data...</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Token: {token ? '✅ Available' : '❌ Missing'} | 
+            User: {user ? user.username : '❌ Not logged in'}
+          </p>
         </div>
       </div>
     );
@@ -109,11 +198,26 @@ export function LLMTrafficPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">FSE Service Analytics</h1>
             <p className="text-sm text-gray-500 mt-1">Comprehensive analysis of Field Service Engineer performance and service delivery</p>
+            {/* Debug Info */}
+            <div className="mt-2 text-xs text-gray-500">
+              Debug: Token: {token ? '✅' : '❌'} | User: {user?.username || 'None'} | Data: {analyticsData ? '✅' : '❌'}
+            </div>
           </div>
           <div className="flex items-center space-x-3">
             <Button variant="outline" size="sm" className="gap-2">
               <Filter className="w-4 h-4" />
               Filters
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                console.log('🔄 Manually reloading analytics data...');
+                loadAnalyticsData();
+              }}
+            >
+              🔄 Reload
             </Button>
             <Button 
               size="sm" 
@@ -140,8 +244,8 @@ export function LLMTrafficPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           <Card className="rounded-xl border-0 shadow-sm bg-white">
             <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-gray-900 mb-1">{analyticsData?.dailyTrends.length || 0}</div>
-              <div className="text-sm text-gray-500">Days Analyzed</div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">{analyticsData?.summary?.totalFSEs || 0}</div>
+              <div className="text-sm text-gray-500">Active FSEs</div>
             </CardContent>
           </Card>
           <Card className="rounded-xl border-0 shadow-sm bg-white">
@@ -299,13 +403,13 @@ export function LLMTrafficPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {analyticsData?.fsePerformance.map((fse, index) => (
+                  {analyticsData?.fseEfficiency.map((fse, index) => (
                     <TableRow key={index} className="border-gray-100 hover:bg-gray-50/50">
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <User className="w-4 h-4 text-blue-500" />
                           <div>
-                            <div className="font-medium">{fse.fseName}</div>
+                            <div className="font-medium text-gray-900">{fse.fseName}</div>
                           </div>
                         </div>
                       </TableCell>
@@ -315,12 +419,12 @@ export function LLMTrafficPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge className={`font-medium ${getEfficiencyColor(fse.efficiency)}`}>
-                          {fse.efficiency}%
+                        <Badge className={`font-medium ${getEfficiencyColor(100 - fse.issueRate)}`}>
+                          {Math.round(100 - fse.issueRate)}%
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="font-medium text-green-600">{fse.avgSatisfaction}/5</span>
+                        <span className="font-medium text-green-600">{fse.avgLampPerformance}/15</span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -363,7 +467,7 @@ export function LLMTrafficPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="font-medium text-green-600">{site.avgSatisfaction}/5</span>
+                        <span className="font-medium text-green-600">{site.avgSatisfaction}/15</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-sm text-gray-500">

@@ -330,7 +330,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   const refreshFSEs = useCallback(async () => {
     try {
-      const data = await loadData('fse', () => apiClient.getAllFSEs());
+      // Clear FSE cache to ensure fresh data
+      apiCache.delete('data-fse');
+      const data = await loadData('fse', () => apiClient.getAllFSEs(), true);
       setFSEs(data);
     } catch (err: any) {
       setError(`Failed to load FSEs: ${err.message}`);

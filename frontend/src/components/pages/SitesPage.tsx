@@ -26,6 +26,7 @@ import {
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV } from "../../utils/export";
 import AuditoriumManager from "../AuditoriumManager";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface Site {
   _id: string;
@@ -80,6 +81,7 @@ interface Site {
 }
 
 export function SitesPage() {
+  const { isAuthenticated, token } = useAuth();
   const [sites, setSites] = useState<Site[]>([]);
   const [filteredSites, setFilteredSites] = useState<Site[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -145,15 +147,19 @@ export function SitesPage() {
   const regions = ['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Northwest', 'Southeast', 'Southwest'];
 
   useEffect(() => {
-    checkBackendConnection();
-  }, []);
+    if (isAuthenticated && token) {
+      // Set the auth token for API requests
+      apiClient.setAuthToken(token);
+      checkBackendConnection();
+    }
+  }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (isBackendConnected) {
+    if (isBackendConnected && isAuthenticated) {
       loadSites();
       loadSiteStats();
     }
-  }, [isBackendConnected]);
+  }, [isBackendConnected, isAuthenticated]);
 
   useEffect(() => {
     filterSites();
@@ -413,6 +419,21 @@ export function SitesPage() {
       day: 'numeric'
     });
   };
+
+  // If user is not authenticated, show authentication required message
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-dark-primary mb-2">Authentication Required</h2>
+          <p className="text-dark-secondary mb-4">Please log in to access site management.</p>
+        </div>
+      </div>
+    );
+  }
 
   // If backend is not connected, show connection error
   if (isBackendConnected === false) {

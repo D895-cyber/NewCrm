@@ -18,7 +18,8 @@ import {
   Cloud,
   LogOut,
   Menu,
-  X
+  X,
+  Download
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { NotificationBar } from "./ui/notification-bar";
@@ -47,6 +48,10 @@ import { AMCContractsPage } from "./pages/AMCContractsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ServiceReportsAnalysisPage } from "./pages/ServiceReportsAnalysisPage";
 import { LLMTrafficPage } from "./pages/LLMTrafficPage";
+import { FSEServiceReportAnalytics } from "./pages/FSEServiceReportAnalytics";
+import { ServiceAssignmentPage } from "./pages/ServiceAssignmentPage";
+import { ASCOMPReportDownloader } from "./pages/ASCOMPReportDownloader";
+import { UploadOriginalPDF } from "./pages/UploadOriginalPDF";
 
 
 const mainNavItems = [
@@ -59,6 +64,7 @@ const mainNavItems = [
 
 const operationsItems = [
   { icon: Calendar, label: "Service Management" },
+  { icon: ClipboardList, label: "Service Assignments" },
   { icon: Wrench, label: "Service Recommendations" },
   { icon: Users, label: "FSE Management" },
   { icon: Package, label: "Spare Parts" },
@@ -74,7 +80,9 @@ const analyticsItems = [
   { icon: FileText, label: "Reports" },
   { icon: FileText, label: "Service Reports Analysis" },
   { icon: BarChart3, label: "FSE Analytics" },
-
+  { icon: BarChart3, label: "FSE Service Report Analytics" },
+  { icon: Download, label: "ASCOMP Report Downloader" },
+  { icon: Upload, label: "Upload Original PDF" },
 ];
 
 const otherItems = [
@@ -110,6 +118,11 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
   useEffect(() => {
     const apply = () => {
       const match = window.location.hash.match(/#\/service-reports\/([^/?]+)/);
+      console.log('🔍 Hash routing check:', {
+        currentHash: window.location.hash,
+        match: match,
+        reportId: match ? match[1] : null
+      });
       setReportIdFromHash(match ? match[1] : null);
     };
     apply();
@@ -170,10 +183,12 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <PurchaseOrdersPage />;
       case "Bulk Upload":
         return <BulkUpload />;
-              case "Service Management":
-          return <ServiceManagementPage />;
-        case "Service Recommendations":
-          return <ServiceRecommendationsPage />;
+      case "Service Management":
+        return <ServiceManagementPage />;
+      case "Service Assignments":
+        return <ServiceAssignmentPage />;
+      case "Service Recommendations":
+        return <ServiceRecommendationsPage />;
         case "FSE Management":
           return <FSEPage />;
       case "Spare Parts":
@@ -192,6 +207,12 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <ServiceReportsAnalysisPage />;
       case "FSE Analytics":
         return <LLMTrafficPage />;
+      case "FSE Service Report Analytics":
+        return <FSEServiceReportAnalytics />;
+      case "ASCOMP Report Downloader":
+        return <ASCOMPReportDownloader />;
+      case "Upload Original PDF":
+        return <UploadOriginalPDF />;
 
       case "User Management":
         return <UserManagementPage />;

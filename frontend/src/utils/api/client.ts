@@ -351,6 +351,82 @@ class ApiClient {
     return this.get('/service-visits/stats/overview');
   }
 
+  async markServiceVisitUnableToComplete(visitId: string, reason: string, category: string = 'Other') {
+    return this.put(`/service-visits/${encodeURIComponent(visitId)}/unable-to-complete`, { 
+      reason, 
+      category 
+    });
+  }
+
+  async bulkMarkUnableToComplete(visitIds: string[], reason: string, category: string = 'Other') {
+    return this.post('/service-visits/bulk/unable-to-complete', {
+      visitIds,
+      reason,
+      category
+    });
+  }
+
+  async bulkReschedule(visitIds: string[], newScheduledDate: string, reason?: string) {
+    return this.post('/service-visits/bulk/reschedule', {
+      visitIds,
+      newScheduledDate,
+      reason
+    });
+  }
+
+  async exportUnableToComplete(startDate?: string, endDate?: string, format: 'csv' | 'json' = 'csv') {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    params.append('format', format);
+    
+    return this.get(`/service-visits/export/unable-to-complete?${params.toString()}`);
+  }
+
+  async getUnableToCompleteAnalytics(startDate?: string, endDate?: string) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    return this.get(`/service-visits/stats/unable-to-complete?${params.toString()}`);
+  }
+
+  async sendWeeklyReport(startDate: string, endDate: string) {
+    return this.post('/service-visits/reports/weekly-unable-to-complete', {
+      startDate,
+      endDate
+    });
+  }
+
+  async getAuditLogs(filters?: {
+    startDate?: string;
+    endDate?: string;
+    action?: string;
+    userId?: string;
+    category?: string;
+    limit?: number;
+    skip?: number;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.action) params.append('action', filters.action);
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.skip) params.append('skip', filters.skip.toString());
+    
+    return this.get(`/service-visits/audit/unable-to-complete?${params.toString()}`);
+  }
+
+  async getAuditStats(startDate?: string, endDate?: string) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    return this.get(`/service-visits/audit/stats?${params.toString()}`);
+  }
+
   async uploadServiceVisitPhotos(visitId: string, formData: FormData) {
     console.log('API Client: Uploading photos (legacy) to visit:', visitId);
     return this.post(`/service-visits/${encodeURIComponent(visitId)}/photos`, formData);
@@ -465,6 +541,10 @@ class ApiClient {
 
   async getDetailedServiceReports(limit = 50, skip = 0) {
     return this.get(`/service-reports/analytics/detailed?limit=${limit}&skip=${skip}`);
+  }
+
+  async getFSESpecificAnalytics(fseName: string) {
+    return this.get(`/service-reports/analytics/fse/${encodeURIComponent(fseName)}`);
   }
 
   // AMC Contract methods

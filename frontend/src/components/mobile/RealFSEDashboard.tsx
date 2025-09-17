@@ -168,7 +168,7 @@ interface ServiceReport {
 }
 
 const RealFSEDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [fse, setFSE] = useState<FSE | null>(null);
   const [serviceVisits, setServiceVisits] = useState<ServiceVisit[]>([]);
   const [serviceReports, setServiceReports] = useState<ServiceReport[]>([]);
@@ -240,80 +240,9 @@ const RealFSEDashboard: React.FC = () => {
         const visits = await apiClient.getServiceVisitsByFSE(currentFSE.fseId);
         setServiceVisits(visits || []);
       } catch (visitError) {
-        console.log('Service visits not available, using demo data');
-        // Create demo service visits with current user's name
-        const demoVisits: ServiceVisit[] = [
-          {
-            _id: 'visit-1',
-            visitId: 'VISIT-001',
-            fseId: currentFSE.fseId,
-            fseName: currentFSE.name,
-            siteId: 'SITE-001',
-            siteName: 'Downtown Office Building',
-            projectorSerial: 'PROJ-001',
-            visitType: 'Scheduled Maintenance',
-            amcServiceInterval: 'First Service',
-            scheduledDate: new Date().toISOString(),
-            actualDate: new Date().toISOString(),
-            startTime: '09:00',
-            endTime: '11:30',
-            status: 'Completed',
-            priority: 'Medium',
-            description: 'Routine maintenance check',
-            workPerformed: 'Cleaned lens, checked alignment, updated firmware',
-            partsUsed: [
-              {
-                partNumber: 'LENS-001',
-                partName: 'Replacement Lens',
-                quantity: 1,
-                cost: 150.00
-              }
-            ],
-            totalCost: 150.00,
-            customerFeedback: {
-              rating: 5,
-              comments: 'Excellent service, very professional'
-            },
-            photos: [
-              {
-                filename: 'before_service_001.jpg',
-                originalName: 'before_service_001.jpg',
-                cloudUrl: 'https://res.cloudinary.com/demo/image/upload/v1234567890/before_service_001.jpg',
-                publicId: 'before_service_001',
-                uploadedAt: new Date().toISOString(),
-                description: 'Before service photo',
-                category: 'Before Service',
-                fileSize: 1024000,
-                mimeType: 'image/jpeg'
-              }
-            ],
-            issuesFound: [
-              {
-                description: 'Minor dust accumulation on lens',
-                severity: 'Low',
-                resolved: true
-              }
-            ],
-            recommendations: [
-              {
-                description: 'Schedule next maintenance in 6 months',
-                priority: 'Medium'
-              }
-            ],
-            nextVisitDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
-            travelDistance: 15.5,
-            travelTime: 25,
-            expenses: {
-              fuel: 25.00,
-              food: 15.00,
-              accommodation: 0,
-              other: 0
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        setServiceVisits(demoVisits);
+        console.log('Service visits not available, showing empty state');
+        // Show empty state instead of demo data for new FSE users
+        setServiceVisits([]);
       }
 
       // Load service reports
@@ -321,64 +250,9 @@ const RealFSEDashboard: React.FC = () => {
         const reports = await apiClient.getAllServiceReports();
         setServiceReports(reports || []);
       } catch (reportError) {
-        console.log('Service reports not available, using demo data');
-        // Create demo service reports with current user's name
-        const demoReports: ServiceReport[] = [
-          {
-            _id: 'report-1',
-            reportId: 'RPT-001',
-            visitId: 'VISIT-001',
-            fseId: currentFSE.fseId,
-            fseName: currentFSE.name,
-            siteId: 'SITE-001',
-            siteName: 'Downtown Office Building',
-            projectorSerial: 'PROJ-001',
-            reportDate: new Date().toISOString(),
-            serviceType: 'Scheduled Maintenance',
-            workPerformed: 'Cleaned lens, checked alignment, updated firmware',
-            partsUsed: [
-              {
-                partNumber: 'LENS-001',
-                partName: 'Replacement Lens',
-                quantity: 1,
-                cost: 150.00
-              }
-            ],
-            totalCost: 150.00,
-            customerFeedback: {
-              rating: 5,
-              comments: 'Excellent service, very professional'
-            },
-            photos: [
-              {
-                filename: 'before_service_001.jpg',
-                originalName: 'before_service_001.jpg',
-                cloudUrl: 'https://res.cloudinary.com/demo/image/upload/v1234567890/before_service_001.jpg',
-                publicId: 'before_service_001',
-                uploadedAt: new Date().toISOString(),
-                description: 'Before service photo',
-                category: 'Before Service'
-              }
-            ],
-            issuesFound: [
-              {
-                description: 'Minor dust accumulation on lens',
-                severity: 'Low',
-                resolved: true
-              }
-            ],
-            recommendations: [
-              {
-                description: 'Schedule next maintenance in 6 months',
-                priority: 'Medium'
-              }
-            ],
-            nextVisitDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-        setServiceReports(demoReports);
+        console.log('Service reports not available, showing empty state');
+        // Show empty state instead of demo data for new FSE users
+        setServiceReports([]);
       }
 
       // Calculate stats
@@ -469,37 +343,43 @@ const RealFSEDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-dark-bg" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Wrench className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">FSE Portal</h1>
-                <p className="text-sm text-gray-600">Field Service Engineer Dashboard</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleRefresh}
-                className="p-2 text-gray-400 hover:text-gray-600"
-                title="Refresh Data"
-              >
-                <RefreshCw className="h-5 w-5" />
-              </button>
-              <div className="flex items-center space-x-2">
-                <User className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{fse?.name}</span>
-              </div>
-            </div>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-dark-bg border-b border-dark-color p-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center">
+            <Wrench className="w-4 h-4 text-white" />
           </div>
+          <div>
+            <h1 className="text-lg font-bold text-dark-primary">FSE Portal</h1>
+            <p className="text-xs text-dark-secondary">Field Service Engineer Dashboard</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleRefresh}
+            className="p-2 text-dark-secondary hover:text-dark-primary transition-colors"
+            title="Refresh Data"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </button>
+          <div className="flex items-center space-x-2">
+            <User className="h-4 w-4 text-dark-secondary" />
+            <span className="text-sm text-dark-secondary">{fse?.name}</span>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center space-x-2 px-3 py-2 text-sm text-dark-secondary hover:text-dark-primary hover:bg-dark-color rounded-md transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b">
+      <div className="bg-dark-bg border-b border-dark-color pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {[
@@ -511,10 +391,10 @@ const RealFSEDashboard: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-dark-secondary hover:text-dark-primary hover:border-dark-color'
                 }`}
               >
                 <tab.icon className="h-4 w-4 inline mr-2" />
@@ -526,82 +406,83 @@ const RealFSEDashboard: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-1 overflow-y-auto pt-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6 hover:border-blue-500/50 transition-colors">
                 <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600" />
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Calendar className="h-6 w-6 text-blue-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Visits</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.totalVisits}</p>
+                    <p className="text-sm font-medium text-dark-secondary">Total Visits</p>
+                    <p className="text-2xl font-semibold text-dark-primary">{stats.totalVisits}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6 hover:border-green-500/50 transition-colors">
                 <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <CheckCircle className="h-6 w-6 text-green-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.completedVisits}</p>
+                    <p className="text-sm font-medium text-dark-secondary">Completed</p>
+                    <p className="text-2xl font-semibold text-dark-primary">{stats.completedVisits}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6 hover:border-yellow-500/50 transition-colors">
                 <div className="flex items-center">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Clock className="h-6 w-6 text-yellow-600" />
+                  <div className="p-2 bg-yellow-500/20 rounded-lg">
+                    <Clock className="h-6 w-6 text-yellow-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.pendingVisits}</p>
+                    <p className="text-sm font-medium text-dark-secondary">Pending</p>
+                    <p className="text-2xl font-semibold text-dark-primary">{stats.pendingVisits}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color p-6 hover:border-purple-500/50 transition-colors">
                 <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Camera className="h-6 w-6 text-purple-600" />
+                  <div className="p-2 bg-purple-500/20 rounded-lg">
+                    <Camera className="h-6 w-6 text-purple-400" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Photos</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.totalPhotos}</p>
+                    <p className="text-sm font-medium text-dark-secondary">Photos</p>
+                    <p className="text-2xl font-semibold text-dark-primary">{stats.totalPhotos}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
+            <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color">
+              <div className="px-6 py-4 border-b border-dark-color">
+                <h3 className="text-lg font-medium text-dark-primary">Recent Activity</h3>
               </div>
               <div className="p-6">
                 {serviceVisits.slice(0, 5).map((visit) => (
-                  <div key={visit._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                  <div key={visit._id} className="flex items-center justify-between py-3 border-b border-dark-color last:border-b-0">
                     <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                        <Calendar className="h-4 w-4 text-blue-600" />
+                      <div className="p-2 bg-blue-500/20 rounded-lg mr-3">
+                        <Calendar className="h-4 w-4 text-blue-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{visit.siteName}</p>
-                        <p className="text-xs text-gray-500">{visit.visitType}</p>
+                        <p className="text-sm font-medium text-dark-primary">{visit.siteName}</p>
+                        <p className="text-xs text-dark-secondary">{visit.visitType}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(visit.status)}`}>
                         {visit.status}
                       </span>
-                      <span className="text-xs text-gray-500">{formatDate(visit.scheduledDate)}</span>
+                      <span className="text-xs text-dark-secondary">{formatDate(visit.scheduledDate)}</span>
                     </div>
                   </div>
                 ))}
@@ -613,37 +494,37 @@ const RealFSEDashboard: React.FC = () => {
         {activeTab === 'visits' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Service Visits</h2>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+              <h2 className="text-2xl font-bold text-dark-primary">Service Visits</h2>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center transition-colors">
                 <Plus className="h-4 w-4 mr-2" />
                 New Visit
               </button>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-dark-card rounded-lg shadow-lg border border-dark-color overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-dark-color">
+                  <thead className="bg-dark-color">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Site</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Priority</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-secondary uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-dark-card divide-y divide-dark-color">
                     {serviceVisits.map((visit) => (
-                      <tr key={visit._id} className="hover:bg-gray-50">
+                      <tr key={visit._id} className="hover:bg-dark-color/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{visit.siteName}</div>
-                            <div className="text-sm text-gray-500">{visit.projectorSerial}</div>
+                            <div className="text-sm font-medium text-dark-primary">{visit.siteName}</div>
+                            <div className="text-sm text-dark-secondary">{visit.projectorSerial}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{visit.visitType}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(visit.scheduledDate)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-primary">{visit.visitType}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-primary">{formatDate(visit.scheduledDate)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(visit.status)}`}>
                             {visit.status}
@@ -656,13 +537,13 @@ const RealFSEDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">
+                            <button className="text-blue-400 hover:text-blue-300 transition-colors">
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900">
+                            <button className="text-green-400 hover:text-green-300 transition-colors">
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
+                            <button className="text-red-400 hover:text-red-300 transition-colors">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
@@ -820,6 +701,7 @@ const RealFSEDashboard: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

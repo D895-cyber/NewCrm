@@ -229,7 +229,11 @@ const ServiceReportSchema = new mongoose.Schema({
     publicId: String,
     description: String,
     category: String,
-    beforeAfter: { type: String, enum: ['BEFORE', 'AFTER'], default: 'BEFORE' }
+    beforeAfter: { 
+      type: String, 
+      enum: ['BEFORE', 'AFTER', 'DURING', 'Before Service', 'During Service', 'After Service', 'Issue Found', 'Parts Used', 'Spare Parts', 'RMA', 'Service Photos', 'Other'], 
+      default: 'BEFORE' 
+    }
   }],
   
   // Signatures
@@ -240,6 +244,18 @@ const ServiceReportSchema = new mongoose.Schema({
   
   // Additional Notes
   notes: { type: String, trim: true },
+  
+  // Original PDF Report (uploaded by FSE)
+  originalPdfReport: {
+    filename: String,
+    originalName: String,
+    cloudUrl: String,
+    publicId: String,
+    uploadedAt: Date,
+    uploadedBy: String, // FSE ID or name
+    fileSize: Number,
+    mimeType: String
+  },
   
   // Metadata
   metadata: { type: [KeyValueSchema], default: [] }

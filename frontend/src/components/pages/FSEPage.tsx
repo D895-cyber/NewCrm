@@ -10,13 +10,16 @@ import {
   Eye,
   Download,
   FileText,
+  User,
   Users,
   Wrench,
   Star,
   Briefcase,
   Shield,
   X,
-  Loader2
+  Loader2,
+  MapPin,
+  Lightbulb
 } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -24,6 +27,7 @@ import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { useData } from "../../contexts/DataContext";
 import { apiClient } from "../../utils/api/client";
+import { exportServiceReportToPDF } from '../../utils/export';
 
 interface FSE {
   _id: string;
@@ -68,7 +72,7 @@ interface FSEMetrics {
 }
 
 export function FSEPage() {
-  const { fses, services, serviceVisits } = useData();
+  const { fses, services, serviceVisits, refreshData } = useData();
   const [filteredFSEs, setFilteredFSEs] = useState<FSE[]>([]);
   const [selectedFSE, setSelectedFSE] = useState<FSE | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -200,6 +204,9 @@ export function FSEPage() {
 
       await apiClient.createFSE(newFSE);
       
+      // Refresh FSE data to show the new FSE in dropdowns
+      await refreshData();
+      
       setShowAddModal(false);
       setNewFSE({
         name: "",
@@ -251,6 +258,9 @@ export function FSEPage() {
       
       const result = await apiClient.updateFSE(selectedFSE._id, selectedFSE);
       console.log('Update result:', result);
+      
+      // Refresh FSE data to show updated information in dropdowns
+      await refreshData();
       
       setShowEditModal(false);
       setSelectedFSE(null);
@@ -737,125 +747,146 @@ export function FSEPage() {
 
       {/* FSE Metrics Modal */}
       {showMetricsModal && selectedFSE && selectedFSEMetrics && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-dark-bg border-2 border-dark-color rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-dark-primary">
-                Performance Metrics - {selectedFSE.name}
-              </h2>
-              <button 
-                onClick={() => setShowMetricsModal(false)}
-                className="text-dark-secondary hover:text-dark-primary"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto shadow-2xl">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Performance Metrics</h2>
+                  <p className="text-green-100 text-sm mt-1">{selectedFSE.name} - Detailed Performance Analysis</p>
+                </div>
+                <button 
+                  onClick={() => setShowMetricsModal(false)}
+                  className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white hover:bg-opacity-20 rounded-lg"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="dark-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Total Services</CardTitle>
-                  <Wrench className="h-4 w-4 text-blue-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{selectedFSEMetrics.totalServices}</div>
-                  <p className="text-xs text-dark-secondary">
-                    {selectedFSEMetrics.completedServices} completed
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Services</CardTitle>
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Wrench className="h-4 w-4 text-blue-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-900">{selectedFSEMetrics.totalServices}</div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {selectedFSEMetrics.completedServices} completed
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card className="dark-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Rating</CardTitle>
-                  <Star className="h-4 w-4 text-yellow-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{selectedFSEMetrics.averageRating}/5.0</div>
-                  <p className="text-xs text-dark-secondary">
-                    Customer satisfaction
-                  </p>
-                </CardContent>
-              </Card>
+                <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Average Rating</CardTitle>
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <Star className="h-4 w-4 text-yellow-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-900">{selectedFSEMetrics.averageRating}/5.0</div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Customer satisfaction
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card className="dark-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Total Hours</CardTitle>
-                  <Clock className="h-4 w-4 text-green-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{selectedFSEMetrics.totalHours}h</div>
-                  <p className="text-xs text-dark-secondary">
-                    Service hours logged
-                  </p>
-                </CardContent>
-              </Card>
+                <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Hours</CardTitle>
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Clock className="h-4 w-4 text-green-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-900">{selectedFSEMetrics.totalHours}h</div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Service hours logged
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card className="dark-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Recommendations</CardTitle>
-                  <div className="h-4 w-4 text-purple-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{selectedFSEMetrics.recommendations}</div>
-                  <p className="text-xs text-dark-secondary">
-                    Parts & services suggested
-                  </p>
-                </CardContent>
-              </Card>
+                <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Recommendations</CardTitle>
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Lightbulb className="h-4 w-4 text-purple-600" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-900">{selectedFSEMetrics.recommendations}</div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Parts & services suggested
+                    </p>
+                  </CardContent>
+                </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="dark-card">
-                <CardHeader>
-                  <CardTitle className="text-dark-primary">Territories</CardTitle>
-                  <CardDescription className="text-dark-secondary">Assigned service areas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedFSEMetrics.territories.map((territory, index) => (
-                      <Badge key={index} className={`${getTerritoryColor(territory)} text-white`}>
-                        {territory}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-white border border-gray-200 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-gray-900 flex items-center">
+                      <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+                      Territories
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">Assigned service areas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFSEMetrics.territories.map((territory, index) => (
+                        <Badge key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {territory}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="dark-card">
-                <CardHeader>
-                  <CardTitle className="text-dark-primary">Specializations</CardTitle>
-                  <CardDescription className="text-dark-secondary">Technical expertise areas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedFSEMetrics.specializations.map((spec, index) => (
-                      <Badge key={index} className="bg-indigo-600 text-white">
-                        {spec}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <Card className="bg-white border border-gray-200 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-gray-900 flex items-center">
+                      <Wrench className="w-5 h-5 mr-2 text-green-600" />
+                      Specializations
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">Technical expertise areas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFSEMetrics.specializations.map((spec, index) => (
+                        <Badge key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {spec}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <div className="flex space-x-3 mt-6 pt-6 border-t border-dark-color">
-              <button 
-                onClick={() => setShowMetricsModal(false)}
-                className="flex-1 dark-button-secondary"
-              >
-                Close
-              </button>
-              <button 
-                onClick={() => {
-                  setShowMetricsModal(false);
-                  setSelectedFSE(selectedFSE);
-                  setShowDetailModal(true);
-                }}
-                className="flex-1 dark-button-primary"
-              >
-                View Full Profile
-              </button>
+              <div className="flex space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <button 
+                  onClick={() => setShowMetricsModal(false)}
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowMetricsModal(false);
+                    setSelectedFSE(selectedFSE);
+                    setShowDetailModal(true);
+                  }}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  View Full Profile
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -863,93 +894,132 @@ export function FSEPage() {
 
       {/* Edit FSE Modal */}
       {showEditModal && selectedFSE && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-dark-bg border-2 border-dark-color rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-dark-primary">Edit FSE</h2>
-              <button 
-                onClick={() => setShowEditModal(false)}
-                className="text-dark-secondary hover:text-dark-primary"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto shadow-2xl">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Edit FSE Details</h2>
+                  <p className="text-blue-100 text-sm mt-1">Update Field Service Engineer information</p>
+                </div>
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white hover:bg-opacity-20 rounded-lg"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-900 bg-opacity-30 rounded-lg border border-red-600">
-                <p className="text-red-400 text-sm">{error}</p>
-              </div>
-            )}
+            {/* Content */}
+            <div className="p-6">
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <X className="h-5 w-5 text-red-400" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Name *</label>
-                  <Input
-                    value={selectedFSE.name}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, name: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter full name"
-                  />
+              <div className="space-y-6">
+                {/* Basic Information Section */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <User className="w-5 h-5 mr-2 text-blue-600" />
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                      <Input
+                        value={selectedFSE.name}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, name: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                      <Input
+                        type="email"
+                        value={selectedFSE.email}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, email: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+                      <Input
+                        value={selectedFSE.phone}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, phone: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID *</label>
+                      <Input
+                        value={selectedFSE.employeeId}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, employeeId: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Enter employee ID"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Email *</label>
-                  <Input
-                    type="email"
-                    value={selectedFSE.email}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, email: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter email address"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Phone *</label>
-                  <Input
-                    value={selectedFSE.phone}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, phone: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter phone number"
-                  />
+                {/* Professional Information Section */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Wrench className="w-5 h-5 mr-2 text-green-600" />
+                    Professional Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+                      <select
+                        value={selectedFSE.designation}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, designation: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                      >
+                        <option value="Field Service Engineer">Field Service Engineer</option>
+                        <option value="Senior FSE">Senior FSE</option>
+                        <option value="Lead FSE">Lead FSE</option>
+                        <option value="Technical Specialist">Technical Specialist</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Experience (Years)</label>
+                      <Input
+                        type="number"
+                        value={selectedFSE.experience}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, experience: Number(e.target.value)})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={selectedFSE.status}
+                        onChange={(e) => setSelectedFSE({...selectedFSE, status: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="On Leave">On Leave</option>
+                        <option value="On Duty">On Duty</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Employee ID *</label>
-                  <Input
-                    value={selectedFSE.employeeId}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, employeeId: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter employee ID"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Designation</label>
-                  <select
-                    value={selectedFSE.designation}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, designation: e.target.value})}
-                    className="mt-1 w-full px-3 py-2 bg-dark-card border border-dark-color rounded-lg text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
-                  >
-                    <option value="Field Service Engineer">Field Service Engineer</option>
-                    <option value="Senior FSE">Senior FSE</option>
-                    <option value="Lead FSE">Lead FSE</option>
-                    <option value="Technical Specialist">Technical Specialist</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Experience (Years)</label>
-                  <Input
-                    type="number"
-                    value={selectedFSE.experience}
-                    onChange={(e) => setSelectedFSE({...selectedFSE, experience: Number(e.target.value)})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
 
               <div>
                 <label className="text-sm font-medium text-dark-secondary">Status</label>
@@ -1027,10 +1097,10 @@ export function FSEPage() {
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Supervisor Name</label>
                   <Input
-                    value={selectedFSE.supervisor.name}
+                    value={selectedFSE.supervisor?.name || ''}
                     onChange={(e) => setSelectedFSE({
                       ...selectedFSE,
-                      supervisor: {...selectedFSE.supervisor, name: e.target.value}
+                      supervisor: {...(selectedFSE.supervisor || {}), name: e.target.value}
                     })}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Supervisor name"
@@ -1040,10 +1110,10 @@ export function FSEPage() {
                   <label className="text-sm font-medium text-dark-secondary">Supervisor Email</label>
                   <Input
                     type="email"
-                    value={selectedFSE.supervisor.email}
+                    value={selectedFSE.supervisor?.email || ''}
                     onChange={(e) => setSelectedFSE({
                       ...selectedFSE,
-                      supervisor: {...selectedFSE.supervisor, email: e.target.value}
+                      supervisor: {...(selectedFSE.supervisor || {}), email: e.target.value}
                     })}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Supervisor email"
@@ -1055,10 +1125,10 @@ export function FSEPage() {
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Emergency Contact Name</label>
                   <Input
-                    value={selectedFSE.emergencyContact.name}
+                    value={selectedFSE.emergencyContact?.name || ''}
                     onChange={(e) => setSelectedFSE({
                       ...selectedFSE,
-                      emergencyContact: {...selectedFSE.emergencyContact, name: e.target.value}
+                      emergencyContact: {...(selectedFSE.emergencyContact || {}), name: e.target.value}
                     })}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Emergency contact name"
@@ -1067,10 +1137,10 @@ export function FSEPage() {
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Emergency Contact Phone</label>
                   <Input
-                    value={selectedFSE.emergencyContact.phone}
+                    value={selectedFSE.emergencyContact?.phone || ''}
                     onChange={(e) => setSelectedFSE({
                       ...selectedFSE,
-                      emergencyContact: {...selectedFSE.emergencyContact, phone: e.target.value}
+                      emergencyContact: {...(selectedFSE.emergencyContact || {}), phone: e.target.value}
                     })}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Emergency contact phone"
@@ -1081,10 +1151,10 @@ export function FSEPage() {
               <div>
                 <label className="text-sm font-medium text-dark-secondary">Emergency Contact Relationship</label>
                 <Input
-                  value={selectedFSE.emergencyContact.relationship}
+                  value={selectedFSE.emergencyContact?.relationship || ''}
                   onChange={(e) => setSelectedFSE({
                     ...selectedFSE,
-                    emergencyContact: {...selectedFSE.emergencyContact, relationship: e.target.value}
+                    emergencyContact: {...(selectedFSE.emergencyContact || {}), relationship: e.target.value}
                   })}
                   className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                   placeholder="e.g., Spouse, Parent, Sibling"
@@ -1092,27 +1162,28 @@ export function FSEPage() {
               </div>
             </div>
 
-            <div className="flex space-x-3 mt-6 pt-6 border-t border-dark-color">
-              <button 
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 dark-button-secondary"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUpdateFSE}
-                disabled={isLoading || !selectedFSE.name || !selectedFSE.email || !selectedFSE.phone || !selectedFSE.employeeId}
-                className="flex-1 dark-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update FSE'
-                )}
-              </button>
+              <div className="flex space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleUpdateFSE}
+                  disabled={isLoading || !selectedFSE.name || !selectedFSE.email || !selectedFSE.phone || !selectedFSE.employeeId}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update FSE'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1233,13 +1304,33 @@ export function FSEPage() {
                                 variant="outline"
                                 size="sm"
                                 className="dark-button-primary"
-                                onClick={() => {
-                                  // Export PDF functionality
-                                  (window as any).showToast?.({
-                                    type: 'success',
-                                    title: 'Report Export',
-                                    message: 'PDF export functionality will be implemented here.'
-                                  });
+                                onClick={async () => {
+                                  try {
+                                    console.log('🔄 Fetching complete report data for comprehensive PDF generation...');
+                                    const full = await apiClient.getServiceReport(report._id);
+                                    console.log('📊 Full report data received:', {
+                                      hasSections: !!full.sections,
+                                      sectionsKeys: full.sections ? Object.keys(full.sections) : 'No sections',
+                                      hasImageEvaluation: !!full.imageEvaluation,
+                                      hasObservations: !!full.observations,
+                                      hasPhotos: !!full.photos,
+                                      reportKeys: Object.keys(full)
+                                    });
+                                    
+                                    await exportServiceReportToPDF(full);
+                                    (window as any).showToast?.({
+                                      type: 'success',
+                                      title: 'Comprehensive Report Downloaded',
+                                      message: 'Complete ASCOMP service report with all sections has been downloaded as PDF.'
+                                    });
+                                  } catch (e) {
+                                    console.error('Export failed', e);
+                                    (window as any).showToast?.({
+                                      type: 'error', 
+                                      title: 'Export Failed', 
+                                      message: 'Could not download comprehensive report. Please try again.' 
+                                    });
+                                  }
                                 }}
                               >
                                 <Download className="w-4 h-4 mr-1" />

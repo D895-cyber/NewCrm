@@ -18,7 +18,8 @@ import {
   Download,
   PlayCircle,
   CheckCircle,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
@@ -26,7 +27,7 @@ import { apiClient } from '../../utils/api/client';
 import { exportServiceReportToPDF } from '../../utils/export';
 
 export function FSEMobileApp() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { serviceVisits } = useData();
   const [currentView, setCurrentView] = useState('dashboard');
   const [showServiceReport, setShowServiceReport] = useState(false);
@@ -126,6 +127,19 @@ export function FSEMobileApp() {
         throw new Error('Authentication required. Please log in again.');
       }
       
+      // Validate required fields before submission
+      const requiredFields = ['reportNumber', 'siteName', 'projectorSerial', 'projectorModel', 'brand'];
+      const missingFields = requiredFields.filter(field => !data[field] || data[field].trim() === '');
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Ensure engineer information is present
+      if (!data.engineer?.name || data.engineer.name.trim() === '') {
+        throw new Error('Engineer name is required');
+      }
+      
       // Submit to backend using the new API
       const response = await apiClient.createServiceReport(data);
       
@@ -152,8 +166,14 @@ export function FSEMobileApp() {
         errorMessage = 'Please log in again to submit the report.';
       } else if (err.message?.includes('Invalid or expired token')) {
         errorMessage = 'Your session has expired. Please log in again.';
+      } else if (err.message?.includes('Missing required fields')) {
+        errorMessage = err.message;
+      } else if (err.message?.includes('Engineer name is required')) {
+        errorMessage = err.message;
       } else if (err.message?.includes('projectorModel')) {
         errorMessage = 'Missing projector information. Please check your data.';
+      } else if (err.message?.includes('Validation failed')) {
+        errorMessage = err.message;
       }
       
       setError(errorMessage);
@@ -200,6 +220,415 @@ export function FSEMobileApp() {
   const recentReports = visits
     .sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime())
     .slice(0, 5);
+
+  // Render content based on current view
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return renderDashboardView();
+      case 'schedule':
+        return renderScheduleView();
+      case 'reports':
+        return renderReportsView();
+      case 'profile':
+        return renderProfileView();
+      default:
+        return renderDashboardView();
+    }
+  };
+
+  // Dashboard View
+  const renderDashboardView = () => (
+    <>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <Button 
+              onClick={() => setShowWorkflow(true)}
+              className="h-20 flex-col space-y-2 bg-green-600 hover:bg-green-700"
+            >
+              <PlayCircle className="h-6 w-6" />
+              <span>Start Workflow</span>
+            </Button>
+            <Button 
+              onClick={() => setShowServiceReport(true)}
+              className="h-20 flex-col space-y-2"
+            >
+              <FileText className="h-6 w-6" />
+              <span>Quick Report</span>
+            </Button>
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="h-5 w-5 text-blue-600" />
+              <span className="font-medium text-blue-900">Recommended Workflow</span>
+            </div>
+            <p className="text-sm text-blue-700">
+              Use the step-by-step workflow for complete service process: 
+              Service → Photos → Report → Signature
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Today's Schedule */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Today's Schedule ({todaysVisits.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {todaysVisits.length > 0 ? (
+            <div className="space-y-3">
+              {todaysVisits.map((visit) => (
+                <div key={visit._id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">Site Visit - {visit.siteName}</p>
+                      <p className="text-sm text-gray-600">{visit.visitType}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">
+                      {visit.startTime ? visit.startTime : 'TBD'}
+                    </p>
+                    <Badge variant="outline" className={`text-xs ${
+                      visit.status === 'Completed' ? 'text-green-600 border-green-200' :
+                      visit.status === 'In Progress' ? 'text-blue-600 border-blue-200' :
+                      'text-yellow-600 border-yellow-200'
+                    }`}>
+                      {visit.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <p>No visits scheduled for today</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">This Week</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-blue-600">{totalVisits}</p>
+              <p className="text-sm text-gray-600">Total Visits</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-600">{completedVisits}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-yellow-600">{pendingVisits + inProgressVisits}</p>
+              <p className="text-sm text-gray-600">Pending</p>
+            </div>
+          </div>
+          {averageRating > 0 && (
+            <div className="mt-4 pt-4 border-t text-center">
+              <p className="text-sm text-gray-600">Average Rating</p>
+              <p className="text-2xl font-bold text-purple-600">{averageRating.toFixed(1)} ⭐</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+
+  // Schedule View
+  const renderScheduleView = () => {
+    // Get upcoming visits (next 7 days)
+    const upcomingVisits = visits
+      .filter(visit => {
+        const visitDate = new Date(visit.scheduledDate || visit.actualDate);
+        const today = new Date();
+        const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return visitDate >= today && visitDate <= nextWeek;
+      })
+      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+
+    return (
+      <>
+        {/* Upcoming Schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Upcoming Schedule ({upcomingVisits.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingVisits.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingVisits.map((visit) => (
+                  <div key={visit._id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">{visit.siteName}</p>
+                          <p className="text-sm text-gray-600">{visit.visitType}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={`text-xs ${
+                        visit.status === 'Completed' ? 'text-green-600 border-green-200' :
+                        visit.status === 'In Progress' ? 'text-blue-600 border-blue-200' :
+                        'text-yellow-600 border-yellow-200'
+                      }`}>
+                        {visit.status}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div>
+                        <p><strong>Date:</strong> {new Date(visit.scheduledDate).toLocaleDateString()}</p>
+                        <p><strong>Time:</strong> {visit.startTime || 'TBD'}</p>
+                      </div>
+                      <div>
+                        <p><strong>Projector:</strong> {visit.projectorSerial}</p>
+                        <p><strong>Priority:</strong> {visit.priority}</p>
+                      </div>
+                    </div>
+                    {visit.description && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700">
+                        {visit.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p>No upcoming visits scheduled</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Schedule Statistics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Schedule Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">{todaysVisits.length}</p>
+                <p className="text-sm text-gray-600">Today</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">{upcomingVisits.length}</p>
+                <p className="text-sm text-gray-600">This Week</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </>
+    );
+  };
+
+  // Reports View
+  const renderReportsView = () => (
+    <>
+      {/* Recent Reports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Reports ({recentReports.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentReports.length > 0 ? (
+            <div className="space-y-3">
+              {recentReports.map((visit) => (
+                <div key={visit._id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">{visit.visitId}</p>
+                      <p className="text-sm text-gray-600">{visit.siteName} - {visit.visitType}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(visit.scheduledDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="outline" className={`text-xs ${
+                      visit.status === 'Completed' ? 'text-green-600 border-green-200' :
+                      visit.status === 'In Progress' ? 'text-blue-600 border-blue-200' :
+                      'text-yellow-600 border-yellow-200'
+                    }`}>
+                      {visit.status}
+                    </Badge>
+                    {visit.customerFeedback?.rating && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        ⭐ {visit.customerFeedback.rating}/5
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <p>No recent reports</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Report Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Report Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="p-4 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{completedVisits}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">{recentReports.length}</p>
+              <p className="text-sm text-gray-600">Total Reports</p>
+            </div>
+          </div>
+          {averageRating > 0 && (
+            <div className="mt-4 pt-4 border-t text-center">
+              <p className="text-sm text-gray-600">Average Customer Rating</p>
+              <p className="text-2xl font-bold text-purple-600">{averageRating.toFixed(1)} ⭐</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+
+  // Profile View
+  const renderProfileView = () => (
+    <>
+      {/* User Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Profile Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {user?.profile?.firstName && user?.profile?.lastName 
+                    ? `${user.profile.firstName} ${user.profile.lastName}`
+                    : user?.username || 'FSE User'
+                  }
+                </h3>
+                <p className="text-sm text-gray-600">Field Service Engineer</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+              <div>
+                <p className="text-sm font-medium text-gray-700">FSE ID</p>
+                <p className="text-sm text-gray-900">
+                  {user?.fseId || user?.fseDetails?.fseId || 'Not Assigned'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Phone</p>
+                <p className="text-sm text-gray-900">{user?.profile?.phone || 'N/A'}</p>
+              </div>
+            </div>
+            {user?.fseDetails?.employeeId && (
+              <div className="pt-4 border-t">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Employee ID</p>
+                    <p className="text-sm text-gray-900">{user.fseDetails.employeeId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Designation</p>
+                    <p className="text-sm text-gray-900">{user.fseDetails.designation || 'Field Service Engineer'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Performance Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Performance Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">{totalVisits}</p>
+              <p className="text-sm text-gray-600">Total Services</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{completedVisits}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+          </div>
+          {averageRating > 0 && (
+            <div className="mt-4 pt-4 border-t text-center">
+              <p className="text-sm text-gray-600">Customer Satisfaction</p>
+              <p className="text-2xl font-bold text-purple-600">{averageRating.toFixed(1)} ⭐</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Account Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => {/* Add settings functionality */}}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => {/* Add help functionality */}}
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Notifications
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-red-600 hover:text-red-700"
+              onClick={logout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
 
   if (isLoading) {
     return (
@@ -276,19 +705,21 @@ export function FSEMobileApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-dark-bg" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
-      <div className="bg-white border-b p-4">
+      <div className="bg-dark-bg border-b border-dark-color p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Wrench className="h-8 w-8 text-blue-600" />
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center">
+              <Wrench className="h-4 w-4 text-white" />
+            </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">ProjectorCare FSE</h1>
-              <p className="text-sm text-gray-600">Welcome, {user?.profile?.firstName || user?.username}</p>
+              <h1 className="text-xl font-bold text-dark-primary">ProjectorCare FSE</h1>
+              <p className="text-sm text-dark-secondary">Welcome, {user?.profile?.firstName || user?.username}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" onClick={loadFSEReports}>
+            <Button variant="ghost" size="sm" onClick={loadFSEReports} className="text-dark-secondary hover:text-dark-primary">
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button 
@@ -296,165 +727,36 @@ export function FSEMobileApp() {
               size="sm"
               onClick={() => window.location.hash = '#fse-desktop'}
               title="Switch to Desktop Dashboard"
+              className="text-dark-secondary hover:text-dark-primary"
             >
               <Wrench className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="text-dark-secondary hover:text-dark-primary">
               <Bell className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="text-dark-secondary hover:text-dark-primary">
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={logout}
+              title="Logout"
+              className="text-dark-secondary hover:text-dark-primary"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-4 space-y-6">
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                onClick={() => setShowWorkflow(true)}
-                className="h-20 flex-col space-y-2 bg-green-600 hover:bg-green-700"
-              >
-                <PlayCircle className="h-6 w-6" />
-                <span>Start Workflow</span>
-              </Button>
-              <Button 
-                onClick={() => setShowServiceReport(true)}
-                className="h-20 flex-col space-y-2"
-              >
-                <FileText className="h-6 w-6" />
-                <span>Quick Report</span>
-              </Button>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-blue-900">Recommended Workflow</span>
-              </div>
-              <p className="text-sm text-blue-700">
-                Use the step-by-step workflow for complete service process: 
-                Service → Photos → Report → Signature
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Today's Schedule */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Today's Schedule ({todaysVisits.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {todaysVisits.length > 0 ? (
-              <div className="space-y-3">
-                {todaysVisits.map((visit) => (
-                  <div key={visit._id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">Site Visit - {visit.siteName}</p>
-                        <p className="text-sm text-gray-600">{visit.visitType}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {visit.startTime ? visit.startTime : 'TBD'}
-                      </p>
-                      <Badge variant="outline" className={`text-xs ${
-                        visit.status === 'Completed' ? 'text-green-600 border-green-200' :
-                        visit.status === 'In Progress' ? 'text-blue-600 border-blue-200' :
-                        'text-yellow-600 border-yellow-200'
-                      }`}>
-                        {visit.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>No visits scheduled for today</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Reports */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Reports ({recentReports.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentReports.length > 0 ? (
-              <div className="space-y-3">
-                {recentReports.map((visit) => (
-                  <div key={visit._id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">{visit.visitId}</p>
-                        <p className="text-sm text-gray-600">{visit.siteName} - {visit.visitType}</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className={`text-xs ${
-                      visit.status === 'Completed' ? 'text-green-600 border-green-200' :
-                      visit.status === 'In Progress' ? 'text-blue-600 border-blue-200' :
-                      'text-yellow-600 border-yellow-200'
-                    }`}>
-                      {visit.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>No recent reports</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">This Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-blue-600">{totalVisits}</p>
-                <p className="text-sm text-gray-600">Total Visits</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-600">{completedVisits}</p>
-                <p className="text-sm text-gray-600">Completed</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-yellow-600">{pendingVisits + inProgressVisits}</p>
-                <p className="text-sm text-gray-600">Pending</p>
-              </div>
-            </div>
-            {averageRating > 0 && (
-              <div className="mt-4 pt-4 border-t text-center">
-                <p className="text-sm text-gray-600">Average Rating</p>
-                <p className="text-2xl font-bold text-purple-600">{averageRating.toFixed(1)} ⭐</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="p-4 space-y-6 pb-20 bg-dark-bg">
+        {renderCurrentView()}
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t">
+      <div className="fixed bottom-0 left-0 right-0 bg-dark-card border-t border-dark-color">
         <div className="flex justify-around p-2">
           <Button 
             variant={currentView === 'dashboard' ? 'default' : 'ghost'} 

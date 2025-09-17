@@ -21,6 +21,7 @@ const amcContractRoutes = require('./routes/amcContracts');
 const proformaInvoiceRoutes = require('./routes/proformaInvoices');
 const serviceTicketRoutes = require('./routes/serviceTickets');
 const analyticsRoutes = require('./routes/analytics');
+const serviceAssignmentRoutes = require('./routes/serviceAssignments');
 const { router: authRoutes } = require('./routes/auth');
 const { router: settingsRoutes } = require('./routes/settings');
 
@@ -114,6 +115,7 @@ app.use('/api/proforma-invoices', proformaInvoiceRoutes);
 app.use('/api/service-tickets', serviceTicketRoutes);
 app.use('/api/amc-contracts', amcContractRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/service-assignments', serviceAssignmentRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

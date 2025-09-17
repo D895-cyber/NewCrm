@@ -59,7 +59,7 @@ const serviceVisitSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Scheduled', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled'],
+    enum: ['Scheduled', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled', 'Unable to Complete'],
     default: 'Scheduled'
   },
   priority: {
@@ -69,6 +69,15 @@ const serviceVisitSchema = new mongoose.Schema({
   },
   description: {
     type: String
+  },
+  unableToCompleteReason: {
+    type: String,
+    maxlength: 1000
+  },
+  unableToCompleteCategory: {
+    type: String,
+    enum: ['Missing Parts', 'Equipment Failure', 'Access Issues', 'Customer Request', 'Safety Concerns', 'Technical Complexity', 'Other'],
+    default: 'Other'
   },
   workPerformed: {
     type: String
@@ -302,24 +311,69 @@ const serviceVisitSchema = new mongoose.Schema({
       height: Number
     }
   }],
-  issuesFound: [{
-    description: String,
-    severity: {
-      type: String,
-      enum: ['Low', 'Medium', 'High', 'Critical']
-    },
-    resolved: {
-      type: Boolean,
-      default: false
+  issuesFound: {
+    type: [{
+      description: String,
+      severity: {
+        type: String,
+        enum: ['Low', 'Medium', 'High', 'Critical']
+      },
+      resolved: {
+        type: Boolean,
+        default: false
+      }
+    }],
+    default: [],
+    set: function(value) {
+      // Handle case where frontend sends empty string or null
+      if (value === "" || value === null || value === undefined) {
+        return [];
+      }
+      // If it's already an array, return as is
+      if (Array.isArray(value)) {
+        return value;
+      }
+      // If it's a string, convert to array with single object
+      if (typeof value === 'string' && value.trim() !== '') {
+        return [{
+          description: value.trim(),
+          severity: 'Medium',
+          resolved: false
+        }];
+      }
+      // Default to empty array
+      return [];
     }
-  }],
-  recommendations: [{
-    description: String,
-    priority: {
-      type: String,
-      enum: ['Low', 'Medium', 'High']
+  },
+  recommendations: {
+    type: [{
+      description: String,
+      priority: {
+        type: String,
+        enum: ['Low', 'Medium', 'High']
+      }
+    }],
+    default: [],
+    set: function(value) {
+      // Handle case where frontend sends empty string or null
+      if (value === "" || value === null || value === undefined) {
+        return [];
+      }
+      // If it's already an array, return as is
+      if (Array.isArray(value)) {
+        return value;
+      }
+      // If it's a string, convert to array with single object
+      if (typeof value === 'string' && value.trim() !== '') {
+        return [{
+          description: value.trim(),
+          priority: 'Medium'
+        }];
+      }
+      // Default to empty array
+      return [];
     }
-  }],
+  },
   nextVisitDate: {
     type: Date
   },
@@ -349,17 +403,13 @@ const serviceVisitSchema = new mongoose.Schema({
 serviceVisitSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   
-  // Clean up recommendations field - ensure it's always an array
-  if (this.recommendations === "" || this.recommendations === null || this.recommendations === undefined) {
-    this.recommendations = [];
-  } else if (!Array.isArray(this.recommendations)) {
+  // Clean up recommendations field - ensure it's always an array (handled by setter now)
+  if (!Array.isArray(this.recommendations)) {
     this.recommendations = [];
   }
   
-  // Clean up issuesFound field - ensure it's always an array
-  if (this.issuesFound === "" || this.issuesFound === null || this.issuesFound === undefined) {
-    this.issuesFound = [];
-  } else if (!Array.isArray(this.issuesFound)) {
+  // Clean up issuesFound field - ensure it's always an array (handled by setter now)
+  if (!Array.isArray(this.issuesFound)) {
     this.issuesFound = [];
   }
   
@@ -407,5 +457,16 @@ serviceVisitSchema.methods.getWorkflowProgress = function() {
   const completedSteps = steps.filter(step => step).length;
   return Math.round((completedSteps / steps.length) * 100);
 };
+
+// Database indexes for better performance
+serviceVisitSchema.index({ status: 1, actualDate: 1 });
+serviceVisitSchema.index({ unableToCompleteCategory: 1 });
+serviceVisitSchema.index({ fseId: 1, status: 1 });
+serviceVisitSchema.index({ siteId: 1, status: 1 });
+serviceVisitSchema.index({ projectorSerial: 1, status: 1 });
+serviceVisitSchema.index({ scheduledDate: 1, status: 1 });
+serviceVisitSchema.index({ visitType: 1, status: 1 });
+serviceVisitSchema.index({ createdAt: 1 });
+serviceVisitSchema.index({ updatedAt: 1 });
 
 module.exports = mongoose.model('ServiceVisit', serviceVisitSchema); 

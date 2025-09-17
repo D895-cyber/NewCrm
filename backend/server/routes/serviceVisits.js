@@ -5,6 +5,19 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { authenticateToken } = require('./auth');
+const emailService = require('../services/emailService');
+const auditService = require('../services/auditService');
+const {
+  validateUnableToComplete,
+  validateBulkUnableToComplete,
+  validateBulkReschedule,
+  validateExport,
+  validateWeeklyReport,
+  validateAuditLogs,
+  validateServiceVisitId,
+  validateDateRangeLogic,
+  sanitizeInput
+} = require('../middleware/validation');
 require('dotenv').config();
 
 // Cloudinary configuration
@@ -236,12 +249,33 @@ router.post('/', async (req, res) => {
 // Update service visit
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const visit = await ServiceVisit.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // Clean up the request body before updating
+    const updateData = { ...req.body };
+    
+    // Ensure recommendations is properly formatted
+    if (updateData.recommendations === "" || updateData.recommendations === null || updateData.recommendations === undefined) {
+      updateData.recommendations = [];
+    } else if (!Array.isArray(updateData.recommendations)) {
+      updateData.recommendations = [];
+    }
+    
+    // Ensure issuesFound is properly formatted
+    if (updateData.issuesFound === "" || updateData.issuesFound === null || updateData.issuesFound === undefined) {
+      updateData.issuesFound = [];
+    } else if (!Array.isArray(updateData.issuesFound)) {
+      updateData.issuesFound = [];
+    }
+    
+    console.log('PUT route - Cleaned updateData.recommendations:', updateData.recommendations);
+    console.log('PUT route - Cleaned updateData.issuesFound:', updateData.issuesFound);
+    
+    const visit = await ServiceVisit.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!visit) {
       return res.status(404).json({ message: 'Service visit not found' });
     }
     res.json(visit);
   } catch (error) {
+    console.error('PUT route error:', error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -293,21 +327,21 @@ router.post('/:id/photos/automated', async (req, res) => {
       });
     }
 
-    // Use multer to process form data and files together
+    // Use a simpler approach - upload to temp first, then move to correct category folder
     const uploadMiddleware = multer({
       storage: new CloudinaryStorage({
         cloudinary: cloudinary,
         params: {
-          folder: `projectorcare/${visit.projectorSerial}/${visit.visitId}/temp`, // Temporary folder, will be moved to correct category folder
+          folder: `projectorcare/${visit.projectorSerial}/${visit.visitId}/temp`, // Temporary folder
           public_id: (req, file) => {
             const timestamp = Date.now();
             const uniqueId = Math.random().toString(36).substring(2, 8);
             return `${timestamp}_${uniqueId}`;
           },
           transformation: [
-            { width: 1200, height: 800, crop: 'limit' }, // Resize large images
-            { quality: 'auto:good' }, // Optimize quality
-            { format: 'auto' } // Auto format based on browser support
+            { width: 1200, height: 800, crop: 'limit' },
+            { quality: 'auto:good' },
+            { format: 'auto' }
           ]
         }
       }),
@@ -339,15 +373,13 @@ router.post('/:id/photos/automated', async (req, res) => {
 
       // Extract category from form data
       const category = req.body.category || 'Other';
-      console.log('Extracted category from form data:', category);
+      console.log('AUTOMATED ROUTE - Category from form data:', category);
       
       // Validate category
       const validCategories = [
         'Before Service', 'During Service', 'After Service', 'Spare Parts', 'RMA', 'Issue Found', 'Parts Used', 'Service Photos', 'Other',
         'BEFORE', 'DURING', 'AFTER', 'ISSUE', 'PARTS'  // Frontend categories
       ];
-      console.log('Valid categories:', validCategories);
-      console.log('Category in valid categories:', validCategories.includes(category));
       
       if (!validCategories.includes(category)) {
         console.log('Invalid category received:', category);
@@ -361,7 +393,7 @@ router.post('/:id/photos/automated', async (req, res) => {
       const files = Array.isArray(req.files) ? req.files : [];
       
       if (files.length > 0) {
-        console.log(`Processing ${files.length} files for visit ${visit.visitId} in automated folder: projectorcare/${visit.projectorSerial}/${visit.visitId}/${category}`);
+        console.log(`Processing ${files.length} files for visit ${visit.visitId} in category: ${category}`);
         console.log('AUTOMATED ROUTE - Category being used:', category);
         console.log('AUTOMATED ROUTE - Files structure:', JSON.stringify(req.files, null, 2));
         
@@ -413,22 +445,26 @@ router.post('/:id/photos/automated', async (req, res) => {
         // Move each uploaded photo to the correct folder
         for (const photo of uploadedPhotos) {
           try {
-            // Extract public_id from the Cloudinary URL
-            const urlParts = photo.cloudUrl.split('/');
-            const publicIdWithVersion = urlParts[urlParts.length - 1].split('.')[0];
-            const publicId = publicIdWithVersion.split('_').slice(1).join('_'); // Remove version prefix
+            // Use the publicId from the file object
+            const currentPublicId = photo.publicId;
+            console.log(`Current public_id: ${currentPublicId}`);
+            
+            // Create the new public_id with the correct folder structure
+            const newPublicId = `${finalFolderPath}/${currentPublicId.split('/').pop()}`;
+            console.log(`New public_id: ${newPublicId}`);
             
             // Move the file to the correct folder
-            const newPublicId = `${finalFolderPath}/${publicId}`;
-            await cloudinary.uploader.rename(photo.publicId || publicId, newPublicId);
+            await cloudinary.uploader.rename(currentPublicId, newPublicId);
             
             // Update the photo data with new paths
             photo.cloudUrl = photo.cloudUrl.replace('/temp/', `/${folderName}/`);
             photo.publicId = newPublicId;
             
-            console.log(`Moved photo from temp to ${folderName} folder: ${publicId} -> ${newPublicId}`);
+            console.log(`✅ Moved photo from temp to ${folderName} folder: ${currentPublicId} -> ${newPublicId}`);
           } catch (moveError) {
-            console.error(`Failed to move photo to ${folderName} folder:`, moveError);
+            console.error(`❌ Failed to move photo to ${folderName} folder:`, moveError);
+            console.error(`Current public_id: ${photo.publicId}`);
+            console.error(`Attempted new public_id: ${finalFolderPath}/${photo.publicId.split('/').pop()}`);
             // Continue with other photos even if one fails
           }
         }
@@ -436,9 +472,26 @@ router.post('/:id/photos/automated', async (req, res) => {
         // Add photos to the visit
         visit.photos = visit.photos || [];
         visit.photos.push(...uploadedPhotos);
+        
+        // Ensure recommendations and issuesFound are properly formatted before saving
+        if (visit.recommendations === "" || visit.recommendations === null || visit.recommendations === undefined) {
+          visit.recommendations = [];
+        } else if (!Array.isArray(visit.recommendations)) {
+          visit.recommendations = [];
+        }
+        
+        if (visit.issuesFound === "" || visit.issuesFound === null || visit.issuesFound === undefined) {
+          visit.issuesFound = [];
+        } else if (!Array.isArray(visit.issuesFound)) {
+          visit.issuesFound = [];
+        }
+        
+        console.log('Before save - recommendations:', visit.recommendations);
+        console.log('Before save - issuesFound:', visit.issuesFound);
+        
         await visit.save();
         
-        console.log(`Successfully uploaded ${uploadedPhotos.length} photos to automated Cloudinary folder for visit ${visit.visitId}`);
+        console.log(`Successfully uploaded ${uploadedPhotos.length} photos to category folder for visit ${visit.visitId}`);
       }
 
       // Map category to folder name for response
@@ -463,7 +516,7 @@ router.post('/:id/photos/automated', async (req, res) => {
       const finalFolderPath = `projectorcare/${visit.projectorSerial}/${visit.visitId}/${folderName}`;
 
       res.json({
-        message: 'Photos uploaded successfully to automated Cloudinary folder',
+        message: 'Photos uploaded successfully to category-specific Cloudinary folder',
         photos: uploadedPhotos,
         totalPhotos: visit.photos.length,
         folderStructure: finalFolderPath,
@@ -550,7 +603,7 @@ router.post('/:id/photos', async (req, res) => {
                 console.error('File upload error:', uploadErr);
                 return;
               }
-              
+                
               if (mockReq.file) {
                 const photoData = {
                   filename: mockReq.file.filename,
@@ -743,16 +796,491 @@ router.get('/stats/overview', async (req, res) => {
     const scheduledVisits = await ServiceVisit.countDocuments({ status: 'Scheduled' });
     const inProgressVisits = await ServiceVisit.countDocuments({ status: 'In Progress' });
     const cancelledVisits = await ServiceVisit.countDocuments({ status: 'Cancelled' });
+    const unableToCompleteVisits = await ServiceVisit.countDocuments({ status: 'Unable to Complete' });
 
     res.json({
       totalVisits,
       completedVisits,
       scheduledVisits,
       inProgressVisits,
-      cancelledVisits
+      cancelledVisits,
+      unableToCompleteVisits
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get unable to complete analytics
+router.get('/stats/unable-to-complete', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        actualDate: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    }
+
+    const unableToCompleteVisits = await ServiceVisit.find({
+      status: 'Unable to Complete',
+      ...dateFilter
+    });
+
+    // Group by category
+    const categoryStats = unableToCompleteVisits.reduce((acc, visit) => {
+      const category = visit.unableToCompleteCategory || 'Other';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Group by FSE
+    const fseStats = unableToCompleteVisits.reduce((acc, visit) => {
+      const fseName = visit.fseName || 'Unknown';
+      acc[fseName] = (acc[fseName] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Group by site
+    const siteStats = unableToCompleteVisits.reduce((acc, visit) => {
+      const siteName = visit.siteName || 'Unknown';
+      acc[siteName] = (acc[siteName] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      total: unableToCompleteVisits.length,
+      categoryBreakdown: categoryStats,
+      fseBreakdown: fseStats,
+      siteBreakdown: siteStats,
+      visits: unableToCompleteVisits.map(visit => ({
+        visitId: visit.visitId,
+        fseName: visit.fseName,
+        siteName: visit.siteName,
+        projectorSerial: visit.projectorSerial,
+        category: visit.unableToCompleteCategory,
+        reason: visit.unableToCompleteReason,
+        actualDate: visit.actualDate
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Bulk mark multiple service visits as unable to complete
+router.post('/bulk/unable-to-complete', 
+  authenticateToken, 
+  sanitizeInput, 
+  validateBulkUnableToComplete, 
+  async (req, res) => {
+  try {
+    const { visitIds, reason, category } = req.body;
+    
+    // Validation
+    if (!visitIds || !Array.isArray(visitIds) || visitIds.length === 0) {
+      return res.status(400).json({ 
+        message: 'Visit IDs array is required',
+        code: 'MISSING_VISIT_IDS'
+      });
+    }
+
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({ 
+        message: 'Reason for unable to complete is required',
+        code: 'MISSING_REASON'
+      });
+    }
+
+    if (reason.trim().length < 10) {
+      return res.status(400).json({ 
+        message: 'Reason must be at least 10 characters long',
+        code: 'REASON_TOO_SHORT'
+      });
+    }
+
+    // Find all visits
+    const visits = await ServiceVisit.find({ 
+      _id: { $in: visitIds },
+      status: { $nin: ['Completed', 'Cancelled'] }
+    });
+
+    if (visits.length === 0) {
+      return res.status(404).json({ 
+        message: 'No valid visits found to mark as unable to complete',
+        code: 'NO_VALID_VISITS'
+      });
+    }
+
+    // Update all visits
+    const updatePromises = visits.map(visit => {
+      visit.status = 'Unable to Complete';
+      visit.unableToCompleteReason = reason.trim();
+      visit.unableToCompleteCategory = category || 'Other';
+      visit.actualDate = new Date();
+      visit.endTime = new Date().toLocaleTimeString();
+      
+      if (visit.workflowStatus) {
+        visit.workflowStatus.serviceCompleted = false;
+        visit.workflowStatus.completed = false;
+        visit.workflowStatus.lastUpdated = new Date();
+      }
+      
+      return visit.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    // Send email notifications for each visit
+    visits.forEach(visit => {
+      emailService.sendUnableToCompleteNotification(visit, visit.fseName).catch(err => {
+        console.error(`Failed to send email notification for visit ${visit.visitId}:`, err);
+      });
+    });
+
+    // Log the bulk action
+    console.log(`Bulk unable to complete: ${visits.length} visits marked by user ${req.user?.username || 'unknown'}. Reason: ${reason.substring(0, 50)}...`);
+
+    // Create audit log for bulk operation (async, don't wait for it)
+    auditService.logBulkUnableToComplete(visitIds, req.user, reason, category, req).catch(err => {
+      console.error('Failed to create bulk audit log:', err);
+    });
+
+    res.json({
+      message: `Successfully marked ${visits.length} service visits as unable to complete`,
+      updatedVisits: visits.map(visit => ({
+        _id: visit._id,
+        visitId: visit.visitId,
+        status: visit.status,
+        fseName: visit.fseName,
+        siteName: visit.siteName
+      })),
+      skipped: visitIds.length - visits.length
+    });
+  } catch (error) {
+    console.error('Bulk unable to complete error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during bulk unable to complete operation',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Reschedule unable to complete visits
+router.post('/bulk/reschedule', 
+  authenticateToken, 
+  sanitizeInput, 
+  validateBulkReschedule, 
+  async (req, res) => {
+  try {
+    const { visitIds, newScheduledDate, reason } = req.body;
+    
+    // Validation
+    if (!visitIds || !Array.isArray(visitIds) || visitIds.length === 0) {
+      return res.status(400).json({ 
+        message: 'Visit IDs array is required',
+        code: 'MISSING_VISIT_IDS'
+      });
+    }
+
+    if (!newScheduledDate) {
+      return res.status(400).json({ 
+        message: 'New scheduled date is required',
+        code: 'MISSING_SCHEDULED_DATE'
+      });
+    }
+
+    // Find all unable to complete visits
+    const visits = await ServiceVisit.find({ 
+      _id: { $in: visitIds },
+      status: 'Unable to Complete'
+    });
+
+    if (visits.length === 0) {
+      return res.status(404).json({ 
+        message: 'No unable to complete visits found to reschedule',
+        code: 'NO_VALID_VISITS'
+      });
+    }
+
+    // Update all visits
+    const updatePromises = visits.map(visit => {
+      visit.status = 'Scheduled';
+      visit.scheduledDate = new Date(newScheduledDate);
+      visit.unableToCompleteReason = null;
+      visit.unableToCompleteCategory = null;
+      visit.actualDate = null;
+      visit.endTime = null;
+      
+      if (visit.workflowStatus) {
+        visit.workflowStatus.serviceCompleted = false;
+        visit.workflowStatus.completed = false;
+        visit.workflowStatus.lastUpdated = new Date();
+      }
+      
+      return visit.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    // Log the bulk reschedule action
+    console.log(`Bulk reschedule: ${visits.length} visits rescheduled by user ${req.user?.username || 'unknown'} to ${newScheduledDate}. Reason: ${reason || 'No reason provided'}`);
+
+    // Create audit log for bulk reschedule (async, don't wait for it)
+    auditService.logBulkReschedule(visitIds, req.user, newScheduledDate, reason, req).catch(err => {
+      console.error('Failed to create bulk reschedule audit log:', err);
+    });
+
+    res.json({
+      message: `Successfully rescheduled ${visits.length} service visits`,
+      rescheduledVisits: visits.map(visit => ({
+        _id: visit._id,
+        visitId: visit.visitId,
+        status: visit.status,
+        scheduledDate: visit.scheduledDate,
+        fseName: visit.fseName,
+        siteName: visit.siteName
+      })),
+      skipped: visitIds.length - visits.length
+    });
+  } catch (error) {
+    console.error('Bulk reschedule error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during bulk reschedule operation',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Export unable to complete data as CSV
+router.get('/export/unable-to-complete', 
+  authenticateToken, 
+  validateExport, 
+  validateDateRangeLogic, 
+  async (req, res) => {
+  try {
+    const { startDate, endDate, format = 'csv' } = req.query;
+    
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        actualDate: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    }
+
+    const unableToCompleteVisits = await ServiceVisit.find({
+      status: 'Unable to Complete',
+      ...dateFilter
+    }).sort({ actualDate: -1 });
+
+    if (format === 'csv') {
+      // Generate CSV
+      const csvHeaders = [
+        'Visit ID',
+        'FSE Name',
+        'Site Name',
+        'Projector Serial',
+        'Visit Type',
+        'Category',
+        'Reason',
+        'Scheduled Date',
+        'Actual Date',
+        'End Time',
+        'Priority'
+      ];
+
+      const csvRows = unableToCompleteVisits.map(visit => [
+        visit.visitId,
+        visit.fseName,
+        visit.siteName,
+        visit.projectorSerial,
+        visit.visitType,
+        visit.unableToCompleteCategory || 'Other',
+        `"${(visit.unableToCompleteReason || '').replace(/"/g, '""')}"`, // Escape quotes in CSV
+        new Date(visit.scheduledDate).toLocaleDateString(),
+        new Date(visit.actualDate).toLocaleDateString(),
+        visit.endTime || '',
+        visit.priority
+      ]);
+
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.join(','))
+        .join('\n');
+
+      // Log export action (async, don't wait for it)
+      auditService.logExport(req.user, 'csv', 'ServiceVisit', { startDate, endDate, status: 'Unable to Complete' }, req).catch(err => {
+        console.error('Failed to create export audit log:', err);
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="unable-to-complete-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvContent);
+    } else if (format === 'json') {
+      // Generate JSON
+      const jsonData = {
+        exportDate: new Date().toISOString(),
+        totalRecords: unableToCompleteVisits.length,
+        dateRange: { startDate, endDate },
+        data: unableToCompleteVisits.map(visit => ({
+          visitId: visit.visitId,
+          fseName: visit.fseName,
+          siteName: visit.siteName,
+          projectorSerial: visit.projectorSerial,
+          visitType: visit.visitType,
+          category: visit.unableToCompleteCategory || 'Other',
+          reason: visit.unableToCompleteReason,
+          scheduledDate: visit.scheduledDate,
+          actualDate: visit.actualDate,
+          endTime: visit.endTime,
+          priority: visit.priority
+        }))
+      };
+
+      // Log export action (async, don't wait for it)
+      auditService.logExport(req.user, 'json', 'ServiceVisit', { startDate, endDate, status: 'Unable to Complete' }, req).catch(err => {
+        console.error('Failed to create export audit log:', err);
+      });
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="unable-to-complete-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(jsonData);
+    } else {
+      res.status(400).json({ 
+        message: 'Invalid format. Supported formats: csv, json',
+        code: 'INVALID_FORMAT'
+      });
+    }
+  } catch (error) {
+    console.error('Export unable to complete error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during export operation',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Send weekly unable to complete report via email
+router.post('/reports/weekly-unable-to-complete', 
+  authenticateToken, 
+  sanitizeInput, 
+  validateWeeklyReport, 
+  async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        message: 'Start date and end date are required',
+        code: 'MISSING_DATES'
+      });
+    }
+
+    const unableToCompleteVisits = await ServiceVisit.find({
+      status: 'Unable to Complete',
+      actualDate: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      }
+    }).sort({ actualDate: -1 });
+
+    const dateRange = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+    
+    const emailSent = await emailService.sendBulkUnableToCompleteReport(unableToCompleteVisits, dateRange);
+
+    if (emailSent) {
+      res.json({
+        message: 'Weekly unable to complete report sent successfully',
+        totalVisits: unableToCompleteVisits.length,
+        dateRange: dateRange
+      });
+    } else {
+      res.status(500).json({
+        message: 'Failed to send weekly report email',
+        code: 'EMAIL_SEND_FAILED'
+      });
+    }
+  } catch (error) {
+    console.error('Weekly report error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during weekly report generation',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Get audit logs for unable to complete operations
+router.get('/audit/unable-to-complete', 
+  authenticateToken, 
+  validateAuditLogs, 
+  validateDateRangeLogic, 
+  async (req, res) => {
+  try {
+    const { 
+      startDate, 
+      endDate, 
+      action, 
+      userId, 
+      category, 
+      limit = 50, 
+      skip = 0 
+    } = req.query;
+
+    const filters = {
+      startDate,
+      endDate,
+      action: action || 'UNABLE_TO_COMPLETE',
+      userId,
+      category,
+      limit: parseInt(limit),
+      skip: parseInt(skip)
+    };
+
+    const auditLogs = await auditService.getAuditLogs(filters);
+    const auditStats = await auditService.getAuditStats(filters);
+
+    res.json({
+      logs: auditLogs,
+      stats: auditStats,
+      pagination: {
+        limit: filters.limit,
+        skip: filters.skip,
+        total: auditLogs.length
+      }
+    });
+  } catch (error) {
+    console.error('Get audit logs error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error while fetching audit logs',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Get audit statistics
+router.get('/audit/stats', 
+  authenticateToken, 
+  validateDateRangeLogic, 
+  async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const filters = { startDate, endDate };
+    const auditStats = await auditService.getAuditStats(filters);
+
+    res.json(auditStats);
+  } catch (error) {
+    console.error('Get audit stats error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error while fetching audit statistics',
+      code: 'INTERNAL_ERROR'
+    });
   }
 });
 
@@ -1050,6 +1578,116 @@ router.get('/:id/signature', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Mark service visit as unable to complete
+router.put('/:id/unable-to-complete', 
+  authenticateToken, 
+  validateServiceVisitId, 
+  sanitizeInput, 
+  validateUnableToComplete, 
+  async (req, res) => {
+  try {
+    const { reason, category } = req.body;
+    
+    // Enhanced validation
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({ 
+        message: 'Reason for unable to complete is required',
+        code: 'MISSING_REASON'
+      });
+    }
+
+    if (reason.trim().length < 10) {
+      return res.status(400).json({ 
+        message: 'Reason must be at least 10 characters long',
+        code: 'REASON_TOO_SHORT'
+      });
+    }
+
+    if (reason.trim().length > 1000) {
+      return res.status(400).json({ 
+        message: 'Reason cannot exceed 1000 characters',
+        code: 'REASON_TOO_LONG'
+      });
+    }
+
+    const visit = await ServiceVisit.findById(req.params.id);
+    if (!visit) {
+      return res.status(404).json({ 
+        message: 'Service visit not found',
+        code: 'VISIT_NOT_FOUND'
+      });
+    }
+
+    // Check if visit is already completed or cancelled
+    if (visit.status === 'Completed') {
+      return res.status(400).json({ 
+        message: 'Cannot mark completed service as unable to complete',
+        code: 'ALREADY_COMPLETED'
+      });
+    }
+
+    if (visit.status === 'Cancelled') {
+      return res.status(400).json({ 
+        message: 'Cannot mark cancelled service as unable to complete',
+        code: 'ALREADY_CANCELLED'
+      });
+    }
+
+    // Update the visit status and reason
+    visit.status = 'Unable to Complete';
+    visit.unableToCompleteReason = reason.trim();
+    visit.actualDate = new Date();
+    visit.endTime = new Date().toLocaleTimeString();
+    
+    // Add category if provided
+    if (category) {
+      visit.unableToCompleteCategory = category;
+    }
+
+    // Update workflow status to reflect inability to complete
+    if (visit.workflowStatus) {
+      visit.workflowStatus.serviceCompleted = false;
+      visit.workflowStatus.completed = false;
+      visit.workflowStatus.lastUpdated = new Date();
+    }
+
+    await visit.save();
+
+    // Log the action for audit trail
+    console.log(`Service visit ${visit.visitId} marked as unable to complete by user ${req.user?.username || 'unknown'}. Reason: ${reason.substring(0, 50)}...`);
+
+    // Create audit log (async, don't wait for it)
+    auditService.logUnableToComplete(visit, req.user, reason, category, req).catch(err => {
+      console.error('Failed to create audit log:', err);
+    });
+
+    // Send email notification (async, don't wait for it)
+    emailService.sendUnableToCompleteNotification(visit, visit.fseName).catch(err => {
+      console.error('Failed to send email notification:', err);
+    });
+
+    res.json({
+      message: 'Service visit marked as unable to complete successfully',
+      visit: {
+        _id: visit._id,
+        visitId: visit.visitId,
+        status: visit.status,
+        unableToCompleteReason: visit.unableToCompleteReason,
+        unableToCompleteCategory: visit.unableToCompleteCategory,
+        actualDate: visit.actualDate,
+        endTime: visit.endTime,
+        updatedBy: req.user?.username || 'system'
+      }
+    });
+  } catch (error) {
+    console.error('Unable to complete service visit error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error while marking service as unable to complete',
+      code: 'INTERNAL_ERROR'
+    });
   }
 });
 
