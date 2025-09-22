@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
 const RequestedBySchema = new mongoose.Schema({
-  userId: { type: String, index: true },
+  userId: { type: String },
   name: { type: String, trim: true },
   role: { type: String, trim: true }
 }, { _id: false });
 
 const RecommendedSparePartSchema = new mongoose.Schema({
-  reportId: { type: String, index: true, required: true },
-  visitId: { type: String, index: true },
-  siteId: { type: String, index: true },
-  projectorSerial: { type: String, index: true },
+  reportId: { type: String, required: true },
+  visitId: { type: String },
+  siteId: { type: String },
+  projectorSerial: { type: String },
 
   partName: { type: String, required: true, trim: true },
   partNumber: { type: String, trim: true },
@@ -20,8 +20,7 @@ const RecommendedSparePartSchema = new mongoose.Schema({
   status: { 
     type: String, 
     enum: ['New', 'Reviewed', 'Approved', 'Ordered', 'Issued', 'Rejected', 'Archived'],
-    default: 'New',
-    index: true
+    default: 'New'
   },
 
   requestedBy: RequestedBySchema

@@ -636,7 +636,7 @@ export function ProjectorsPage() {
                       <label className="text-sm font-medium text-dark-secondary">Site Location</label>
                       <p className="text-dark-primary flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-dark-secondary" />
-                        {selectedProjector.site}
+                        {selectedProjector.siteName || 'Site not linked'}
                       </p>
                     </div>
                     <div>
@@ -1083,11 +1083,11 @@ export function ProjectorsPage() {
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center space-x-2 text-sm">
                         <MapPin className="w-4 h-4 text-dark-secondary" />
-                        <span className="text-dark-primary">{projector.site}</span>
+                        <span className="text-dark-primary">{projector.siteName || 'Site not linked'}</span>
                       </div>
                       <div className="flex items-center space-x-2 text-sm">
                         <Monitor className="w-4 h-4 text-dark-secondary" />
-                        <span className="text-dark-primary">{projector.location}</span>
+                        <span className="text-dark-primary">{projector.auditoriumName || projector.location || 'Location not specified'}</span>
                       </div>
                       <div className="flex items-center space-x-2 text-sm">
                         <Clock className="w-4 h-4 text-dark-secondary" />

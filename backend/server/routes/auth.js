@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const FSE = require('../models/FSE');
 const router = express.Router();
@@ -346,6 +347,188 @@ router.post('/logout', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create user (admin only)
+router.post('/users', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { username, email, password, role, fseId, firstName, lastName, phone } = req.body;
+
+    if (!username || !email || !password || !role) {
+      return res.status(400).json({ error: 'Username, email, password, and role are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this username or email already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = new User({
+      userId: `USER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      username,
+      email,
+      password: hashedPassword,
+      role,
+      fseId: fseId || null,
+      isActive: true,
+      profile: {
+        firstName: firstName || '',
+        lastName: lastName || '',
+        phone: phone || ''
+      },
+      permissions: role === 'fse' ? [
+        'view_dashboard',
+        'manage_service_visits',
+        'upload_photos',
+        'update_service_status'
+      ] : [
+        'view_dashboard',
+        'manage_sites',
+        'manage_projectors',
+        'manage_fse',
+        'manage_service_visits',
+        'manage_purchase_orders',
+        'manage_rma',
+        'manage_spare_parts',
+        'view_analytics',
+        'export_data'
+      ]
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        fseId: user.fseId,
+        profile: user.profile,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin impersonation - login as any user (admin only)
+router.post('/impersonate', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { targetUserId } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Target user ID is required' });
+    }
+
+    // Find the target user
+    const targetUser = await User.findOne({ userId: targetUserId });
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    if (!targetUser.isActive) {
+      return res.status(400).json({ error: 'Target user is deactivated' });
+    }
+
+    // Get FSE details if it's an FSE user
+    let fseDetails = null;
+    if (targetUser.role === 'fse' && targetUser.fseId) {
+      fseDetails = await FSE.findOne({ fseId: targetUser.fseId });
+    }
+
+    // Create impersonation token
+    const impersonationToken = jwt.sign(
+      {
+        userId: targetUser.userId,
+        username: targetUser.username,
+        email: targetUser.email,
+        role: targetUser.role,
+        permissions: targetUser.getPermissions(),
+        impersonatedBy: req.user.userId,
+        impersonatedByUsername: req.user.username,
+        isImpersonation: true
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully impersonating ${targetUser.username}`,
+      token: impersonationToken,
+      user: {
+        userId: targetUser.userId,
+        username: targetUser.username,
+        email: targetUser.email,
+        role: targetUser.role,
+        fseId: targetUser.fseId,
+        profile: targetUser.profile,
+        permissions: targetUser.getPermissions(),
+        fseDetails,
+        isImpersonation: true,
+        impersonatedBy: req.user.username
+      }
+    });
+  } catch (error) {
+    console.error('Impersonation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset password (admin only)
+router.post('/reset-password', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { username, newPassword } = req.body;
+
+    if (!username || !newPassword) {
+      return res.status(400).json({ error: 'Username and new password are required' });
+    }
+
+    // Find the user
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Set the password as plain text - the User model's pre-save hook will hash it
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Password updated successfully for ${username}`
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

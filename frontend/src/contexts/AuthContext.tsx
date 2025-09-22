@@ -15,6 +15,8 @@ interface User {
   };
   permissions: string[];
   fseDetails?: any;
+  isImpersonation?: boolean;
+  impersonatedBy?: string;
 }
 
 interface AuthContextType {
@@ -30,6 +32,8 @@ interface AuthContextType {
   hasPermission: (permission: string) => boolean;
   isAdmin: boolean;
   isFSE: boolean;
+  isImpersonating: boolean;
+  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -204,6 +208,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAdmin = user?.role === 'admin';
   const isFSE = user?.role === 'fse';
   const isAuthenticated = !!user && !!token;
+  const isImpersonating = user?.isImpersonation === true;
+
+  const stopImpersonation = useCallback(() => {
+    // Clear impersonation data
+    localStorage.removeItem('impersonation');
+    localStorage.removeItem('impersonatedBy');
+    
+    // Logout and redirect to login
+    logout();
+  }, [logout]);
 
   const value: AuthContextType = {
     user,
@@ -217,7 +231,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword,
     hasPermission,
     isAdmin,
-    isFSE
+    isFSE,
+    isImpersonating,
+    stopImpersonation
   };
 
   return (

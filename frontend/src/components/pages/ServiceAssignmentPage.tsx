@@ -280,6 +280,7 @@ export function ServiceAssignmentPage() {
                     value={newAssignment.title}
                     onChange={(e) => setNewAssignment(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter assignment title"
+                    className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -289,6 +290,7 @@ export function ServiceAssignmentPage() {
                     type="date"
                     value={newAssignment.startDate}
                     onChange={(e) => setNewAssignment(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -300,6 +302,7 @@ export function ServiceAssignmentPage() {
                   value={newAssignment.description}
                   onChange={(e) => setNewAssignment(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter assignment description"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
@@ -308,7 +311,7 @@ export function ServiceAssignmentPage() {
                 <div>
                   <Label htmlFor="fse">Assign to FSE</Label>
                   <Select value={newAssignment.fseId} onValueChange={(value) => setNewAssignment(prev => ({ ...prev, fseId: value }))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select FSE" />
                     </SelectTrigger>
                     <SelectContent>
@@ -323,7 +326,7 @@ export function ServiceAssignmentPage() {
                 <div>
                   <Label htmlFor="site">Site</Label>
                   <Select value={newAssignment.siteId} onValueChange={handleSiteChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select Site" />
                     </SelectTrigger>
                     <SelectContent>
@@ -381,6 +384,7 @@ export function ServiceAssignmentPage() {
                             totalDays: parseInt(e.target.value) || 1
                           }
                         }))}
+                        className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
                     <div>
@@ -397,11 +401,12 @@ export function ServiceAssignmentPage() {
                             projectorsPerDay: parseInt(e.target.value) || 1
                           }
                         }))}
+                        className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
                     <div>
                       <Label>Estimated Days</Label>
-                      <div className="p-2 bg-gray-100 rounded text-sm">
+                      <div className="p-2 bg-gray-800 border border-gray-600 rounded text-sm text-white">
                         {calculateEstimatedDays()} days
                       </div>
                     </div>
@@ -426,6 +431,7 @@ export function ServiceAssignmentPage() {
                   value={newAssignment.adminNotes}
                   onChange={(e) => setNewAssignment(prev => ({ ...prev, adminNotes: e.target.value }))}
                   placeholder="Add any special instructions or notes"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 

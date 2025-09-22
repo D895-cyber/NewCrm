@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { ToastContainer } from "./components/ui/toast";
-import { DataProvider } from "./contexts/DataContext";
+import { DataProviderWithProgress } from "./components/DataProviderWithProgress";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./components/LoginPage";
 import { FSEDashboardPage } from "./components/pages/FSEDashboardPage";
@@ -15,6 +15,7 @@ import { FSEMobileApp } from "./components/mobile/FSEMobileApp";
 import RealFSEDashboard from "./components/mobile/RealFSEDashboard";
 import RealFSEWorkflow from "./components/mobile/RealFSEWorkflow";
 import { AssignmentWorkflow } from "./components/mobile/AssignmentWorkflow";
+import { LoadingProgress } from "./components/ui/LoadingProgress";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -107,9 +108,9 @@ function AppContent() {
       console.log('Showing mobile FSE app');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <FSEMobileApp />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -120,9 +121,9 @@ function AppContent() {
       console.log('Showing working photo capture');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <WorkingPhotoCapture />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -133,9 +134,9 @@ function AppContent() {
       console.log('Showing simple photo capture');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <SimplePhotoCapture />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -146,9 +147,9 @@ function AppContent() {
       console.log('Showing mobile test page');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <MobileTestPage />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -159,9 +160,9 @@ function AppContent() {
       console.log('Showing FSE workflow');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <FSEWorkflow />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -172,9 +173,9 @@ function AppContent() {
       console.log('Showing FSE debug panel');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <FSEDebugPanel />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -185,9 +186,9 @@ function AppContent() {
       console.log('Showing simple FSE dashboard');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <SimpleFSEDashboard />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -198,9 +199,9 @@ function AppContent() {
       console.log('Showing real FSE dashboard');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <RealFSEDashboard />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -211,9 +212,9 @@ function AppContent() {
       console.log('Showing real FSE workflow');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <RealFSEWorkflow />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -224,9 +225,9 @@ function AppContent() {
       console.log('Showing assignment workflow');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <AssignmentWorkflow />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -237,9 +238,9 @@ function AppContent() {
       console.log('Showing FSE desktop dashboard');
       return (
         <ErrorBoundary>
-          <DataProvider>
+          <DataProviderWithProgress>
             <FSEDashboardPage />
-          </DataProvider>
+          </DataProviderWithProgress>
           <ToastContainer />
         </ErrorBoundary>
       );
@@ -249,9 +250,9 @@ function AppContent() {
     console.log('Showing FSE mobile app by default');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <FSEMobileApp />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -262,9 +263,9 @@ function AppContent() {
     console.log('Showing mobile test page for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <MobileTestPage />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -275,9 +276,9 @@ function AppContent() {
     console.log('Showing FSE workflow for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <FSEWorkflow />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -288,9 +289,9 @@ function AppContent() {
     console.log('Showing FSE debug panel for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <FSEDebugPanel />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -301,9 +302,9 @@ function AppContent() {
     console.log('Showing simple FSE dashboard for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <SimpleFSEDashboard />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -314,9 +315,9 @@ function AppContent() {
     console.log('Showing FSE mobile app for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <FSEMobileApp />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -327,9 +328,9 @@ function AppContent() {
     console.log('Showing real FSE dashboard for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <RealFSEDashboard />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -340,9 +341,9 @@ function AppContent() {
     console.log('Showing real FSE workflow for admin');
     return (
       <ErrorBoundary>
-        <DataProvider>
+        <DataProviderWithProgress>
           <RealFSEWorkflow />
-        </DataProvider>
+        </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
     );
@@ -351,9 +352,9 @@ function AppContent() {
   // Admin users get the full dashboard with mobile-first responsive design
   return (
     <ErrorBoundary>
-      <DataProvider>
+      <DataProviderWithProgress>
         <Dashboard isMobile={isMobile} />
-      </DataProvider>
+      </DataProviderWithProgress>
       <ToastContainer />
     </ErrorBoundary>
   );

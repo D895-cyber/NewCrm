@@ -298,6 +298,24 @@ export function RMAPage() {
       setIsLoading(true);
       setError(null);
       
+      // Validate required fields
+      const requiredFields = [
+        'ascompRaisedDate',
+        'customerErrorDate', 
+        'siteName',
+        'productName',
+        'serialNumber',
+        'createdBy'
+      ];
+      
+      const missingFields = requiredFields.filter(field => !newRMA[field as keyof typeof newRMA] || newRMA[field as keyof typeof newRMA] === '');
+      
+      if (missingFields.length > 0) {
+        setError(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+        setIsLoading(false);
+        return;
+      }
+      
       // Map warranty status to ensure it's valid for RMA
       const mapWarrantyStatus = (status: string) => {
         switch (status) {
@@ -1139,25 +1157,24 @@ export function RMAPage() {
                     onChange={(e) => setNewRMA({...newRMA, productName: e.target.value})}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Enter projector model"
+                    required
                   />
+                  {!newRMA.productName && (
+                    <p className="text-xs text-red-400 mt-1">Projector Model is required</p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-dark-secondary">Serial Number</label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newRMA.serialNumber}
-                      onChange={(e) => setNewRMA({...newRMA, serialNumber: e.target.value})}
-                      className="mt-1 flex-1 bg-dark-card border-dark-color text-dark-primary"
-                      placeholder="Enter serial number"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSerialNumberSelector(true)}
-                      className="mt-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Select
-                    </button>
-                  </div>
+                  <label className="text-sm font-medium text-dark-secondary">Brand *</label>
+                  <Input
+                    value={newRMA.brand}
+                    onChange={(e) => setNewRMA({...newRMA, brand: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter brand"
+                    required
+                  />
+                  {!newRMA.brand && (
+                    <p className="text-xs text-red-400 mt-1">Brand is required</p>
+                  )}
                 </div>
               </div>
 
@@ -1169,8 +1186,28 @@ export function RMAPage() {
                     onChange={(e) => setNewRMA({...newRMA, siteName: e.target.value})}
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Enter customer site"
+                    required
                   />
+                  {!newRMA.siteName && (
+                    <p className="text-xs text-red-400 mt-1">Customer Site is required</p>
+                  )}
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Created By *</label>
+                  <Input
+                    value={newRMA.createdBy}
+                    onChange={(e) => setNewRMA({...newRMA, createdBy: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter creator name"
+                    required
+                  />
+                  {!newRMA.createdBy && (
+                    <p className="text-xs text-red-400 mt-1">Created By is required</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Technician</label>
                   <Input
@@ -1179,6 +1216,57 @@ export function RMAPage() {
                     className="mt-1 bg-dark-card border-dark-color text-dark-primary"
                     placeholder="Enter technician name"
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Serial Number *</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newRMA.serialNumber}
+                      onChange={(e) => setNewRMA({...newRMA, serialNumber: e.target.value})}
+                      className="mt-1 flex-1 bg-dark-card border-dark-color text-dark-primary"
+                      placeholder="Enter serial number"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSerialNumberSelector(true)}
+                      className="mt-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Select
+                    </button>
+                  </div>
+                  {!newRMA.serialNumber && (
+                    <p className="text-xs text-red-400 mt-1">Serial Number is required</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">ASCOMP Raised Date *</label>
+                  <Input
+                    type="date"
+                    value={newRMA.ascompRaisedDate}
+                    onChange={(e) => setNewRMA({...newRMA, ascompRaisedDate: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    required
+                  />
+                  {!newRMA.ascompRaisedDate && (
+                    <p className="text-xs text-red-400 mt-1">ASCOMP Raised Date is required</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Customer Error Date *</label>
+                  <Input
+                    type="date"
+                    value={newRMA.customerErrorDate}
+                    onChange={(e) => setNewRMA({...newRMA, customerErrorDate: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    required
+                  />
+                  {!newRMA.customerErrorDate && (
+                    <p className="text-xs text-red-400 mt-1">Customer Error Date is required</p>
+                  )}
                 </div>
               </div>
 
@@ -1971,7 +2059,7 @@ export function RMAPage() {
                   (projector.serialNumber || '').toLowerCase().includes(serialNumberSearch.toLowerCase()) ||
                   (projector.model || '').toLowerCase().includes(serialNumberSearch.toLowerCase()) ||
                   (projector.brand || '').toLowerCase().includes(serialNumberSearch.toLowerCase()) ||
-                  (projector.site || '').toLowerCase().includes(serialNumberSearch.toLowerCase())
+                  (projector.siteName || '').toLowerCase().includes(serialNumberSearch.toLowerCase())
                 );
                 
                 if (filteredProjectors.length === 0) {
@@ -2012,7 +2100,7 @@ export function RMAPage() {
                           </div>
                           <div>
                             <span className="text-dark-secondary">Site:</span>
-                            <p className="text-dark-primary font-medium">{projector.site}</p>
+                            <p className="text-dark-primary font-medium">{projector.siteName || 'Site not linked'}</p>
                           </div>
                           <div>
                             <span className="text-dark-secondary">Location:</span>

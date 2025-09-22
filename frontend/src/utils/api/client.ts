@@ -4,6 +4,8 @@ import { getApiUrl, isDevelopment } from '../config';
 class ApiClient {
   private baseUrl: string;
   private headers: Record<string, string>;
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 30000; // 30 seconds
 
   constructor() {
     this.baseUrl = getApiUrl();
@@ -27,15 +29,49 @@ class ApiClient {
     delete this.headers['Authorization'];
   }
 
+  // Cache management methods
+  private getCacheKey(endpoint: string, options: RequestInit = {}): string {
+    return `${endpoint}_${JSON.stringify(options)}`;
+  }
+
+  private getCachedData(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }
+
+  private setCachedData(key: string, data: any): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  private clearCache(): void {
+    this.cache.clear();
+  }
+
   async request(endpoint: string, options: RequestInit = {}) {
     try {
       const url = `${this.baseUrl}${endpoint}`;
+      const method = options.method || 'GET';
+      
+      // Check cache for GET requests
+      if (method === 'GET') {
+        const cacheKey = this.getCacheKey(endpoint, options);
+        const cachedData = this.getCachedData(cacheKey);
+        if (cachedData) {
+          if (isDevelopment()) {
+            console.log(`API GET request (cached) to:`, url);
+          }
+          return cachedData;
+        }
+      }
       
       // Detect FormData bodies to avoid incorrect headers
       const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
       
       if (isDevelopment()) {
-        console.log(`API ${options.method || 'GET'} request to:`, url, isFormData ? '(multipart)' : '');
+        console.log(`API ${method} request to:`, url, isFormData ? '(multipart)' : '');
       }
 
       // Merge headers, but drop JSON content-type for FormData so the browser sets boundary automatically
@@ -64,6 +100,12 @@ class ApiClient {
       }
       
       const data = await response.json();
+      
+      // Cache GET requests
+      if (method === 'GET') {
+        const cacheKey = this.getCacheKey(endpoint, options);
+        this.setCachedData(cacheKey, data);
+      }
       
       if (isDevelopment()) {
         console.log(`API response for ${endpoint}:`, data);
@@ -106,6 +148,11 @@ class ApiClient {
 
   async delete(endpoint: string) {
     return this.request(endpoint, { method: 'DELETE' });
+  }
+
+  // Method to clear cache (useful after data updates)
+  clearCache() {
+    this.cache.clear();
   }
 
   

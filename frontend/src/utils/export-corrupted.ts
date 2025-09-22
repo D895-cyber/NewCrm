@@ -564,6 +564,14 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
     }
   };
 
+  // Safely get array for mapping operations
+  const safeArray = (value: any, fallback: any[] = []) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return fallback;
+  };
+
   // Safely get engineer name with multiple fallback paths
   const getEngineerName = (report: any): string => {
     try {
@@ -773,6 +781,14 @@ const generateReportHTML = (report: any, mcgd: string, cie: string, observations
     } catch {
       return fallback;
     }
+  };
+
+  // Safely get array for mapping operations
+  const safeArray = (value: any, fallback: any[] = []) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return fallback;
   };
 
   // Safely get engineer name with multiple fallback paths
@@ -1048,7 +1064,7 @@ const generateReportHTML = (report: any, mcgd: string, cie: string, observations
         <div class="section-title">ISSUES FOUND</div>
         <table class="compact-table">
           <tbody>
-            ${(safeAccess(report, ['issuesFound']) || ['No issues found']).map((issue: any) => 
+            ${safeArray(safeAccess(report, ['issuesFound']), ['No issues found']).map((issue: any) => 
               `<tr><td>${typeof issue === 'string' ? issue : safe(issue?.description)}</td></tr>`
             ).join('')}
           </tbody>

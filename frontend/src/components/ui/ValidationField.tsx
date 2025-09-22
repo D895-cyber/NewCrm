@@ -63,10 +63,10 @@ export function ValidationField({
   
   // Determine background color based on validation state
   const getBackgroundColor = () => {
-    if (hasError) return 'bg-red-50';
-    if (hasWarning) return 'bg-yellow-50';
-    if (hasInfo) return 'bg-blue-50';
-    return 'bg-white';
+    if (hasError) return 'bg-red-50 dark:bg-red-900/20';
+    if (hasWarning) return 'bg-yellow-50 dark:bg-yellow-900/20';
+    if (hasInfo) return 'bg-blue-50 dark:bg-blue-900/20';
+    return 'bg-input-background';
   };
 
   return (

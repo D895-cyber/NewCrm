@@ -104,7 +104,7 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
   
   // Use shared data context
   const { dashboardData } = useData();
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, isImpersonating, stopImpersonation } = useAuth();
   const notifications = dashboardData.warrantyAlerts;
 
   // Set authentication token in API client when component mounts or token changes
@@ -268,18 +268,38 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <User className="w-4 h-4 text-dark-secondary" />
-                <span className="text-sm text-dark-secondary">
-                  {user?.profile?.firstName || user?.username}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm text-dark-secondary">
+                    {user?.profile?.firstName || user?.username}
+                  </span>
+                  {isImpersonating && (
+                    <span className="text-xs text-yellow-400 font-medium">
+                      Impersonating
+                    </span>
+                  )}
+                </div>
               </div>
-              <Button
-                onClick={logout}
-                variant="ghost"
-                size="sm"
-                className="text-dark-secondary hover:text-dark-primary"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center space-x-1">
+                {isImpersonating && (
+                  <Button
+                    onClick={stopImpersonation}
+                    variant="ghost"
+                    size="sm"
+                    className="text-yellow-400 hover:text-yellow-300"
+                    title="Stop Impersonation"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button
+                  onClick={logout}
+                  variant="ghost"
+                  size="sm"
+                  className="text-dark-secondary hover:text-dark-primary"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>

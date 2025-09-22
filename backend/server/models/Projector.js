@@ -55,6 +55,9 @@ const projectorSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  warrantyStart: {
+    type: Date
+  },
   warrantyEnd: {
     type: Date,
     required: true
@@ -125,6 +128,16 @@ const projectorSchema = new mongoose.Schema({
     trim: true
   },
   
+  // Customer and technician information
+  customer: {
+    type: String,
+    trim: true
+  },
+  technician: {
+    type: String,
+    trim: true
+  },
+  
   // Enhanced status tracking
   lastMaintenance: {
     date: Date,
@@ -158,7 +171,7 @@ projectorSchema.index({ siteCode: 1 });
 projectorSchema.index({ auditoriumId: 1 });
 projectorSchema.index({ status: 1 });
 projectorSchema.index({ amcContractId: 1 });
-projectorSchema.index({ serialNumber: 1 });
+// serialNumber already has unique: true, so no need for explicit index
 projectorSchema.index({ projectorNumber: 1 });
 projectorSchema.index({ lastRMA: 1 });
 projectorSchema.index({ uptime: -1 });

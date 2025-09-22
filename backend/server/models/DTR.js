@@ -10,8 +10,7 @@ const DTRSchema = new mongoose.Schema({
   serialNumber: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   siteName: {
     type: String,

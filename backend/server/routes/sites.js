@@ -5,6 +5,47 @@ const Projector = require('../models/Projector');
 const AMCContract = require('../models/AMCContract');
 const { authenticateToken } = require('../middleware/auth');
 
+// Get site statistics overview
+router.get('/stats/overview', authenticateToken, async (req, res) => {
+  try {
+    const totalSites = await Site.countDocuments();
+    const activeSites = await Site.countDocuments({ status: 'Active' });
+    const totalProjectors = await Projector.countDocuments();
+    const activeProjectors = await Projector.countDocuments({ status: 'Active' });
+    
+    // Get sites by region
+    const sitesByRegion = await Site.aggregate([
+      { $group: { _id: '$region', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get sites by type
+    const sitesByType = await Site.aggregate([
+      { $group: { _id: '$siteType', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    // Get projectors by status
+    const projectorsByStatus = await Projector.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    
+    res.json({
+      totalSites,
+      activeSites,
+      totalProjectors,
+      activeProjectors,
+      sitesByRegion,
+      sitesByType,
+      projectorsByStatus
+    });
+  } catch (error) {
+    console.error('Error fetching site statistics:', error);
+    res.status(500).json({ message: 'Error fetching site statistics', error: error.message });
+  }
+});
+
 // Get all sites with auditoriums and projector counts
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -12,35 +53,70 @@ router.get('/', authenticateToken, async (req, res) => {
       .populate('auditoriums')
       .lean();
     
-    // Get projector counts for each auditorium and site totals
-    for (const site of sites) {
-      // Initialize auditoriums array if it doesn't exist (for existing sites)
+    // Get all projector counts in a single aggregation query
+    const projectorCounts = await Projector.aggregate([
+      {
+        $group: {
+          _id: {
+            siteId: '$siteId',
+            auditoriumId: '$auditoriumId',
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Create lookup maps for fast access
+    const siteProjectorCounts = new Map();
+    const auditoriumProjectorCounts = new Map();
+    
+    projectorCounts.forEach(item => {
+      const siteId = item._id.siteId?.toString();
+      const auditoriumId = item._id.auditoriumId;
+      const status = item._id.status;
+      const count = item.count;
+      
+      if (siteId) {
+        // Site totals
+        if (!siteProjectorCounts.has(siteId)) {
+          siteProjectorCounts.set(siteId, { total: 0, active: 0 });
+        }
+        const siteCounts = siteProjectorCounts.get(siteId);
+        siteCounts.total += count;
+        if (status === 'Active') {
+          siteCounts.active += count;
+        }
+        
+        // Auditorium counts
+        if (auditoriumId) {
+          const key = `${siteId}-${auditoriumId}`;
+          if (!auditoriumProjectorCounts.has(key)) {
+            auditoriumProjectorCounts.set(key, 0);
+          }
+          auditoriumProjectorCounts.set(key, auditoriumProjectorCounts.get(key) + count);
+        }
+      }
+    });
+    
+    // Apply counts to sites
+    sites.forEach(site => {
+      // Initialize auditoriums array if it doesn't exist
       if (!site.auditoriums) {
         site.auditoriums = [];
       }
       
-      // Get total projectors for the site first
-      const totalProjectorCount = await Projector.countDocuments({
-        siteId: site._id
-      });
-      site.totalProjectors = totalProjectorCount;
+      const siteId = site._id.toString();
+      const siteCounts = siteProjectorCounts.get(siteId) || { total: 0, active: 0 };
+      site.totalProjectors = siteCounts.total;
+      site.activeProjectors = siteCounts.active;
       
-      // Get active projectors count
-      const activeProjectorCount = await Projector.countDocuments({
-        siteId: site._id,
-        status: 'Active'
+      // Apply auditorium counts
+      site.auditoriums.forEach(auditorium => {
+        const key = `${siteId}-${auditorium.audiNumber}`;
+        auditorium.projectorCount = auditoriumProjectorCounts.get(key) || 0;
       });
-      site.activeProjectors = activeProjectorCount;
-      
-      // Get projector counts for each auditorium
-      for (const auditorium of site.auditoriums) {
-        const projectorCount = await Projector.countDocuments({
-          siteId: site._id,
-          auditoriumId: auditorium.audiNumber
-        });
-        auditorium.projectorCount = projectorCount;
-      }
-    }
+    });
     
     res.json(sites);
   } catch (error) {

@@ -13,14 +13,12 @@ const proformaInvoiceSchema = new mongoose.Schema({
   purchaseOrderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PurchaseOrder',
-    required: true,
-    index: true
+    required: true
   },
   poNumber: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   
   // Client Information
@@ -128,8 +126,7 @@ const proformaInvoiceSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired', 'Converted to Invoice'],
-    default: 'Draft',
-    index: true
+    default: 'Draft'
   },
   
   // Approval and Workflow

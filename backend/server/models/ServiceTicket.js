@@ -13,14 +13,12 @@ const serviceTicketSchema = new mongoose.Schema({
   amcContractId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AMCContract',
-    required: true,
-    index: true
+    required: true
   },
   contractNumber: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   
   // Client and Site Information
@@ -43,8 +41,7 @@ const serviceTicketSchema = new mongoose.Schema({
   projectorSerial: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   projectorModel: {
     type: String,
@@ -103,16 +100,14 @@ const serviceTicketSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['Scheduled', 'Assigned', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled'],
-    default: 'Scheduled',
-    index: true
+    default: 'Scheduled'
   },
   
   // Priority
   priority: {
     type: String,
     enum: ['Low', 'Medium', 'High', 'Critical'],
-    default: 'Medium',
-    index: true
+    default: 'Medium'
   },
   
   // Service Requirements

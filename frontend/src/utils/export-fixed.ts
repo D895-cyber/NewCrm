@@ -209,6 +209,14 @@ const generateReportHTML = (report: any): string => {
     }
   };
 
+  // Safely get array for mapping operations
+  const safeArray = (value: any, fallback: any[] = []) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return fallback;
+  };
+
   // Safely get engineer name with multiple fallback paths
   const getEngineerName = (report: any): string => {
     try {
@@ -305,7 +313,7 @@ const generateReportHTML = (report: any): string => {
     <div class="section-title">ISSUES FOUND</div>
     <table class="compact-table">
       <tbody>
-        ${(safeAccess(report, ['issuesFound']) || ['No issues found']).map((issue: any) => 
+        ${safeArray(safeAccess(report, ['issuesFound']), ['No issues found']).map((issue: any) => 
           `<tr><td>${typeof issue === 'string' ? issue : safe(issue?.description)}</td></tr>`
         ).join('')}
       </tbody>
@@ -314,7 +322,7 @@ const generateReportHTML = (report: any): string => {
     <div class="section-title">PARTS USED</div>
     <table class="compact-table">
       <tbody>
-        ${(safeAccess(report, ['partsUsed']) || ['No parts used']).map((part: any) => 
+        ${safeArray(safeAccess(report, ['partsUsed']), ['No parts used']).map((part: any) => 
           `<tr><td>${typeof part === 'string' ? part : safe(part?.partName)}</td></tr>`
         ).join('')}
       </tbody>

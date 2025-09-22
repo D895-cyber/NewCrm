@@ -67,14 +67,14 @@ export function EnhancedValidationField({
   };
 
   const getBackgroundColor = () => {
-    if (!shouldShowValidation || fieldErrors.length === 0) return 'bg-white';
+    if (!shouldShowValidation || fieldErrors.length === 0) return 'bg-input-background';
     
     const hasError = fieldErrors.some(error => error.severity === 'error');
     const hasWarning = fieldErrors.some(error => error.severity === 'warning');
     
-    if (hasError) return 'bg-red-50';
-    if (hasWarning) return 'bg-yellow-50';
-    return 'bg-blue-50';
+    if (hasError) return 'bg-red-50 dark:bg-red-900/20';
+    if (hasWarning) return 'bg-yellow-50 dark:bg-yellow-900/20';
+    return 'bg-blue-50 dark:bg-blue-900/20';
   };
 
   const getCategoryIcon = (cat: string) => {

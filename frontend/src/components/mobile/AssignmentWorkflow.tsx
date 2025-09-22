@@ -434,7 +434,7 @@ export function AssignmentWorkflow() {
                 onChange={(e) => setUnableToCompleteReason(e.target.value)}
                 placeholder="Please explain why you cannot complete this assignment (e.g., equipment issues, access problems, safety concerns, etc.)"
                 rows={4}
-                className="mt-1"
+                className="mt-1 text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             

@@ -108,10 +108,6 @@ export function BulkUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
 
-
-
-
-
   const clearUploadData = () => {
     setJsonData('');
     setCsvData('');
@@ -140,7 +136,9 @@ export function BulkUpload() {
             try {
               const projector = await apiClient.createProjector({
                 ...projectorData,
-                siteId: site._id
+                siteId: site._id,
+                siteName: siteData.name,
+                siteCode: siteData.siteCode
               });
               results.projectors.success++;
             } catch (error: any) {
@@ -158,7 +156,8 @@ export function BulkUpload() {
       setShowResults(true);
     } catch (error: any) {
       console.error('Bulk upload error:', error);
-      alert('Error parsing JSON data. Please check the format.');
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Error processing JSON data: ${errorMessage}\n\nPlease check:\n1. JSON format and structure\n2. Required fields are present\n3. Data types are correct\n4. Browser console for detailed errors`);
     } finally {
       setIsLoading(false);
     }
@@ -178,6 +177,11 @@ export function BulkUpload() {
       console.log('CSV Headers:', headers);
       console.log('First data row:', lines[1]);
       
+      // Validate CSV structure
+      if (headers.length < 48) {
+        throw new Error(`CSV must have at least 48 columns. Found ${headers.length} columns. Please check the CSV format.`);
+      }
+      
       const results = { sites: { success: 0, failed: 0, errors: [] }, projectors: { success: 0, failed: 0, errors: [] } };
 
       // Group by site name
@@ -191,8 +195,8 @@ export function BulkUpload() {
         const values = parseCSVLine(line);
         console.log(`Row ${i} values:`, values);
         
-        if (values.length < 47) {
-          results.sites.errors.push(`Row ${i}: Insufficient columns. Expected 47, got ${values.length}`);
+        if (values.length < 48) {
+          results.sites.errors.push(`Row ${i}: Insufficient columns. Expected 48, got ${values.length}`);
           continue;
         }
         
@@ -260,19 +264,22 @@ export function BulkUpload() {
           auditoriumId: values[34] || 'AUDI-01',
           auditoriumName: values[35] || 'Main Auditorium',
           installDate: values[36] || new Date().toISOString().split('T')[0],
-          warrantyEnd: values[37] || new Date(Date.now() + 3 * 365 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: values[38] || 'Active',
-          condition: values[39] || 'Good',
-          expectedLife: parseInt(values[40]) || 10000,
+          warrantyStart: values[37] || new Date().toISOString().split('T')[0],
+          warrantyEnd: values[38] || new Date(Date.now() + 3 * 365 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: values[39] || 'Active',
+          condition: values[40] || 'Good',
+          expectedLife: parseInt(values[41]) || 10000,
           siteName: siteName,
           siteCode: siteGroups.get(siteName).siteData.siteCode,
-          amcContract: values[41] ? {
-            contractNumber: values[41] || `AMC-${Date.now()}`,
-            contractStartDate: values[42] || new Date().toISOString().split('T')[0],
-            contractEndDate: values[43] || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            contractValue: parseFloat(values[44]) || 0,
-            contractManager: values[45] || 'Unassigned',
-            status: values[46] || 'Active'
+          customer: siteName, // Use site name as customer
+          technician: 'Unassigned', // Default technician
+          amcContract: values[42] ? {
+            contractNumber: values[42] || `AMC-${Date.now()}`,
+            contractStartDate: values[43] || new Date().toISOString().split('T')[0],
+            contractEndDate: values[44] || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            contractValue: parseFloat(values[45]) || 0,
+            contractManager: values[46] || 'Unassigned',
+            status: values[47] || 'Active'
           } : undefined
         };
 
@@ -323,6 +330,38 @@ export function BulkUpload() {
               continue;
             }
             
+            // Ensure auditoriums exist for existing site
+            const uniqueAuditoriums = new Map();
+            for (const projectorData of data.projectors) {
+              const auditoriumId = projectorData.auditoriumId;
+              if (auditoriumId && !uniqueAuditoriums.has(auditoriumId)) {
+                uniqueAuditoriums.set(auditoriumId, {
+                  audiNumber: auditoriumId,
+                  name: projectorData.auditoriumName || `Auditorium ${auditoriumId}`,
+                  capacity: 100,
+                  screenSize: 'Standard',
+                  status: 'Active'
+                });
+              }
+            }
+            
+            // Add missing auditoriums to the existing site
+            for (const [auditoriumId, auditoriumData] of uniqueAuditoriums) {
+              if (!existingSite.auditoriums?.find(audi => audi.audiNumber === auditoriumId)) {
+                console.log(`Creating missing auditorium: ${auditoriumId} for existing site: ${siteName}`);
+                try {
+                  await apiClient.updateSite(existingSite._id, {
+                    auditoriums: [...(existingSite.auditoriums || []), auditoriumData]
+                  });
+                  // Refresh site data to get updated auditoriums
+                  const updatedSite = await apiClient.getSite(existingSite._id);
+                  existingSite.auditoriums = updatedSite.auditoriums;
+                } catch (auditError: any) {
+                  console.warn(`Failed to create auditorium ${auditoriumId}:`, auditError.message);
+                }
+              }
+            }
+            
             // Add projectors to existing site
             for (const projectorData of data.projectors) {
               try {
@@ -340,9 +379,12 @@ export function BulkUpload() {
                   ...projectorData,
                   siteId: existingSite._id,
                   siteName: siteName,
-                  siteCode: siteGroups.get(siteName).siteData.siteCode
+                  siteCode: siteGroups.get(siteName).siteData.siteCode,
+                  auditoriumId: projectorData.auditoriumId,
+                  auditoriumName: projectorData.auditoriumName
                 });
                 console.log(`Projector created successfully:`, projector);
+                console.log(`Projector siteId: ${projector.siteId}, Site _id: ${site._id}`);
                 results.projectors.success++;
                 
                 // Create AMC contract if provided
@@ -350,12 +392,25 @@ export function BulkUpload() {
                   try {
                     const amcContract = await apiClient.createAMCContract({
                       contractNumber: projectorData.amcContract.contractNumber,
+                      siteId: site._id,
+                      siteName: siteName,
+                      siteCode: siteGroups.get(siteName).siteData.siteCode,
+                      auditoriumId: projectorData.auditoriumId,
+                      auditoriumName: projectorData.auditoriumName,
+                      projectorId: projector._id,
+                      projectorNumber: projectorData.projectorNumber,
                       projectorSerial: projectorData.serialNumber,
+                      projectorModel: projectorData.model,
+                      projectorBrand: projectorData.brand,
                       contractStartDate: projectorData.amcContract.contractStartDate,
                       contractEndDate: projectorData.amcContract.contractEndDate,
+                      contractDuration: 12, // Default 12 months
                       contractValue: projectorData.amcContract.contractValue,
                       contractManager: projectorData.amcContract.contractManager,
-                      status: projectorData.amcContract.status
+                      status: projectorData.amcContract.status || 'Active',
+                      paymentStatus: 'Pending',
+                      coveredServices: ['Preventive Maintenance', 'Emergency Repairs'],
+                      terms: 'Standard AMC terms and conditions'
                     });
                     console.log(`AMC contract created successfully:`, amcContract);
                   } catch (amcError: any) {
@@ -374,6 +429,38 @@ export function BulkUpload() {
           const site = await apiClient.createSite(data.siteData);
           results.sites.success++;
           
+          // Ensure auditoriums exist for this site
+          const uniqueAuditoriums = new Map();
+          for (const projectorData of data.projectors) {
+            const auditoriumId = projectorData.auditoriumId;
+            if (auditoriumId && !uniqueAuditoriums.has(auditoriumId)) {
+              uniqueAuditoriums.set(auditoriumId, {
+                audiNumber: auditoriumId,
+                name: projectorData.auditoriumName || `Auditorium ${auditoriumId}`,
+                capacity: 100,
+                screenSize: 'Standard',
+                status: 'Active'
+              });
+            }
+          }
+          
+          // Add missing auditoriums to the site
+          for (const [auditoriumId, auditoriumData] of uniqueAuditoriums) {
+            if (!site.auditoriums?.find(audi => audi.audiNumber === auditoriumId)) {
+              console.log(`Creating missing auditorium: ${auditoriumId} for site: ${siteName}`);
+              try {
+                await apiClient.updateSite(site._id, {
+                  auditoriums: [...(site.auditoriums || []), auditoriumData]
+                });
+                // Refresh site data to get updated auditoriums
+                const updatedSite = await apiClient.getSite(site._id);
+                site.auditoriums = updatedSite.auditoriums;
+              } catch (auditError: any) {
+                console.warn(`Failed to create auditorium ${auditoriumId}:`, auditError.message);
+              }
+            }
+          }
+          
           for (const projectorData of data.projectors) {
             try {
               // Check if projector already exists (using Set for O(1) lookup)
@@ -390,9 +477,12 @@ export function BulkUpload() {
                   ...projectorData,
                   siteId: site._id,
                   siteName: siteName,
-                  siteCode: siteGroups.get(siteName).siteData.siteCode
+                  siteCode: siteGroups.get(siteName).siteData.siteCode,
+                  auditoriumId: projectorData.auditoriumId,
+                  auditoriumName: projectorData.auditoriumName
                 });
                 console.log(`Projector created successfully:`, projector);
+                console.log(`Projector siteId: ${projector.siteId}, Site _id: ${site._id}`);
                 results.projectors.success++;
                 
                 // Create AMC contract if provided
@@ -400,12 +490,25 @@ export function BulkUpload() {
                   try {
                     const amcContract = await apiClient.createAMCContract({
                       contractNumber: projectorData.amcContract.contractNumber,
+                      siteId: existingSite._id,
+                      siteName: siteName,
+                      siteCode: siteGroups.get(siteName).siteData.siteCode,
+                      auditoriumId: projectorData.auditoriumId,
+                      auditoriumName: projectorData.auditoriumName,
+                      projectorId: projector._id,
+                      projectorNumber: projectorData.projectorNumber,
                       projectorSerial: projectorData.serialNumber,
+                      projectorModel: projectorData.model,
+                      projectorBrand: projectorData.brand,
                       contractStartDate: projectorData.amcContract.contractStartDate,
                       contractEndDate: projectorData.amcContract.contractEndDate,
+                      contractDuration: 12, // Default 12 months
                       contractValue: projectorData.amcContract.contractValue,
                       contractManager: projectorData.amcContract.contractManager,
-                      status: projectorData.amcContract.status
+                      status: projectorData.amcContract.status || 'Active',
+                      paymentStatus: 'Pending',
+                      coveredServices: ['Preventive Maintenance', 'Emergency Repairs'],
+                      terms: 'Standard AMC terms and conditions'
                     });
                     console.log(`AMC contract created successfully:`, amcContract);
                   } catch (amcError: any) {
@@ -420,7 +523,7 @@ export function BulkUpload() {
           
           // Update site's projector count
           try {
-            const siteProjectors = finalProjectors.filter((proj: any) => proj.site === siteName);
+            const siteProjectors = data.projectors.filter((proj: any) => proj.siteName === siteName);
             console.log(`Updating site "${siteName}" with ${siteProjectors.length} projectors`);
             
             // Note: This would require a backend endpoint to update site projector counts
@@ -487,7 +590,8 @@ export function BulkUpload() {
       }
     } catch (error: any) {
       console.error('CSV upload error:', error);
-      alert('Error processing CSV data. Please check the format.');
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Error processing CSV data: ${errorMessage}\n\nPlease check:\n1. CSV format and column count (should be 47 columns)\n2. Data validity (required fields, date formats)\n3. Network connection\n4. Browser console for detailed errors`);
     } finally {
       setIsLoading(false);
       setUploadProgress('');
@@ -699,6 +803,25 @@ export function BulkUpload() {
                       <h4 className="text-lg font-semibold text-dark-primary mb-4">Upload Actions</h4>
                       <div className="flex flex-wrap gap-3">
                         <Button
+                          onClick={async () => {
+                            try {
+                              console.log('Testing API connectivity...');
+                              const sites = await apiClient.getAllSites();
+                              const projectors = await apiClient.getAllProjectors();
+                              console.log('API Test Results:', { sites: sites.length, projectors: projectors.length });
+                              alert(`API Test Successful!\n\nSites: ${sites.length}\nProjectors: ${projectors.length}\n\nCheck browser console for details.`);
+                            } catch (error: any) {
+                              console.error('API Test Failed:', error);
+                              alert(`API Test Failed: ${error.message}\n\nCheck browser console for details.`);
+                            }
+                          }}
+                          variant="outline"
+                          className="dark-button-secondary"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Test API
+                        </Button>
+                        <Button
                           onClick={handleCsvUpload}
                           disabled={isLoading || !csvData.trim()}
                           className={`${isLoading || !csvData.trim() 
@@ -757,12 +880,12 @@ Example Mall,SM001,North,Delhi,123 Main St,New Delhi,Delhi,110001,India,John Doe
                   
                   {/* CSV Structure Info */}
                   <div className="p-4 bg-blue-900/20 border border-blue-600 rounded-lg">
-                    <h4 className="text-lg font-semibold text-blue-400 mb-2">CSV Structure (47 columns)</h4>
+                    <h4 className="text-lg font-semibold text-blue-400 mb-2">CSV Structure (48 columns)</h4>
                     <div className="text-sm text-blue-200 space-y-1">
                       <p><strong>Columns 1-24:</strong> Site Information (Name, Code, Region, State, Address, Contact, Business Hours, Type, Status)</p>
                       <p><strong>Columns 25-29:</strong> Site AMC Contract (Contract Number, Start/End Dates, Value, Manager, Status, Service Level)</p>
-                      <p><strong>Columns 30-40:</strong> Auditorium & Projector Information (Auditorium Details, Projector Number, Serial, Model, Brand, Dates, Status, Condition, Life)</p>
-                      <p><strong>Columns 41-47:</strong> Projector AMC Contract (Contract Number, Start/End Dates, Value, Manager, Status)</p>
+                      <p><strong>Columns 30-41:</strong> Auditorium & Projector Information (Auditorium Details, Projector Number, Serial, Model, Brand, Install Date, Warranty Start, Warranty End, Status, Condition, Life)</p>
+                      <p><strong>Columns 42-48:</strong> Projector AMC Contract (Contract Number, Start/End Dates, Value, Manager, Status)</p>
                       <p className="text-xs mt-2">💡 <strong>Tip:</strong> Download the CSV template above to see the exact format. Each row represents one projector, and sites are automatically grouped.</p>
                     </div>
                   </div>
@@ -916,6 +1039,25 @@ Example Mall,SM001,North,Delhi,123 Main St,New Delhi,Delhi,110001,India,John Doe
                     <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-600">
                       <h4 className="text-lg font-semibold text-dark-primary mb-4">Upload Actions</h4>
                       <div className="flex flex-wrap gap-3">
+                        <Button
+                          onClick={async () => {
+                            try {
+                              console.log('Testing API connectivity...');
+                              const sites = await apiClient.getAllSites();
+                              const projectors = await apiClient.getAllProjectors();
+                              console.log('API Test Results:', { sites: sites.length, projectors: projectors.length });
+                              alert(`API Test Successful!\n\nSites: ${sites.length}\nProjectors: ${projectors.length}\n\nCheck browser console for details.`);
+                            } catch (error: any) {
+                              console.error('API Test Failed:', error);
+                              alert(`API Test Failed: ${error.message}\n\nCheck browser console for details.`);
+                            }
+                          }}
+                          variant="outline"
+                          className="dark-button-secondary"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Test API
+                        </Button>
                         <Button
                           onClick={handleJsonUpload}
                           disabled={isLoading || !jsonData.trim()}

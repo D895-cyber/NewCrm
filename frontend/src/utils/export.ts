@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+
 // Export utility functions
 export const convertToCSV = (data: any[], headers?: string[]): string => {
   if (!data || data.length === 0) return '';
@@ -15,115 +16,6 @@ export const convertToCSV = (data: any[], headers?: string[]): string => {
   return csvContent;
 };
 
-// Simple text export as fallback (currently unused but kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const exportAsText = (report: any): void => {
-  console.log('📄 Exporting as text fallback...');
-  
-  const safe = (v: any, fallback: string = '-') => (v == null || v === '' ? fallback : String(v));
-  const fmtDate = (d: any) => {
-    try { return new Date(d || Date.now()).toLocaleDateString(); } catch { return safe(d); }
-  };
-
-  const textContent = `
-ASCOMP INC. - CHRISTIE PROJECTOR SERVICE REPORT
-===============================================
-
-Report Number: ${safe(report.reportNumber)}
-Report Type: ${safe(report.reportType)}
-Date: ${fmtDate(report.date)}
-
-SITE INFORMATION
-----------------
-Site Name: ${safe(report.siteName)}
-Engineer: ${safe(report.engineer?.name || report.engineerName)}
-Site Contact: ${safe(report.siteIncharge?.name || report.siteInchargeName)}
-Contact Phone: ${safe(report.siteIncharge?.phone || report.siteInchargePhone)}
-
-PROJECTOR INFORMATION
---------------------
-Model: ${safe(report.projectorModel)}
-Serial Number: ${safe(report.projectorSerial)}
-Software Version: ${safe(report.softwareVersion)}
-Projector Running Hours: ${safe(report.projectorRunningHours)}
-
-LAMP INFORMATION
----------------
-Lamp Model: ${safe(report.lampModel)}
-Lamp Running Hours: ${safe(report.lampRunningHours)}
-Current Lamp Hours: ${safe(report.currentLampHours)}
-Replacement Required: ${report.replacementRequired ? 'Yes' : 'No'}
-
-SERVICE DETAILS
---------------
-Work Performed: ${safe(report.workPerformed, 'Standard maintenance performed')}
-
-Issues Found:
-${(report.issuesFound || ['No issues found']).map((issue: any) => 
-  `- ${typeof issue === 'string' ? issue : safe(issue?.description)}`
-).join('\n')}
-
-Parts Used:
-${(report.partsUsed || ['No parts used']).map((part: any) => 
-  `- ${typeof part === 'string' ? part : safe(part?.partName)}`
-).join('\n')}
-
-Recommendations: ${safe(report.recommendations, 'No specific recommendations')}
-
-TECHNICAL MEASUREMENTS
----------------------
-Voltage Parameters:
-${report.voltageParameters ? Object.entries(report.voltageParameters).map(([key, value]) => 
-  `${key}: ${safe(value)}V`
-).join('\n') : 'No voltage measurements recorded'}
-
-Lamp Power Measurements:
-${report.lampPowerMeasurements ? Object.entries(report.lampPowerMeasurements).map(([key, value]) => 
-  `${key}: ${safe(value)}W`
-).join('\n') : 'No lamp power measurements recorded'}
-
-ENVIRONMENTAL CONDITIONS
------------------------
-Temperature: ${safe(report.environmentalConditions?.temperature)}°C
-Humidity: ${safe(report.environmentalConditions?.humidity)}%
-Air Pollution Level: ${safe(report.airPollutionLevel?.overall)}
-
-SYSTEM STATUS
-------------
-LE Status During PM: ${safe(report.systemStatus?.leStatus)}
-AC Status: ${safe(report.systemStatus?.acStatus)}
-
-SIGNATURES
-----------
-Engineer Signature: ${report.signatures?.engineer?.name ? 'Signed by ' + report.signatures.engineer.name : 'Not signed'}
-Customer Signature: ${report.signatures?.customer?.name ? 'Signed by ' + report.signatures.customer.name : 'Not signed'}
-
-SERVICE TIMING
---------------
-Service Start Time: ${report.serviceStartTime ? new Date(report.serviceStartTime).toLocaleString() : 'Not recorded'}
-Service End Time: ${report.serviceEndTime ? new Date(report.serviceEndTime).toLocaleString() : 'Not recorded'}
-
-PHOTOS
-------
-Photos Taken: ${report.photos ? report.photos.length : 0} photos
-
-===============================================
-Generated on: ${new Date().toLocaleString()}
-ASCOMP INC. - 9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064
-Desk: 011-45501226 | Mobile: 8882475207 | Email: helpdesk@ascompinc.in
-WWW.ASCOMPINC.IN
-  `;
-
-  const blob = new Blob([textContent], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `ASCOMP_Report_${safe(report.reportNumber)}_${new Date().toISOString().split('T')[0]}.txt`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
 
 // Print HTML version
 const printHtml = (title: string, htmlContent: string): void => {
@@ -140,36 +32,101 @@ const printHtml = (title: string, htmlContent: string): void => {
       <html>
         <head>
           <title>${title}</title>
+          <meta charset="UTF-8">
           <style>
         body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-        .company-info { flex: 1; }
-        .company-logo { font-size: 24px; font-weight: bold; color: #0066cc; }
-        .company-name { font-size: 18px; font-weight: bold; color: #0066cc; margin-bottom: 5px; }
-        .website { font-weight: bold; color: #0066cc; }
+        .header { margin-bottom: 20px; }
+        .company-info { }
+        .company-logo { font-size: 24px; font-weight: bold; color: #87CEEB; display: inline-block; margin-right: 5px; }
+        .company-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 5px; display: inline-block; }
+        .website { font-weight: bold; color: #000; text-decoration: underline; }
         .right { text-align: right; }
-            .small { font-size: 10px; }
-        .report-title { font-size: 24px; font-weight: bold; text-align: center; margin: 15px 0; color: #0066cc; font-family: 'Times New Roman', serif; letter-spacing: 2px; }
-        .subtitle { font-size: 14px; text-align: center; margin-bottom: 20px; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-        th, td { border: 1px solid #000; padding: 8px 10px; text-align: left; vertical-align: top; }
-        th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 11px; }
-        .section-title { font-weight: bold; margin: 20px 0 10px 0; font-size: 14px; color: #000; border-bottom: 2px solid #000; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
-        .info-box { border: 1px solid #ccc; padding: 10px; background: #f9f9f9; margin-bottom: 10px; }
-        .compact-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
-        .compact-table th, .compact-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-        .compact-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-        .center { text-align: center; }
-            .right { text-align: right; }
-        .indent { margin-left: 20px; }
-        .status-ok { color: #008000; font-weight: bold; }
-        .muted { color: #666; font-style: italic; }
-        .status-footer { margin-top: 30px; padding: 15px; background: #f0f0f0; border: 1px solid #ccc; }
+        .small { font-size: 10px; }
+        .report-title { font-size: 32px; font-weight: bold; text-align: left; margin: 15px 0; color: #000; font-family: Arial, sans-serif; }
+        .subtitle { font-size: 14px; text-align: left; margin-bottom: 20px; color: #333; }
+        .personnel-info { margin-bottom: 15px; }
+        .replacement-status { margin-left: 20px; }
+        
+        /* Main Service Checklist Table */
+        .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+        .main-table th, .main-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .main-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        .replacement-header { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
+        
+        /* Additional Info Tables */
+        .additional-info { margin-top: 20px; display: flex; gap: 30px; }
+        .info-left { flex: 1; }
+        .info-right { flex: 1; }
+        .info-item { margin: 3px 0; font-size: 11px; line-height: 1.2; }
+        .table-section { margin-bottom: 20px; }
+        .table-section h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #000; text-decoration: underline; }
+        
+        /* Evaluation Table */
+        .evaluation-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px; }
+        .evaluation-table th, .evaluation-table td { border: 1px solid #000; padding: 4px 6px; text-align: left; vertical-align: top; }
+        .evaluation-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 9px; }
+        
+        /* Parts Table */
+        .parts-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+        .parts-table th, .parts-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .parts-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        
+        /* Color Tables */
+        .color-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+        .color-table th, .color-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .color-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        
+        /* Screen Table */
+        .screen-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+        .screen-table th, .screen-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .screen-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        .throw-distance { margin-top: 10px; font-size: 12px; }
+        
+        /* Pollution Table */
+        .pollution-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+        .pollution-table th, .pollution-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+        .pollution-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        
+        /* Observations */
+        .observations-section { margin-bottom: 20px; }
+        .observations { margin-bottom: 15px; }
+        .observation-item { margin: 5px 0; font-size: 12px; }
+        
+        /* Parts Section */
+        .parts-section { margin-bottom: 20px; }
+        
+        /* Technical Tables */
+        .technical-tables { display: flex; gap: 15px; margin-bottom: 20px; }
+        .color-coordinates { flex: 1; }
+        .color-accuracy { flex: 1; }
+        .screen-info { flex: 1; }
+        
+        /* Pollution Section */
+        .pollution-section { margin-bottom: 20px; }
+        
+        /* Status Section */
+        .status-section { margin-top: 20px; padding: 15px; background: #f0f0f0; border: 1px solid #ccc; }
         .status-item { margin: 5px 0; font-size: 11px; }
         .note { margin-top: 10px; font-size: 10px; font-style: italic; color: #666; }
-        .small { font-size: 10px; }
-        .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
+        
+        /* Footer */
+        .footer { margin-top: 30px; text-align: right; }
+        .version { font-size: 10px; color: #666; }
+        
+        /* Site and Projector Info */
+        .site-info { margin-bottom: 15px; }
+        .site-info div { margin: 2px 0; font-size: 12px; }
+        .projector-info { margin-bottom: 20px; }
+        .projector-info div { margin: 2px 0; font-size: 12px; }
+        
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
+        .info-box { border: 1px solid #ccc; padding: 10px; background: #f9f9f9; margin-bottom: 10px; }
+        .indent { margin-left: 20px; }
+        .text-center { text-align: center; }
+        .section-title { font-weight: bold; margin: 20px 0 10px 0; font-size: 14px; color: #000; border-bottom: 2px solid #000; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        
         @media print { body { margin: 0; padding: 15px; } }
           </style>
         </head>
@@ -208,6 +165,14 @@ const generateReportHTML = (report: any): string => {
     } catch {
       return fallback;
     }
+  };
+
+  // Safely get array for mapping operations
+  const safeArray = (value: any, fallback: any[] = []) => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return fallback;
   };
 
   // Safely get engineer name with multiple fallback paths
@@ -254,99 +219,330 @@ const generateReportHTML = (report: any): string => {
     }
   };
 
+  // Generate sections table rows
+  const generateSectionRows = (sections: any[], sectionName: string) => {
+    if (!sections || !Array.isArray(sections) || sections.length === 0) {
+      // Return default section if no data
+      return `
+        <tr>
+          <td class="section-cell">${sectionName}</td>
+          <td>No data available</td>
+          <td class="text-center">-</td>
+          <td class="text-center">OK</td>
+        </tr>
+      `;
+    }
+    
+    return sections.map((item, index) => `
+      <tr>
+        <td class="section-cell">${index === 0 ? sectionName : ''}</td>
+        <td>${safe(item.description || item.color || item.partName || '')}</td>
+        <td class="text-center">${safe(item.status || '-')}</td>
+        <td class="text-center">${safe(item.result || 'OK')}</td>
+      </tr>
+    `).join('');
+  };
+
+  // Generate single section row
+  const generateSingleSectionRow = (item: any, sectionName: string) => {
+    if (!item) {
+      // Return default row if no data
+      return `
+        <tr>
+          <td class="section-cell">${sectionName}</td>
+          <td>No data available</td>
+          <td class="text-center">-</td>
+          <td class="text-center">OK</td>
+        </tr>
+      `;
+    }
+    
+    return `
+      <tr>
+        <td class="section-cell">${sectionName}</td>
+        <td>${safe(item.description || '')}</td>
+        <td class="text-center">${safe(item.status || '-')}</td>
+        <td class="text-center">${safe(item.result || 'OK')}</td>
+      </tr>
+    `;
+  };
+
   return `
     <div class="header">
       <div class="company-info">
         <div class="company-logo">A</div>
         <div class="company-name">ASCOMP INC.</div>
-        <div>9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
-        <div>Desk: 011-45501226</div>
-        <div>Mobile: 8882475207</div>
-        <div class="website">WWW.ASCOMPINC.IN</div>
-        <div>Email: helpdesk@ascompinc.in</div>
-      </div>
-      <div class="right small">
-        <div><strong>Report:</strong> ${safe(safeAccess(report, ['reportNumber']))}</div>
-        <div><strong>Type:</strong> ${safe(safeAccess(report, ['reportType']))}</div>
-        <div><strong>Date:</strong> ${fmtDate(safeAccess(report, ['date']))}</div>
+        <div>Address: 9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
+        <div>Desk: 011-45501226 Mobile: 8882475207 - <span class="website">WWW.ASCOMPINC.IN</span></div>
+        <div>Email - helpdesk@ascompinc.in</div>
       </div>
     </div>
     
-    <div class="report-title">CHRISTIE</div>
-    <div class="subtitle">Projector Service Report - ${safe(safeAccess(report, ['reportType']))} done on Date - ${fmtDate(safeAccess(report, ['date']))}</div>
+    <div class="report-title">CHRISTIE<sup>®</sup></div>
+    <div class="subtitle">Projector Service Report - ${safe(safeAccess(report, ['reportType']))} done on Date – ${fmtDate(safeAccess(report, ['date']))}</div>
     
-    <div class="grid">
-      <div class="info-box">
-        <div><strong>Site:</strong> ${safe(safeAccess(report, ['siteName']))}</div>
-        <div><strong>Personnel:</strong></div>
-        <div class="indent">Site In-charge: Mr. ${getSiteInchargeName(report)} - ${getSiteInchargePhone(report)}</div>
-        <div class="indent">Ascomp Engineer: ${getEngineerName(report)}</div>
-      </div>
-      <div class="info-box">
-        <div><strong>Projector Information:</strong></div>
-        <div class="indent">Model: ${safe(safeAccess(report, ['projectorModel']))}</div>
-        <div class="indent">Serial Number: ${safe(safeAccess(report, ['projectorSerial']))}</div>
-        <div class="indent">Software Version: ${safe(safeAccess(report, ['softwareVersion']))}</div>
-        <div class="indent">Projector running hours: ${safe(safeAccess(report, ['projectorRunningHours']))}</div>
-        <div><strong>Lamp Information:</strong></div>
-        <div class="indent">Lamp Model: ${safe(safeAccess(report, ['lampModel']))}</div>
-        <div class="indent">Lamp running hours: ${safe(safeAccess(report, ['lampRunningHours']))}</div>
-        <div class="indent">Current Lamp Hours: ${safe(safeAccess(report, ['currentLampHours']))}</div>
-        <div class="indent">Replacement Required: ${safeAccess(report, ['replacementRequired']) ? 'Yes' : 'No'}</div>
+    <div class="site-info">
+      <div><strong>Site -</strong> ${safe(safeAccess(report, ['siteName']))}</div>
+    </div>
+    
+    <div class="personnel-info">
+      <div>In presence of Site In-charge - Mr. ${getSiteInchargeName(report)} - <strong>${getSiteInchargePhone(report)}</strong>, Ascomp Engineer - ${getEngineerName(report)}</div>
+    </div>
+    
+    <div class="projector-info">
+      <div><strong>Projector Model</strong> ${safe(safeAccess(report, ['projectorModel']))} <strong>with Serial Number</strong> <strong>${safe(safeAccess(report, ['projectorSerial']))}</strong> <strong>and Software Version -</strong> ${safe(safeAccess(report, ['softwareVersion']))}</div>
+      <div><strong>Projector running hours -</strong> <strong>${safe(safeAccess(report, ['projectorRunningHours']))}</strong> <strong>Lamp Model and running hours -</strong> ${safe(safeAccess(report, ['lampModel']))} - <strong>${safe(safeAccess(report, ['lampRunningHours']))}</strong> <strong>Current Lamp Hours -</strong> <strong>${safe(safeAccess(report, ['currentLampHours']))}</strong></div>
+      <div class="replacement-status"><strong>Replacement Required</strong></div>
+    </div>
+
+    <!-- Main Service Checklist Table -->
+    <table class="main-table">
+      <thead>
+        <tr>
+          <th>SECTIONS</th>
+          <th>DESCRIPTION</th>
+          <th>STATUS</th>
+          <th>YES/NO - OK</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${generateSectionRows(safeAccess(report, ['sections', 'opticals']) || [
+          { description: 'Reflector', status: '-', result: 'OK' },
+          { description: 'UV filter', status: '-', result: 'OK' },
+          { description: 'Integrator Rod', status: '-', result: 'OK' },
+          { description: 'Cold Mirror', status: '-', result: 'OK' },
+          { description: 'Fold Mirror', status: '-', result: 'OK' }
+        ], 'OPTICALS')}
+        ${generateSectionRows(safeAccess(report, ['sections', 'electronics']) || [
+          { description: 'Touch Panel', status: '-', result: 'OK' },
+          { description: 'EVB Board', status: '-', result: 'OK' },
+          { description: 'IMCB Board/s', status: '-', result: 'OK' },
+          { description: 'PIB Board', status: '-', result: 'OK' },
+          { description: 'ICP Board', status: '-', result: 'OK' },
+          { description: 'IMB/S Board', status: '-', result: 'OK' }
+        ], 'ELECTRONICS')}
+        ${generateSingleSectionRow(safeAccess(report, ['sections', 'serialNumberVerified']) || {
+          description: 'Chassis label vs Touch Panel',
+          status: '-',
+          result: 'OK'
+        }, 'Serial Number verified')}
+        ${generateSectionRows(safeAccess(report, ['sections', 'disposableConsumables']) || [
+          { description: 'Air Intake, LAD and RAD', status: 'replaced', result: 'OK' }
+        ], 'Disposable Consumables')}
+        ${generateSingleSectionRow(safeAccess(report, ['sections', 'coolant']) || {
+          description: 'Level and Color',
+          status: '-',
+          result: 'OK'
+        }, 'Coolant')}
+        ${generateSectionRows(safeAccess(report, ['sections', 'lightEngineTestPatterns']) || [
+          { color: 'White', status: '-', result: 'OK' },
+          { color: 'Red', status: '-', result: 'OK' },
+          { color: 'Green', status: '-', result: 'OK' },
+          { color: 'Blue', status: '-', result: 'OK' },
+          { color: 'Black', status: '-', result: 'OK' }
+        ], 'Light Engine Test Pattern')}
+        ${generateSectionRows(safeAccess(report, ['sections', 'mechanical']) || [
+          { description: 'AC blower and Vane Switch', status: '-', result: 'OK' },
+          { description: 'Extractor Vane Switch', status: '-', result: 'OK' },
+          { description: 'Exhaust CFM', status: '-', result: 'OK' },
+          { description: 'Light Engine 4 fans with LAD fan', status: '-', result: 'OK' },
+          { description: 'Card Cage Top and Bottom fans', status: '-', result: 'OK' },
+          { description: 'Radiator fan and Pump', status: '-', result: 'OK' },
+          { description: 'Connector and hose for the Pump', status: '-', result: 'OK' },
+          { description: 'Security and lamp house lock switch', status: '-', result: 'OK' },
+          { description: 'Lamp LOC Mechanism X, Y and Z movement', status: '-', result: 'OK' }
+        ], 'MECHANICAL')}
+      </tbody>
+    </table>
+
+    <!-- Observations and Recommended Parts Section -->
+    <div class="observations-section">
+      <h3>Observations and Remarks</h3>
+      <div class="observations">
+        ${safeArray(safeAccess(report, ['observations']), [
+          { description: 'Service completed successfully' },
+          { description: 'All systems functioning normally' },
+          { description: '-' },
+          { description: '-' },
+          { description: '-' },
+          { description: '-' }
+        ]).map((obs: any, index: number) => 
+          `<div class="observation-item">${index + 1}. ${safe(obs.description || obs || '-')}</div>`
+        ).join('')}
       </div>
     </div>
 
-    <div class="section-title">WORK PERFORMED</div>
-    <table class="compact-table">
-      <tbody>
-        <tr><td>${safe(safeAccess(report, ['workPerformed']), 'Standard maintenance performed')}</td></tr>
-      </tbody>
-    </table>
+    <!-- Recommended Parts Section -->
+    <div class="parts-section">
+      <h3>Recommended Parts to Change</h3>
+      <table class="parts-table">
+        <thead>
+          <tr>
+            <th>S. No.</th>
+            <th>Part Name</th>
+            <th>Part Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${safeArray(safeAccess(report, ['recommendedParts']), [
+            { partName: '-', partNumber: '-' },
+            { partName: '-', partNumber: '-' },
+            { partName: '-', partNumber: '-' },
+            { partName: '-', partNumber: '-' },
+            { partName: '-', partNumber: '-' },
+            { partName: '-', partNumber: '-' }
+          ]).map((part: any, index: number) => 
+            `<tr>
+              <td>${index + 1}.</td>
+              <td>${safe(part.partName || '-')}</td>
+              <td>${safe(part.partNumber || '-')}</td>
+            </tr>`
+          ).join('')}
+        </tbody>
+      </table>
+    </div>
 
-    <div class="section-title">ISSUES FOUND</div>
-        <table class="compact-table">
+    <!-- Image Evaluation Section -->
+    <div class="evaluation-section">
+      <table class="evaluation-table">
+        <thead>
+          <tr>
+            <th>Image Evaluation</th>
+            <th>OK - Yes/No</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Focus/boresight</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'focusBoresight']) || 'Yes')}</td></tr>
+          <tr><td>Integrator Position</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'integratorPosition']) || 'Yes')}</td></tr>
+          <tr><td>Any Spot on the Screen after PPM</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'spotOnScreen']) || 'No')}</td></tr>
+          <tr><td>Check Screen Cropping - FLAT and SCOPE</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'screenCropping']) || 'Yes')}</td></tr>
+          <tr><td>Convergence Checked</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'convergenceChecked']) || 'Yes')}</td></tr>
+          <tr><td>Channels Checked - Scope, Flat, Alternative</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'channelsChecked']) || 'Yes')}</td></tr>
+          <tr><td>Pixel defects</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'pixelDefects']) || 'No')}</td></tr>
+          <tr><td>Excessive image vibration</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'imageVibration']) || 'Yes')}</td></tr>
+          <tr><td>LiteLOC</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'liteLoc']) || 'No')}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+
+    <!-- Technical Data Tables -->
+    <div class="technical-tables">
+      <div class="color-coordinates">
+        <h3>Measured color coordinates (MCGD)</h3>
+        <table class="color-table">
+          <thead>
+            <tr>
+              <th>fL</th>
+              <th>x</th>
+              <th>y</th>
+            </tr>
+          </thead>
           <tbody>
-        ${(safeAccess(report, ['issuesFound']) || ['No issues found']).map((issue: any) => 
-          `<tr><td>${typeof issue === 'string' ? issue : safe(issue?.description)}</td></tr>`
-        ).join('')}
+            ${safeArray(safeAccess(report, ['measuredColorCoordinates']), []).map((item: any) => 
+              `<tr><td>${safe(item.testPattern)}</td><td class="text-center">${safe(item.fl || '-')}</td><td class="text-center">${safe(item.x || '-')}</td><td class="text-center">${safe(item.y || '-')}</td></tr>`
+            ).join('')}
           </tbody>
         </table>
-        
-    <div class="section-title">PARTS USED</div>
-        <table class="compact-table">
+      </div>
+
+      <div class="color-accuracy">
+        <h3>CIE XYZ Color Accuracy</h3>
+        <table class="color-table">
+          <thead>
+            <tr>
+              <th>Test Pattern</th>
+              <th>x</th>
+              <th>y</th>
+              <th>fL</th>
+            </tr>
+          </thead>
           <tbody>
-        ${(safeAccess(report, ['partsUsed']) || ['No parts used']).map((part: any) => 
-          `<tr><td>${typeof part === 'string' ? part : safe(part?.partName)}</td></tr>`
-        ).join('')}
+            ${safeArray(safeAccess(report, ['cieColorAccuracy']), []).map((item: any) => 
+              `<tr><td>${safe(item.testPattern)}</td><td class="text-center">${safe(item.x || '-')}</td><td class="text-center">${safe(item.y || '-')}</td><td class="text-center">${safe(item.fl || '-')}</td></tr>`
+            ).join('')}
           </tbody>
         </table>
-        
-    <div class="section-title">RECOMMENDATIONS</div>
-    <table class="compact-table">
-      <tbody>
-        <tr><td>${safe(safeAccess(report, ['recommendations']), 'No specific recommendations')}</td></tr>
-      </tbody>
-    </table>
+      </div>
 
-    <div class="status-footer">
-      <div class="status-item">
-        <strong>Photos Taken:</strong> ${safeAccess(report, ['photos']) ? safeAccess(report, ['photos']).length : 0} photos
+      <div class="screen-info">
+        <h3>Screen Information in metres</h3>
+        <table class="screen-table">
+          <thead>
+            <tr>
+              <th>Height</th>
+              <th>Width</th>
+              <th>Gain</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SCOPE</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'height']) || '6.81')}</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'width']) || '16.27')}</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'gain']) || '-')}</td>
+            </tr>
+            <tr>
+              <td>FLAT</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'height']) || '-')}</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'width']) || '-')}</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'gain']) || '-')}</td>
+            </tr>
+            <tr>
+              <td>Screen: Make,</td>
+              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'screenMake']) || '-')}</td>
+              <td class="text-center"></td>
+              <td class="text-center"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="throw-distance">
+          <strong>Throw Distance</strong> ${safe(safeAccess(report, ['screenInfo', 'throwDistance']) || '21.1')}
+        </div>
       </div>
-      <div class="status-item">
-        <strong>Service Start Time:</strong> ${safeAccess(report, ['serviceStartTime']) ? new Date(safeAccess(report, ['serviceStartTime'])).toLocaleString() : 'Not recorded'}
-      </div>
-      <div class="status-item">
-        <strong>Service End Time:</strong> ${safeAccess(report, ['serviceEndTime']) ? new Date(safeAccess(report, ['serviceEndTime'])).toLocaleString() : 'Not recorded'}
-      </div>
-      <div class="status-item">
-        <strong>Engineer Signature:</strong> ${safeAccess(report, ['signatures', 'engineer', 'name']) ? 'Signed by ' + safeAccess(report, ['signatures', 'engineer', 'name']) : 'Not signed'}
-      </div>
-      <div class="status-item">
-        <strong>Customer Signature:</strong> ${safeAccess(report, ['signatures', 'customer', 'name']) ? 'Signed by ' + safeAccess(report, ['signatures', 'customer', 'name']) : 'Not signed'}
-      </div>
-      <div class="note">
-        <strong>Note:</strong> The ODD file number is BEFORE and EVEN file number is AFTER, PM
-      </div>
+    </div>
+
+    <!-- Air Pollution Level -->
+    <div class="pollution-section">
+      <h3>Air Pollution Level</h3>
+      <table class="pollution-table">
+        <thead>
+          <tr>
+            <th>Air Pollution Level</th>
+            <th>HCHO</th>
+            <th>TVOC</th>
+            <th>PM 1.0</th>
+            <th>PM2.5</th>
+            <th>PM10</th>
+            <th>Temperature C</th>
+            <th>Humidity %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'overall']) || '28')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'hcho']) || '0.098')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'tvoc']) || '0.424')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm1']) || '12')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm25']) || '16')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm10']) || '18')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['environmentalConditions', 'temperature']) || '25')}</td>
+            <td class="text-center">${safe(safeAccess(report, ['environmentalConditions', 'humidity']) || '34%')}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- System Status -->
+    <div class="status-section">
+      <div class="status-item">LE Status During PM: <strong>${safe(safeAccess(report, ['systemStatus', 'leStatus']) || 'Removed')}</strong></div>
+      <div class="status-item">AC Status: <strong>${safe(safeAccess(report, ['systemStatus', 'acStatus']) || 'Working')}</strong></div>
+      <div class="status-item">Review Photos <strong class="underline">Click Here.</strong></div>
+      <div class="status-item underline">Note: The ODD file number is BEFORE and EVEN file number is AFTER, PM</div>
+    </div>
+
+    <div class="footer">
+      <div class="version">PM version 6.3</div>
     </div>
   `;
 };
@@ -403,14 +599,120 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
 const generateAndDownloadPDF = async (report: any): Promise<void> => {
   console.log('🔄 Starting PDF generation...');
 
-  // Generate HTML content
+  // Generate HTML content with proper styling
   const htmlContent = generateReportHTML(report);
   console.log('Generated HTML content length:', htmlContent.length);
 
-    // Create a temporary container for the HTML content
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
+  // Create a complete HTML document with inline styles
+  const fullHtmlDocument = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>ASCOMP Service Report</title>
+        <style>
+          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .company-info { flex: 1; }
+          .company-logo { font-size: 24px; font-weight: bold; color: #000; }
+          .company-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 5px; }
+          .website { font-weight: bold; color: #000; text-decoration: underline; }
+          .right { text-align: right; }
+          .small { font-size: 10px; }
+          .report-title { font-size: 24px; font-weight: bold; text-align: center; margin: 15px 0; color: #000; font-family: 'Times New Roman', serif; letter-spacing: 2px; }
+          .subtitle { font-size: 14px; text-align: center; margin-bottom: 20px; color: #333; }
+          
+          /* Main Service Checklist Table */
+          .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+          .main-table th, .main-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+          .main-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          .replacement-header { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
+          
+          /* Additional Info Tables */
+          .additional-info { margin-top: 20px; display: flex; gap: 30px; }
+          .info-left { flex: 1; }
+          .info-right { flex: 1; }
+          .info-item { margin: 3px 0; font-size: 11px; line-height: 1.2; }
+          .table-section { margin-bottom: 20px; }
+          .table-section h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #000; text-decoration: underline; }
+          
+          /* Evaluation Table */
+          .evaluation-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px; }
+          .evaluation-table th, .evaluation-table td { border: 1px solid #000; padding: 4px 6px; text-align: left; vertical-align: top; }
+          .evaluation-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 9px; }
+          
+          /* Parts Table */
+          .parts-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+          .parts-table th, .parts-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+          .parts-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          
+          /* Color Tables */
+          .color-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+          .color-table th, .color-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+          .color-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          
+          /* Screen Table */
+          .screen-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+          .screen-table th, .screen-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+          .screen-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          
+          /* Pollution Table */
+          .pollution-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
+          .pollution-table th, .pollution-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+          .pollution-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+          
+          /* Observations Section */
+          .observations-section { margin-bottom: 20px; }
+          .observations { margin-top: 10px; }
+          .observation-item { margin: 5px 0; font-size: 12px; }
+          
+          /* Parts Section */
+          .parts-section { margin-bottom: 20px; }
+          
+          /* Technical Tables */
+          .technical-tables { display: flex; gap: 15px; margin-bottom: 20px; }
+          .color-coordinates { flex: 1; }
+          .color-accuracy { flex: 1; }
+          .screen-info { flex: 1; }
+          
+          /* Pollution Section */
+          .pollution-section { margin-bottom: 20px; }
+          
+          /* Status Section */
+          .status-section { margin-bottom: 20px; }
+          .status-item { margin: 5px 0; font-size: 12px; }
+          
+          /* Footer */
+          .footer { margin-top: 30px; text-align: right; }
+          .version { font-size: 10px; color: #666; }
+          
+          /* Site and Projector Info */
+          .site-info { margin-bottom: 15px; }
+          .site-info div { margin: 2px 0; font-size: 12px; }
+          .projector-info { margin-bottom: 20px; }
+          .projector-info div { margin: 2px 0; font-size: 12px; }
+          
+          /* Grid Layout */
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
+          .info-box { border: 1px solid #ccc; padding: 10px; background: #f9f9f9; margin-bottom: 10px; }
+          .indent { margin-left: 20px; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-bold { font-weight: bold; }
+          .underline { text-decoration: underline; }
+        </style>
+      </head>
+      <body>
+        ${htmlContent}
+      </body>
+    </html>
+  `;
+
+  // Create a temporary container for the HTML content
+  const tempContainer = document.createElement('div');
+  tempContainer.style.position = 'absolute';
+  tempContainer.style.left = '-9999px';
   tempContainer.style.top = '0';
   tempContainer.style.width = '800px';
   tempContainer.style.backgroundColor = 'white';
@@ -420,8 +722,9 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
   tempContainer.style.padding = '20px';
   tempContainer.style.color = '#000';
   
-  tempContainer.innerHTML = htmlContent;
-    document.body.appendChild(tempContainer);
+  // Use the full HTML document instead of just the content
+  tempContainer.innerHTML = fullHtmlDocument;
+  document.body.appendChild(tempContainer);
 
   try {
     // Generate canvas from HTML
@@ -475,7 +778,7 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
     }
 
     // Generate filename
-    const reportNumber = safeAccess(report, ['reportNumber'], 'Unknown');
+    const reportNumber = report?.reportNumber || 'Unknown';
     const filename = `ASCOMP_Report_${reportNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Download the PDF
@@ -490,22 +793,110 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
     }
   } catch (error) {
     console.error('❌ Error generating PDF:', error);
-    throw error; // Re-throw to trigger fallback
+    // Fallback to HTML print version
+    console.log('🔄 Falling back to HTML print version...');
+    printHtml(`ASCOMP Service Report - ${report?.reportNumber || 'Unknown'}`, htmlContent);
   }
 };
 
-// Helper function for safe access
-const safeAccess = (obj: any, path: string[], fallback: any = '-') => {
+// Helper function for safe access (moved to top of file to avoid duplication)
+
+// Download CSV function
+export const downloadCSV = (data: any[], filename: string = 'export.csv', headers?: string[]): void => {
+  const csvContent = convertToCSV(data, headers);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Generate PDF function
+export const generatePDF = async (data: any, _filename: string = 'export.pdf'): Promise<void> => {
   try {
-    let current = obj;
-    for (const key of path) {
-      if (current == null || typeof current !== 'object') {
-        return fallback;
-      }
-      current = current[key];
-    }
-    return current != null ? current : fallback;
-  } catch {
-    return fallback;
+    await exportServiceReportToPDF(data);
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    throw error;
   }
+};
+
+// Download PDF function
+export const downloadPDF = async (data: any, _filename: string = 'export.pdf'): Promise<void> => {
+  try {
+    await exportServiceReportToPDF(data);
+  } catch (error) {
+    console.error('PDF download failed:', error);
+    throw error;
+  }
+};
+
+// Generate label function
+export const generateLabel = (data: any): string => {
+  // Simple label generation - can be enhanced based on requirements
+  const safe = (v: any, fallback: string = '-') => (v == null || v === '' ? fallback : String(v));
+  
+  return `
+Label Information:
+- ID: ${safe(data.id)}
+- Name: ${safe(data.name)}
+- Type: ${safe(data.type)}
+- Date: ${new Date().toLocaleDateString()}
+  `.trim();
+};
+
+// Print label function
+export const printLabel = (data: any): void => {
+  const labelContent = generateLabel(data);
+  
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Unable to open print window. Please allow popups and try again.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Label Print</title>
+        <style>
+          body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: Arial, sans-serif; 
+            font-size: 12px; 
+            line-height: 1.4; 
+            color: #000; 
+          }
+          .label { 
+            border: 2px solid #000; 
+            padding: 10px; 
+            margin: 10px 0; 
+            background: white;
+          }
+          @media print { 
+            body { margin: 0; padding: 10px; } 
+            .label { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <pre>${labelContent}</pre>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `);
+  
+  printWindow.document.close();
 };

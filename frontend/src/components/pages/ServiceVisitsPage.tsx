@@ -86,7 +86,7 @@ export function ServiceVisitsPage() {
     if (newVisit.siteName && projectors.length > 0) {
       const siteProjectors = projectors.filter(projector => 
         projector.siteName === newVisit.siteName || 
-        projector.site === newVisit.siteName
+        projector.siteName === newVisit.siteName
       );
       setFilteredProjectors(siteProjectors);
       console.log(`Filtered projectors for site "${newVisit.siteName}":`, siteProjectors.length);
@@ -403,14 +403,14 @@ export function ServiceVisitsPage() {
                   placeholder="Search visits..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="text-foreground bg-input-background">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -425,7 +425,7 @@ export function ServiceVisitsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Priority</label>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="text-foreground bg-input-background">
                   <SelectValue placeholder="All Priorities" />
                 </SelectTrigger>
                 <SelectContent>
@@ -561,7 +561,7 @@ export function ServiceVisitsPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Site Name *</label>
                 <Select value={newVisit.siteName || undefined} onValueChange={(value) => setNewVisit({...newVisit, siteName: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue placeholder="Select a site" />
                   </SelectTrigger>
                   <SelectContent>
@@ -591,7 +591,7 @@ export function ServiceVisitsPage() {
                   onValueChange={(value) => setNewVisit({...newVisit, projectorSerial: value})}
                   disabled={!newVisit.siteName}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue placeholder={newVisit.siteName ? "Select a projector" : "Select a site first"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -628,7 +628,7 @@ export function ServiceVisitsPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">FSE Engineer *</label>
                 <Select value={newVisit.fseName || undefined} onValueChange={(value) => setNewVisit({...newVisit, fseName: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue placeholder="Select an FSE" />
                   </SelectTrigger>
                   <SelectContent>
@@ -654,7 +654,7 @@ export function ServiceVisitsPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Visit Type</label>
                 <Select value={newVisit.visitType || undefined} onValueChange={(value) => setNewVisit({...newVisit, visitType: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -676,14 +676,14 @@ export function ServiceVisitsPage() {
                   type="datetime-local"
                   value={newVisit.scheduledDate}
                   onChange={(e) => setNewVisit({...newVisit, scheduledDate: e.target.value})}
-                  className="w-full"
+                  className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Priority</label>
                 <Select value={newVisit.priority || undefined} onValueChange={(value) => setNewVisit({...newVisit, priority: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -702,7 +702,7 @@ export function ServiceVisitsPage() {
                 placeholder="Brief description of the service required"
                 value={newVisit.description}
                 onChange={(e) => setNewVisit({...newVisit, description: e.target.value})}
-                className="w-full"
+                className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
@@ -712,7 +712,7 @@ export function ServiceVisitsPage() {
                 placeholder="Any additional information or special instructions"
                 value={newVisit.notes}
                 onChange={(e) => setNewVisit({...newVisit, notes: e.target.value})}
-                className="w-full"
+                className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
@@ -788,7 +788,7 @@ export function ServiceVisitsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Visit ID</label>
-                  <Input value={selectedVisit.visitId || 'N/A'} disabled className="bg-gray-50" />
+                  <Input value={selectedVisit.visitId || 'N/A'} disabled className="bg-gray-800 text-white border-gray-600" />
                 </div>
                 
                 <div className="space-y-2">
@@ -797,7 +797,7 @@ export function ServiceVisitsPage() {
                     value={selectedVisit.status || 'Scheduled'} 
                     onValueChange={(value) => setSelectedVisit({...selectedVisit, status: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -820,7 +820,7 @@ export function ServiceVisitsPage() {
                       // Clear selected projector if it's not available for the new site
                       if (selectedVisit.projectorSerial) {
                         const siteProjectors = projectors.filter(projector => 
-                          projector.siteName === value || projector.site === value
+                          projector.siteName === value
                         );
                         if (!siteProjectors.find(p => p.serialNumber === selectedVisit.projectorSerial)) {
                           updatedVisit.projectorSerial = '';
@@ -829,7 +829,7 @@ export function ServiceVisitsPage() {
                       setSelectedVisit(updatedVisit);
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select a site" />
                     </SelectTrigger>
                     <SelectContent>
@@ -849,7 +849,7 @@ export function ServiceVisitsPage() {
                     onValueChange={(value) => setSelectedVisit({...selectedVisit, projectorSerial: value})}
                     disabled={!selectedVisit.siteName}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder={selectedVisit.siteName ? "Select a projector" : "Select a site first"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -860,7 +860,7 @@ export function ServiceVisitsPage() {
                       ) : (() => {
                         const siteProjectors = projectors.filter(projector => 
                           projector.siteName === selectedVisit.siteName || 
-                          projector.site === selectedVisit.siteName
+                          projector.siteName === selectedVisit.siteName
                         );
                         return siteProjectors.length === 0 ? (
                           <SelectItem value="no-projectors" disabled>
@@ -893,7 +893,7 @@ export function ServiceVisitsPage() {
                     value={selectedVisit.fseName || undefined} 
                     onValueChange={(value) => setSelectedVisit({...selectedVisit, fseName: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select an FSE" />
                     </SelectTrigger>
                     <SelectContent>
@@ -912,7 +912,7 @@ export function ServiceVisitsPage() {
                     value={selectedVisit.visitType || 'Scheduled Maintenance'} 
                     onValueChange={(value) => setSelectedVisit({...selectedVisit, visitType: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -934,7 +934,7 @@ export function ServiceVisitsPage() {
                     type="datetime-local"
                     value={selectedVisit.scheduledDate ? selectedVisit.scheduledDate.slice(0, 16) : ''}
                     onChange={(e) => setSelectedVisit({...selectedVisit, scheduledDate: e.target.value})}
-                    className="w-full"
+                    className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 
@@ -944,7 +944,7 @@ export function ServiceVisitsPage() {
                     value={selectedVisit.priority || 'Medium'} 
                     onValueChange={(value) => setSelectedVisit({...selectedVisit, priority: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -963,7 +963,7 @@ export function ServiceVisitsPage() {
                   placeholder="Brief description of the service required"
                   value={selectedVisit.description || ''}
                   onChange={(e) => setSelectedVisit({...selectedVisit, description: e.target.value})}
-                  className="w-full"
+                  className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 
@@ -973,7 +973,7 @@ export function ServiceVisitsPage() {
                   placeholder="Any additional information or special instructions"
                   value={selectedVisit.notes || ''}
                   onChange={(e) => setSelectedVisit({...selectedVisit, notes: e.target.value})}
-                  className="w-full"
+                  className="w-full text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
 

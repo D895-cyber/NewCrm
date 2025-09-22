@@ -1042,7 +1042,7 @@ export function DTRPage() {
                   value={formData.complaintDescription}
                   onChange={(e) => setFormData({ ...formData, complaintDescription: e.target.value })}
                   rows={3}
-                  className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
                 />
               </div>
             </div>
@@ -1143,7 +1143,7 @@ export function DTRPage() {
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={2}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
           </div>
@@ -1194,7 +1194,7 @@ export function DTRPage() {
                 value={formData.actionTaken}
                 onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
                 rows={2}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -1205,7 +1205,7 @@ export function DTRPage() {
                 value={formData.remarks}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                 rows={2}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -1388,7 +1388,7 @@ export function DTRPage() {
                   placeholder="Technician name"
                   value={editFormData.assignedTo}
                   onChange={(e) => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
-                  className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -1397,7 +1397,7 @@ export function DTRPage() {
                   placeholder="e.g., 2 hours, 1 day"
                   value={editFormData.estimatedResolutionTime}
                   onChange={(e) => setEditFormData({ ...editFormData, estimatedResolutionTime: e.target.value })}
-                  className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -1409,7 +1409,7 @@ export function DTRPage() {
                   placeholder="e.g., 2 hours, 1 day"
                   value={editFormData.actualResolutionTime}
                   onChange={(e) => setEditFormData({ ...editFormData, actualResolutionTime: e.target.value })}
-                  className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             )}
@@ -1421,7 +1421,7 @@ export function DTRPage() {
                 value={editFormData.notes}
                 onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                 rows={3}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -1465,7 +1465,7 @@ export function DTRPage() {
                 value={editFormData.actionTaken}
                 onChange={(e) => setEditFormData({ ...editFormData, actionTaken: e.target.value })}
                 rows={2}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -1476,7 +1476,7 @@ export function DTRPage() {
                 value={editFormData.remarks}
                 onChange={(e) => setEditFormData({ ...editFormData, remarks: e.target.value })}
                 rows={2}
-                className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500 resize-none"
               />
             </div>
           </div>

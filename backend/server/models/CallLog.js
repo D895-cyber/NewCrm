@@ -10,8 +10,7 @@ const callLogSchema = new mongoose.Schema({
   siteName: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   customerName: {
     type: String,
@@ -41,14 +40,12 @@ const callLogSchema = new mongoose.Schema({
   priority: {
     type: String,
     enum: ['Low', 'Medium', 'High', 'Critical'],
-    default: 'Medium',
-    index: true
+    default: 'Medium'
   },
   status: {
     type: String,
     enum: ['Open', 'In Progress', 'Resolved', 'Closed'],
-    default: 'Open',
-    index: true
+    default: 'Open'
   },
   assignedTo: {
     type: String,
@@ -56,8 +53,7 @@ const callLogSchema = new mongoose.Schema({
   },
   openedDate: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
   resolvedDate: {
     type: Date
@@ -156,7 +152,7 @@ const callLogSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-callLogSchema.index({ callLogNumber: 1 });
+// callLogNumber already has unique: true, so no need for explicit index
 callLogSchema.index({ siteName: 1 });
 callLogSchema.index({ customerName: 1 });
 callLogSchema.index({ status: 1 });

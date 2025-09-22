@@ -9,13 +9,11 @@ const rmaSchema = new mongoose.Schema({
   },
   callLogNumber: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   rmaOrderNumber: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   
   // Date Fields
@@ -32,8 +30,7 @@ const rmaSchema = new mongoose.Schema({
   siteName: {
     type: String,
     required: true,
-    trim: true,
-    index: true
+    trim: true
   },
   productName: {
     type: String,
@@ -42,22 +39,19 @@ const rmaSchema = new mongoose.Schema({
   },
   productPartNumber: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   serialNumber: {
     type: String,
     required: true,
     trim: true,
-    index: true,
     ref: 'Projector'
   },
   
   // Defective Part Details
   defectivePartNumber: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   defectivePartName: {
     type: String,
@@ -129,15 +123,13 @@ const rmaSchema = new mongoose.Schema({
       'Completed',
       'Rejected'
     ],
-    default: 'Under Review',
-    index: true
+    default: 'Under Review'
   },
   
   approvalStatus: {
     type: String,
     enum: ['Pending Review', 'Approved', 'Rejected', 'Under Investigation'],
-    default: 'Pending Review',
-    index: true
+    default: 'Pending Review'
   },
   
   // Return Shipping Information
@@ -208,8 +200,7 @@ const rmaSchema = new mongoose.Schema({
   priority: {
     type: String,
     enum: ['Low', 'Medium', 'High', 'Critical'],
-    default: 'Medium',
-    index: true
+    default: 'Medium'
   },
   
   warrantyStatus: {

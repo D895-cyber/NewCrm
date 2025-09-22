@@ -15,6 +15,7 @@ interface DataContextType {
   
   // Loading states
   isLoading: boolean;
+  loadingProgress: number;
   error: string | null;
   
   // Actions
@@ -63,6 +64,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [spareParts, setSpareParts] = useState<any[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   
   // Debug: Log when RMA state changes
   useEffect(() => {
@@ -388,24 +390,41 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   }, [loadData]);
 
-  // Load all data in parallel
+  // Load all data in parallel with priority order
   const refreshData = useCallback(async () => {
     setIsLoading(true);
+    setLoadingProgress(0);
     setError(null);
     
     try {
+      // Load critical data first (sites, projectors, FSEs)
+      console.log('Loading critical data...');
+      setLoadingProgress(20);
       await Promise.all([
         refreshSites(),
         refreshProjectors(),
+        refreshFSEs()
+      ]);
+      setLoadingProgress(60);
+      
+      // Load secondary data in background
+      console.log('Loading secondary data...');
+      Promise.all([
         refreshServices(),
         refreshPurchaseOrders(),
-        refreshFSEs(),
         refreshServiceVisits(),
         refreshRMA(),
         refreshSpareParts()
-      ]);
+      ]).then(() => {
+        setLoadingProgress(100);
+      }).catch(err => {
+        console.warn('Some secondary data failed to load:', err);
+        setLoadingProgress(100);
+      });
+      
     } catch (err: any) {
-      setError(`Failed to load data: ${err.message}`);
+      setError(`Failed to load critical data: ${err.message}`);
+      setLoadingProgress(100);
     } finally {
       setIsLoading(false);
     }
@@ -426,6 +445,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     rma,
     spareParts,
     isLoading,
+    loadingProgress,
     error,
     refreshData,
     refreshSites,

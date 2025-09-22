@@ -52,7 +52,7 @@ const siteSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    enum: ['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Northwest', 'Southeast', 'Southwest']
+    enum: ['North', 'South', 'East', 'West', 'Central', 'Northeast', 'Northwest', 'Southeast', 'Southwest', 'North & East', 'North & West', 'South & East', 'South & West', 'West & Central', 'All Regions']
   },
   state: {
     type: String,

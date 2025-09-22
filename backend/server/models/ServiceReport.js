@@ -55,8 +55,8 @@ const ServiceReportSchema = new mongoose.Schema({
   },
   
   // Site Information
-  siteId: { type: String, index: true },
-  visitId: { type: String, index: true }, // Link to service visit
+  siteId: { type: String },
+  visitId: { type: String }, // Link to service visit
   siteName: { type: String, trim: true, required: true },
   siteIncharge: {
     name: { type: String, trim: true },
@@ -64,7 +64,7 @@ const ServiceReportSchema = new mongoose.Schema({
   },
   
   // Projector Information
-  projectorSerial: { type: String, index: true, required: true },
+  projectorSerial: { type: String, required: true },
   projectorModel: { type: String, trim: true, required: true },
   brand: { type: String, trim: true, required: true },
   softwareVersion: { type: String, trim: true },

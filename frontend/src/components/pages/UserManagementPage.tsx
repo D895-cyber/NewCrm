@@ -11,7 +11,8 @@ import {
   Users,
   Building,
   MapPin,
-  Loader2
+  Loader2,
+  LogIn
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../utils/api/client";
@@ -183,6 +184,38 @@ export function UserManagementPage() {
     }
   };
 
+  const handleImpersonateUser = async (userId: string, username: string) => {
+    if (!confirm(`Are you sure you want to login as ${username}?`)) return;
+
+    try {
+      const response = await fetch(`${apiClient.getBaseUrl()}/auth/impersonate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ targetUserId: userId })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Store the impersonation token
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('impersonation', 'true');
+        localStorage.setItem('impersonatedBy', data.user.impersonatedBy);
+        
+        // Reload the page to apply the new user context
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to impersonate user');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       username: '',
@@ -333,14 +366,25 @@ export function UserManagementPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     {user.userId !== currentUser?.userId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user.userId)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleImpersonateUser(user.userId, user.username)}
+                          className="text-blue-600 hover:text-blue-700"
+                          title={`Login as ${user.username}`}
+                        >
+                          <LogIn className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.userId)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

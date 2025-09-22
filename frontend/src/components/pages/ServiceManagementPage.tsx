@@ -181,7 +181,7 @@ export function ServiceManagementPage() {
     if (newVisit.siteName && projectors.length > 0) {
       const siteProjectors = projectors.filter(projector => 
         projector.siteName === newVisit.siteName || 
-        projector.site === newVisit.siteName
+        projector.siteName === newVisit.siteName
       );
       setFilteredProjectors(siteProjectors);
       
@@ -493,7 +493,7 @@ export function ServiceManagementPage() {
                     placeholder="Search services..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="max-w-sm"
+                    className="max-w-sm text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <Select value={filterType} onValueChange={setFilterType}>
@@ -610,7 +610,7 @@ export function ServiceManagementPage() {
                     placeholder="Search visits..."
                     value={searchTermVisits}
                     onChange={(e) => setSearchTermVisits(e.target.value)}
-                    className="max-w-sm"
+                    className="max-w-sm text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -858,6 +858,7 @@ export function ServiceManagementPage() {
                   type="date"
                   value={newService.date}
                   onChange={(e) => setNewService(prev => ({ ...prev, date: e.target.value }))}
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -867,6 +868,7 @@ export function ServiceManagementPage() {
                 placeholder="Enter service notes..."
                 value={newService.notes}
                 onChange={(e) => setNewService(prev => ({ ...prev, notes: e.target.value }))}
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -1023,6 +1025,7 @@ export function ServiceManagementPage() {
                   type="datetime-local"
                   value={newVisit.scheduledDate}
                   onChange={(e) => setNewVisit(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -1045,6 +1048,7 @@ export function ServiceManagementPage() {
                 placeholder="Enter visit description..."
                 value={newVisit.description}
                 onChange={(e) => setNewVisit(prev => ({ ...prev, description: e.target.value }))}
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -1053,6 +1057,7 @@ export function ServiceManagementPage() {
                 placeholder="Enter additional notes..."
                 value={newVisit.notes}
                 onChange={(e) => setNewVisit(prev => ({ ...prev, notes: e.target.value }))}
+                className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -1081,17 +1086,17 @@ export function ServiceManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Site</label>
-                  <Input value={selectedVisit.siteName || ''} readOnly />
+                  <Input value={selectedVisit.siteName || ''} readOnly className="text-white bg-gray-800 border-gray-600" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Projector</label>
-                  <Input value={selectedVisit.projectorSerial || ''} readOnly />
+                  <Input value={selectedVisit.projectorSerial || ''} readOnly className="text-white bg-gray-800 border-gray-600" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">FSE</label>
-                  <Input value={selectedVisit.fseName || ''} readOnly />
+                  <Input value={selectedVisit.fseName || ''} readOnly className="text-white bg-gray-800 border-gray-600" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Status</label>
@@ -1117,6 +1122,7 @@ export function ServiceManagementPage() {
                   placeholder="Enter notes..."
                   value={selectedVisit.notes || ''}
                   onChange={(e) => setSelectedVisit(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             </div>
