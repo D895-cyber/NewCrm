@@ -35,7 +35,7 @@ export const getApiUrl = (): string => {
     const currentPort = window.location.port;
     
     // Check for production environment variables first
-    const envApiUrl = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL;
+    const envApiUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.REACT_APP_API_URL;
     if (envApiUrl) {
       return envApiUrl;
     }
@@ -59,8 +59,8 @@ export const getApiUrl = (): string => {
   // Try multiple sources for API URL configuration
   const sources = [
     // Environment variables (Vite uses import.meta.env)
-    import.meta.env.VITE_API_URL,
-    import.meta.env.REACT_APP_API_URL,
+    (import.meta as any).env?.VITE_API_URL,
+    (import.meta as any).env?.REACT_APP_API_URL,
     // Legacy environment variable support
     typeof window !== 'undefined' ? (window as any).ENV?.API_URL : null,
     // Default fallback

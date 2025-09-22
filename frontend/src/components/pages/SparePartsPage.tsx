@@ -393,7 +393,7 @@ export function SparePartsPage() {
       const csvContent = convertToCSV(spareParts, [
         'partNumber', 'partName', 'category', 'brand', 'projectorModel', 'stockQuantity', 'unitPrice', 'status'
       ]);
-      downloadCSV(csvContent, `spare_parts_inventory_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(spareParts, `spare_parts_inventory_${new Date().toISOString().split('T')[0]}.csv`);
       
       (window as any).showToast?.({
         type: 'success',
@@ -418,7 +418,7 @@ export function SparePartsPage() {
         return;
       }
       
-      const labelContent = generateLabel(part, 'part');
+      const labelContent = generateLabel(part);
       printLabel(labelContent);
       
       (window as any).showToast?.({

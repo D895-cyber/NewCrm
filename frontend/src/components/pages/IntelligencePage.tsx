@@ -109,7 +109,7 @@ export function IntelligencePage() {
                   { metric: 'Rank One Rate', value: '89%' }
                 ];
                 const csvContent = convertToCSV(reportData);
-                downloadCSV(csvContent, `intelligence_report_${new Date().toISOString().split('T')[0]}.csv`);
+                downloadCSV(reportData, `intelligence_report_${new Date().toISOString().split('T')[0]}.csv`);
                 (window as any).showToast?.({
                   type: 'success',
                   title: 'Report Generated',

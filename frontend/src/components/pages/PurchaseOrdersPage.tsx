@@ -235,7 +235,7 @@ export function PurchaseOrdersPage() {
       const csvContent = convertToCSV(purchaseOrders, [
         'id', 'customer', 'site', 'status', 'priority', 'totalAmount', 'dateRaised', 'expectedService'
       ]);
-      downloadCSV(csvContent, `purchase_orders_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(purchaseOrders, `purchase_orders_${new Date().toISOString().split('T')[0]}.csv`);
       
       (window as any).showToast?.({
         type: 'success',

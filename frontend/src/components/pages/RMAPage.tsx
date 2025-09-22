@@ -528,7 +528,7 @@ export function RMAPage() {
       const csvContent = convertToCSV(rmaItems || [], [
         'rmaNumber', 'projectorSerial', 'partName', 'brand', 'projectorModel', 'customerSite', 'status', 'priority', 'estimatedCost', 'warrantyStatus'
       ]);
-      downloadCSV(csvContent, `rma_report_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(rmaItems || [], `rma_report_${new Date().toISOString().split('T')[0]}.csv`);
       
       (window as any).showToast?.({
         type: 'success',
@@ -551,7 +551,7 @@ export function RMAPage() {
         return;
       }
       
-      const labelContent = generateLabel(rma, 'rma');
+      const labelContent = generateLabel(rma);
       printLabel(labelContent);
       
       (window as any).showToast?.({

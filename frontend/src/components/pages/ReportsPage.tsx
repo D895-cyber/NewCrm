@@ -165,7 +165,7 @@ export function ReportsPage() {
               className="gap-2 bg-mint-600 hover:bg-mint-700"
               onClick={() => {
                 const csvContent = convertToCSV(detailedReports);
-                downloadCSV(csvContent, `fse_service_report_analytics_${new Date().toISOString().split('T')[0]}.csv`);
+                downloadCSV(analyticsData?.serviceTypeDistribution || [], `fse_service_report_analytics_${new Date().toISOString().split('T')[0]}.csv`);
                 (window as any).showToast?.({
                   type: 'success',
                   title: 'Export Successful',

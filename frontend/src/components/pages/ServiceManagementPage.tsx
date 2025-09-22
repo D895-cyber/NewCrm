@@ -281,7 +281,7 @@ export function ServiceManagementPage() {
     }));
     
     const csv = convertToCSV(csvData);
-    downloadCSV(csv, 'service-planning-data.csv');
+    downloadCSV(services, 'service-planning-data.csv');
   };
 
   // Service Visits Functions

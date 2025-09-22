@@ -224,7 +224,7 @@ export function LLMTrafficPage() {
               className="gap-2 bg-mint-600 hover:bg-mint-700"
               onClick={() => {
                 const csvContent = convertToCSV(analyticsData?.dailyTrends || []);
-                downloadCSV(csvContent, `fse_service_analytics_${new Date().toISOString().split('T')[0]}.csv`);
+                downloadCSV(analyticsData?.dailyTrends || [], `fse_service_analytics_${new Date().toISOString().split('T')[0]}.csv`);
                 (window as any).showToast?.({
                   type: 'success',
                   title: 'Export Successful',

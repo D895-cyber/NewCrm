@@ -224,7 +224,7 @@ export function SitesPage() {
       }];
       
       const csvContent = convertToCSV(siteData);
-      downloadCSV(csvContent, `site_${site.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV([site], `site_${site.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
       
       (window as any).showToast?.({
         type: 'success',

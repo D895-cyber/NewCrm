@@ -76,6 +76,36 @@ const ServiceReportSchema = new mongoose.Schema({
   currentLampHours: { type: String, trim: true },
   replacementRequired: { type: Boolean, default: false },
   
+  // Voltage Parameters
+  voltageParameters: {
+    pVsN: { type: String, trim: true },
+    pVsE: { type: String, trim: true },
+    nVsE: { type: String, trim: true }
+  },
+  
+  // Lamp Power Measurements
+  lampPowerMeasurements: {
+    flBeforePM: { type: String, trim: true },
+    flAfterPM: { type: String, trim: true }
+  },
+  
+  // Air Pollution Level
+  airPollutionLevel: {
+    overall: { type: String, trim: true },
+    hcho: { type: String, trim: true },
+    tvoc: { type: String, trim: true },
+    pm25: { type: String, trim: true }
+  },
+  
+  // Environmental Conditions
+  environmentalConditions: {
+    temperature: { type: String, trim: true },
+    humidity: { type: String, trim: true }
+  },
+  
+  // Observations
+  observations: [{ type: String, trim: true }],
+  
   // Engineer Information
   engineer: EngineerSchema,
   

@@ -46,9 +46,6 @@ class ApiClient {
     this.cache.set(key, { data, timestamp: Date.now() });
   }
 
-  private clearCache(): void {
-    this.cache.clear();
-  }
 
   async request(endpoint: string, options: RequestInit = {}) {
     try {

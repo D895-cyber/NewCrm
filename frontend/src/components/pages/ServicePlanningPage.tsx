@@ -265,7 +265,7 @@ export function ServicePlanningPage() {
       }));
 
       const csv = convertToCSV(csvData);
-      downloadCSV(csv, 'service_schedule');
+      downloadCSV(csvData, 'service_schedule');
     } catch (err) {
       console.error('Error exporting schedule:', err);
       setError('Failed to export schedule.');

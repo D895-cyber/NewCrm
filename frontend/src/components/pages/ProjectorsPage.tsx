@@ -361,7 +361,7 @@ export function ProjectorsPage() {
       const csvContent = convertToCSV(allProjectors, [
         'serialNumber', 'model', 'brand', 'site', 'location', 'status', 'condition', 'totalServices', 'hoursUsed'
       ]);
-      downloadCSV(csvContent, `projectors_report_${new Date().toISOString().split('T')[0]}.csv`);
+      downloadCSV(allProjectors, `projectors_report_${new Date().toISOString().split('T')[0]}.csv`);
       
       (window as any).showToast?.({
         type: 'success',
