@@ -29,47 +29,22 @@ export const config = {
 
 // Helper function to get API URL with fallback
 export const getApiUrl = (): string => {
-  // Production environment - use environment variable or same domain
-  if (typeof window !== 'undefined') {
-    const currentHost = window.location.hostname;
-    const currentPort = window.location.port;
-    
-    // Check for production environment variables first
-    const envApiUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.REACT_APP_API_URL;
-    if (envApiUrl) {
-      return envApiUrl;
-    }
-    
-    // If accessing from mobile (different IP than localhost)
-    if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-      // For production deployment, use same domain with /api path
-      if (currentPort === '443' || currentPort === '') {
-        // HTTPS production
-        return `https://${currentHost}/api`;
-      } else if (currentPort === '80') {
-        // HTTP production
-        return `http://${currentHost}/api`;
-      } else {
-        // Development with different IP
-        return `http://${currentHost}:4000/api`;
-      }
-    }
-  }
-  
-  // Try multiple sources for API URL configuration
-  const sources = [
-    // Environment variables (Vite uses import.meta.env)
-    (import.meta as any).env?.VITE_API_URL,
-    (import.meta as any).env?.REACT_APP_API_URL,
-    // Legacy environment variable support
-    typeof window !== 'undefined' ? (window as any).ENV?.API_URL : null,
-    // Default fallback
-    config.api.baseUrl
-  ];
+  const envApiUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.REACT_APP_API_URL;
 
-  for (const source of sources) {
-    if (source && typeof source === 'string') {
-      return source;
+  if (envApiUrl && typeof envApiUrl === 'string') {
+    return envApiUrl;
+  }
+
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol, host } = window.location;
+
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${protocol}//${host}/api`;
+    }
+
+    const browserConfigured = (window as any).ENV?.API_URL;
+    if (browserConfigured) {
+      return browserConfigured;
     }
   }
 
