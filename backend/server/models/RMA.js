@@ -84,7 +84,122 @@ const rmaSchema = new mongoose.Schema({
     trim: true
   },
   
-  // Shipping Information
+  // Enhanced Shipping Information
+  shipping: {
+    // Outbound (Company to CDS)
+    outbound: {
+      trackingNumber: {
+        type: String,
+        trim: true
+      },
+      carrier: {
+        type: String,
+        trim: true,
+        ref: 'DeliveryProvider'
+      },
+      carrierService: {
+        type: String,
+        trim: true
+      },
+      shippedDate: {
+        type: Date
+      },
+      estimatedDelivery: {
+        type: Date
+      },
+      actualDelivery: {
+        type: Date
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned'],
+        default: 'pending'
+      },
+      trackingUrl: {
+        type: String,
+        trim: true
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      },
+      weight: {
+        type: Number,
+        min: 0
+      },
+      dimensions: {
+        length: Number,
+        width: Number,
+        height: Number
+      },
+      insuranceValue: {
+        type: Number,
+        min: 0
+      },
+      requiresSignature: {
+        type: Boolean,
+        default: false
+      }
+    },
+    
+    // Return (CDS to Company)
+    return: {
+      trackingNumber: {
+        type: String,
+        trim: true
+      },
+      carrier: {
+        type: String,
+        trim: true,
+        ref: 'DeliveryProvider'
+      },
+      carrierService: {
+        type: String,
+        trim: true
+      },
+      shippedDate: {
+        type: Date
+      },
+      estimatedDelivery: {
+        type: Date
+      },
+      actualDelivery: {
+        type: Date
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned'],
+        default: 'pending'
+      },
+      trackingUrl: {
+        type: String,
+        trim: true
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      },
+      weight: {
+        type: Number,
+        min: 0
+      },
+      dimensions: {
+        length: Number,
+        width: Number,
+        height: Number
+      },
+      insuranceValue: {
+        type: Number,
+        min: 0
+      },
+      requiresSignature: {
+        type: Boolean,
+        default: false
+      }
+    }
+  },
+  
+  // Legacy shipping fields for backward compatibility
   shippedDate: {
     type: Date
   },
@@ -217,6 +332,123 @@ const rmaSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  
+  // Tracking History
+  trackingHistory: [{
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    status: {
+      type: String,
+      required: true
+    },
+    location: {
+      type: String,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true
+    },
+    carrier: {
+      type: String,
+      trim: true
+    },
+    direction: {
+      type: String,
+      enum: ['outbound', 'return'],
+      required: true
+    },
+    trackingNumber: {
+      type: String,
+      trim: true
+    },
+    source: {
+      type: String,
+      enum: ['api', 'webhook', 'manual'],
+      default: 'api'
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed
+    }
+  }],
+  
+  // Delivery Provider Integration
+  deliveryProvider: {
+    providerId: {
+      type: String,
+      ref: 'DeliveryProvider'
+    },
+    apiKey: {
+      type: String,
+      trim: true
+    },
+    webhookUrl: {
+      type: String,
+      trim: true
+    },
+    lastSync: {
+      type: Date
+    },
+    syncEnabled: {
+      type: Boolean,
+      default: true
+    }
+  },
+  
+  // Cost Tracking
+  shippingCosts: {
+    outbound: {
+      cost: {
+        type: Number,
+        min: 0
+      },
+      currency: {
+        type: String,
+        default: 'INR'
+      },
+      paidBy: {
+        type: String,
+        enum: ['company', 'customer', 'cds'],
+        default: 'company'
+      }
+    },
+    return: {
+      cost: {
+        type: Number,
+        min: 0
+      },
+      currency: {
+        type: String,
+        default: 'INR'
+      },
+      paidBy: {
+        type: String,
+        enum: ['company', 'customer', 'cds'],
+        default: 'company'
+      }
+    }
+  },
+  
+  // SLA Tracking
+  sla: {
+    targetDeliveryDays: {
+      type: Number,
+      default: 3
+    },
+    actualDeliveryDays: {
+      type: Number
+    },
+    slaBreached: {
+      type: Boolean,
+      default: false
+    },
+    breachReason: {
+      type: String,
+      trim: true
+    }
   }
 }, {
   timestamps: true
@@ -236,6 +468,17 @@ rmaSchema.index({ 'cdsWorkflow.cdsApproval.date': -1 });
 rmaSchema.index({ 'cdsWorkflow.replacementTracking.trackingNumber': 1 });
 rmaSchema.index({ defectivePartNumber: 1 });
 rmaSchema.index({ replacedPartNumber: 1 });
+
+// Enhanced tracking indexes
+rmaSchema.index({ 'shipping.outbound.trackingNumber': 1 });
+rmaSchema.index({ 'shipping.return.trackingNumber': 1 });
+rmaSchema.index({ 'shipping.outbound.carrier': 1 });
+rmaSchema.index({ 'shipping.return.carrier': 1 });
+rmaSchema.index({ 'shipping.outbound.status': 1 });
+rmaSchema.index({ 'shipping.return.status': 1 });
+rmaSchema.index({ 'deliveryProvider.providerId': 1 });
+rmaSchema.index({ 'trackingHistory.timestamp': -1 });
+rmaSchema.index({ 'sla.slaBreached': 1 });
 
 // Auto-generate RMA number
 rmaSchema.pre('save', async function(next) {
@@ -264,5 +507,119 @@ rmaSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Instance methods for tracking functionality
+rmaSchema.methods.addTrackingEvent = function(trackingData) {
+  this.trackingHistory.push({
+    timestamp: new Date(),
+    status: trackingData.status,
+    location: trackingData.location,
+    description: trackingData.description,
+    carrier: trackingData.carrier,
+    direction: trackingData.direction,
+    trackingNumber: trackingData.trackingNumber,
+    source: trackingData.source || 'api',
+    metadata: trackingData.metadata
+  });
+  
+  // Update last sync time
+  this.deliveryProvider.lastSync = new Date();
+  
+  return this.save();
+};
+
+rmaSchema.methods.updateShippingStatus = function(direction, status, additionalData = {}) {
+  if (direction === 'outbound') {
+    this.shipping.outbound.status = status;
+    this.shipping.outbound.lastUpdated = new Date();
+    
+    if (additionalData.actualDelivery) {
+      this.shipping.outbound.actualDelivery = additionalData.actualDelivery;
+    }
+    if (additionalData.estimatedDelivery) {
+      this.shipping.outbound.estimatedDelivery = additionalData.estimatedDelivery;
+    }
+  } else if (direction === 'return') {
+    this.shipping.return.status = status;
+    this.shipping.return.lastUpdated = new Date();
+    
+    if (additionalData.actualDelivery) {
+      this.shipping.return.actualDelivery = additionalData.actualDelivery;
+    }
+    if (additionalData.estimatedDelivery) {
+      this.shipping.return.estimatedDelivery = additionalData.estimatedDelivery;
+    }
+  }
+  
+  return this.save();
+};
+
+rmaSchema.methods.calculateSLABreach = function() {
+  const targetDays = this.sla.targetDeliveryDays || 3;
+  
+  // Check outbound SLA
+  if (this.shipping.outbound.actualDelivery && this.shipping.outbound.shippedDate) {
+    const actualDays = Math.ceil(
+      (this.shipping.outbound.actualDelivery - this.shipping.outbound.shippedDate) / (1000 * 60 * 60 * 24)
+    );
+    
+    if (actualDays > targetDays) {
+      this.sla.slaBreached = true;
+      this.sla.actualDeliveryDays = actualDays;
+      this.sla.breachReason = `Outbound delivery took ${actualDays} days, exceeding target of ${targetDays} days`;
+    }
+  }
+  
+  // Check return SLA
+  if (this.shipping.return.actualDelivery && this.shipping.return.shippedDate) {
+    const actualDays = Math.ceil(
+      (this.shipping.return.actualDelivery - this.shipping.return.shippedDate) / (1000 * 60 * 60 * 24)
+    );
+    
+    if (actualDays > targetDays) {
+      this.sla.slaBreached = true;
+      this.sla.actualDeliveryDays = actualDays;
+      this.sla.breachReason = `Return delivery took ${actualDays} days, exceeding target of ${targetDays} days`;
+    }
+  }
+  
+  return this.save();
+};
+
+rmaSchema.methods.getTrackingUrl = function(direction) {
+  const shipping = direction === 'outbound' ? this.shipping.outbound : this.shipping.return;
+  
+  if (!shipping.trackingNumber || !shipping.carrier) {
+    return null;
+  }
+  
+  // This will be populated by the DeliveryProvider model
+  return shipping.trackingUrl;
+};
+
+// Static methods
+rmaSchema.statics.findByTrackingNumber = function(trackingNumber) {
+  return this.findOne({
+    $or: [
+      { 'shipping.outbound.trackingNumber': trackingNumber },
+      { 'shipping.return.trackingNumber': trackingNumber }
+    ]
+  });
+};
+
+rmaSchema.statics.findActiveShipments = function() {
+  return this.find({
+    $or: [
+      { 'shipping.outbound.status': { $in: ['picked_up', 'in_transit', 'out_for_delivery'] } },
+      { 'shipping.return.status': { $in: ['picked_up', 'in_transit', 'out_for_delivery'] } }
+    ]
+  });
+};
+
+rmaSchema.statics.findSLABreaches = function() {
+  return this.find({
+    'sla.slaBreached': true
+  });
+};
 
 module.exports = mongoose.model('RMA', rmaSchema);
