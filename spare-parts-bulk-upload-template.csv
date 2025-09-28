@@ -1,0 +1,11 @@
+partNumber,partName,category,brand,projectorModel,projectorSerial,stockQuantity,reorderLevel,unitPrice,supplier,location,status,description
+LAMP-001,Projector Lamp Assembly,Spare Parts,Christie,CP2220,SN123456,10,5,299.99,Christie Parts,Main Warehouse,In Stock,High-quality lamp assembly for CP2220 projector
+FILTER-001,Air Filter,Spare Parts,Christie,CP2220,SN123456,25,10,45.50,Christie Parts,Main Warehouse,In Stock,Replacement air filter for CP2220
+CABLE-001,HDMI Cable 10ft,Spare Parts,Generic,Universal,SN123456,50,20,15.99,Electronics Supply,Main Warehouse,In Stock,High-speed HDMI cable for projector connections
+LENS-001,Projector Lens,Spare Parts,Christie,CP2220,SN123456,5,2,899.99,Christie Parts,Main Warehouse,In Stock,Replacement lens for CP2220 projector
+REMOTE-001,Projector Remote Control,Spare Parts,Christie,CP2220,SN123456,15,5,89.99,Christie Parts,Main Warehouse,In Stock,Wireless remote control for CP2220
+POWER-001,Power Supply Unit,Spare Parts,Christie,CP2220,SN123456,8,3,199.99,Christie Parts,Main Warehouse,In Stock,Replacement power supply for CP2220
+FAN-001,Cooling Fan Assembly,Spare Parts,Christie,CP2220,SN123456,12,5,79.99,Christie Parts,Main Warehouse,In Stock,Cooling fan for projector temperature control
+BULB-001,Projector Bulb,Spare Parts,Christie,CP2220,SN123456,20,8,149.99,Christie Parts,Main Warehouse,In Stock,High-brightness projector bulb
+
+
