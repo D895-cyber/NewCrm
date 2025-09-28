@@ -22,11 +22,17 @@ const proformaInvoiceRoutes = require('./routes/proformaInvoices');
 const serviceTicketRoutes = require('./routes/serviceTickets');
 const analyticsRoutes = require('./routes/analytics');
 const serviceAssignmentRoutes = require('./routes/serviceAssignments');
+const projectorTrackingRoutes = require('./routes/projectorTracking');
 const { router: authRoutes } = require('./routes/auth');
 const { router: settingsRoutes } = require('./routes/settings');
+const webhookRoutes = require('./routes/webhooks');
+const schedulerService = require('./services/schedulerService');
+const trackingUpdateService = require('./services/TrackingUpdateService');
+const FRONTEND_DIST_PATH = path.resolve(__dirname, '../../frontend/dist');
 
 // Load environment variables
 dotenv.config({ path: __dirname + '/.env' });
+dotenv.config({ path: __dirname + '/../.env' });
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -65,26 +71,95 @@ app.use((req, res, next) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    // Use MongoDB Atlas cloud database
-    const mongoURI = 'mongodb+srv://dev:dev123@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0';
-    console.log('Connecting to MongoDB Atlas...');
+    // First try environment variable
+    const mongoURI = process.env.MONGODB_URI;
     
-    await mongoose.connect(mongoURI, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
+    if (mongoURI) {
+      console.log('Trying MongoDB connection with environment variable...');
+      await mongoose.connect(mongoURI, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+      });
+      console.log('MongoDB connected successfully using environment variable');
+      return;
+    }
     
-    console.log('MongoDB Atlas connected successfully');
+    // Fallback to hardcoded connection strings
+    const mongoURIs = [
+      process.env.MONGODB_URI || 'mongodb+srv://dev:dev134@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0',
+      'mongodb+srv://dev:dev134@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0',
+    ];
+    
+    let connected = false;
+    
+    for (let i = 0; i < mongoURIs.length; i++) {
+      try {
+        console.log(`Trying MongoDB connection ${i + 1}/${mongoURIs.length}...`);
+        await mongoose.connect(mongoURIs[i], {
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 10000,
+          socketTimeoutMS: 10000,
+          connectTimeoutMS: 10000,
+        });
+        console.log('MongoDB Atlas connected successfully');
+        connected = true;
+        break;
+      } catch (uriError) {
+        console.log(`Connection attempt ${i + 1} failed:`, uriError.message);
+        if (i < mongoURIs.length - 1) {
+          await mongoose.disconnect();
+        }
+      }
+    }
+    
+    if (!connected) {
+      throw new Error('All MongoDB Atlas connection attempts failed');
+    }
+    
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    console.error('Please check your MongoDB Atlas connection and try again.');
-    process.exit(1);
+    console.error('MongoDB Atlas connection failed:', error.message);
+    
+    // Try fallback to local MongoDB
+    console.log('Attempting to connect to local MongoDB...');
+    try {
+      await mongoose.connect('mongodb://localhost:27017/projector_warranty', {
+        serverSelectionTimeoutMS: 5000,
+      });
+      console.log('Connected to local MongoDB successfully');
+    } catch (localError) {
+      console.error('Local MongoDB connection also failed:', localError.message);
+      
+      // Create a mock database for development
+      console.log('Creating mock database for development...');
+      await createMockDatabase();
+    }
   }       
 };
 
+// Mock database for development when MongoDB is not available
+const createMockDatabase = async () => {
+  console.log('⚠️  Running in MOCK MODE - No database connection available');
+  console.log('⚠️  Data will not persist between server restarts');
+  
+  // Set up mock data
+  global.mockDatabase = {
+    serviceAssignments: [],
+    serviceVisits: [],
+    fses: [],
+    sites: [],
+    projectors: []
+  };
+  
+  console.log('Mock database initialized');
+};
+
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => {
+  // Start scheduler service after database connection
+  schedulerService.start();
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -116,6 +191,8 @@ app.use('/api/service-tickets', serviceTicketRoutes);
 app.use('/api/amc-contracts', amcContractRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/service-assignments', serviceAssignmentRoutes);
+app.use('/api/projector-tracking', projectorTrackingRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -123,13 +200,12 @@ app.use('/uploads', express.static('uploads'));
 // Serve cloud storage files
 app.use('/cloud-storage', express.static('cloud-storage'));
 
-// Serve static files from React build in production
+// Serve static files from frontend build when available
 if (NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-  
-  // Handle React routing, return all requests to React app
+  app.use(express.static(FRONTEND_DIST_PATH));
+
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/dist', 'index.html'));
+    res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'));
   });
 }
 
@@ -187,6 +263,18 @@ app.use((error, req, res, next) => {
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
+// In non-production environments, serve the built frontend if it exists
+if (NODE_ENV !== 'production') {
+  app.use(express.static(FRONTEND_DIST_PATH));
+
+  app.get('*', (req, res, next) => {
+    res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'), (err) => {
+      if (err) {
+        next();
+      }
+    });
+  });
+}
 
 // Start server with port conflict handling
 const startServer = async (port) => {
@@ -194,6 +282,15 @@ const startServer = async (port) => {
     const server = app.listen(port, () => {
       console.log(`Server running on port ${port}`);
       console.log(`Health check: http://localhost:${port}/api/health`);
+      
+      // Initialize tracking service
+      try {
+        trackingUpdateService.start();
+        console.log('✅ Tracking update service initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize tracking service:', error);
+      }
+      
       resolve(server);
     });
 
