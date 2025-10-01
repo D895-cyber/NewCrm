@@ -40,6 +40,8 @@
   --border: #374151;
   --input: #1E293B;
   --input-background: #1E293B;
+  --input-foreground: #FFFFFF;
+  --input-text-color: #FFFFFF;
   --switch-background: #374151;
   --font-weight-medium: 600;
   --font-weight-normal: 400;
@@ -85,6 +87,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);
+  --color-input-foreground: var(--input-foreground);
+  --color-input-text-color: var(--input-text-color);
   --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -156,60 +160,58 @@
  * Base typography with dark theme styling
  */
 @layer base {
-  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
-    h1 {
-      font-size: 1.875rem;
-      font-weight: 700;
-      line-height: 1.4;
-      color: var(--dark-primary-text);
-    }
+  :where(h1):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--dark-primary-text);
+  }
 
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      line-height: 1.4;
-      color: var(--dark-primary-text);
-    }
+  :where(h2):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--dark-primary-text);
+  }
 
-    h3 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      line-height: 1.4;
-      color: var(--dark-primary-text);
-    }
+  :where(h3):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--dark-primary-text);
+  }
 
-    h4 {
-      font-size: 1rem;
-      font-weight: 600;
-      line-height: 1.4;
-      color: var(--dark-primary-text);
-    }
+  :where(h4):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--dark-primary-text);
+  }
 
-    p {
-      font-size: 0.875rem;
-      font-weight: 400;
-      line-height: 1.5;
-      color: var(--dark-secondary-text);
-    }
+  :where(p):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--dark-secondary-text);
+  }
 
-    label {
-      font-size: 0.875rem;
-      font-weight: 500;
-      line-height: 1.4;
-      color: var(--dark-primary-text);
-    }
+  :where(label):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--dark-primary-text);
+  }
 
-    button {
-      font-size: 0.875rem;
-      font-weight: 600;
-      line-height: 1.4;
-    }
+  :where(button):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
 
-    input {
-      font-size: 0.875rem;
-      font-weight: 400;
-      line-height: 1.4;
-    }
+  :where(input):not([class*=" text-"]):not([class^="text-"]) {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.4;
   }
 }
 
@@ -220,8 +222,8 @@ html {
 /* Dark theme utility classes */
 @layer utilities {
   /* Text colors */
-  .text-dark-primary { color: var(--color-dark-primary-text); }
-  .text-dark-secondary { color: var(--color-dark-secondary-text); }
+  .text-dark-primary { color: #fcfcfc !important; }
+  .text-dark-secondary { color: #94A3B8 !important; }
   .text-dark-positive { color: var(--color-dark-positive); }
   .text-dark-negative { color: var(--color-dark-negative); }
   .text-dark-cta { color: var(--color-dark-cta); }
@@ -245,6 +247,39 @@ html {
     padding: 1rem; /* Mobile-first: smaller padding */
     background-color: var(--color-dark-card);
     box-shadow: rgba(0, 0, 0, 0.25) 0px 4px 12px;
+  }
+  
+  /* Ensure text in dark cards is visible */
+  .dark-card p,
+  .dark-card .text-xs {
+    color: #E5E7EB !important;
+  }
+  
+  /* Global text visibility for dark theme */
+  .bg-dark-bg p,
+  .bg-dark-bg .text-sm,
+  .bg-dark-bg .text-xs {
+    color: #E5E7EB !important;
+  }
+  
+  .bg-dark-bg h1,
+  .bg-dark-bg h2,
+  .bg-dark-bg h3,
+  .bg-dark-bg h4,
+  .bg-dark-bg h5,
+  .bg-dark-bg h6 {
+    color: #FFFFFF !important;
+  }
+  
+  /* RMA page specific text visibility */
+  .bg-dark-card table th,
+  .bg-dark-card table td {
+    color: #FFFFFF !important;
+  }
+  
+  .bg-dark-card .text-gray-800,
+  .bg-dark-card .text-gray-900 {
+    color: #FFFFFF !important;
   }
 
   /* Mobile-first responsive padding */
@@ -474,5 +509,156 @@ html {
     .mobile-p-4 { padding: 1.5rem; }
     .mobile-p-6 { padding: 2.5rem; }
     .mobile-p-8 { padding: 3rem; }
+  }
+}
+
+/* Universal Input field text visibility fix */
+@layer components {
+  /* Apply to all input types */
+  input[type="text"], 
+  input[type="number"], 
+  input[type="email"], 
+  input[type="password"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    border-color: #D1D5DB !important;
+  }
+  
+  /* Focus states */
+  input[type="text"]:focus, 
+  input[type="number"]:focus, 
+  input[type="email"]:focus, 
+  input[type="password"]:focus,
+  input[type="tel"]:focus,
+  input[type="url"]:focus,
+  input[type="search"]:focus,
+  textarea:focus,
+  select:focus {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  }
+  
+  /* Placeholder text */
+  input::placeholder,
+  textarea::placeholder {
+    color: #6B7280 !important;
+  }
+  
+  /* Disabled states */
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    color: #9CA3AF !important;
+    background-color: #F3F4F6 !important;
+    border-color: #D1D5DB !important;
+  }
+  
+  /* Ensure text is visible in all input field classes */
+  .bg-input-background,
+  .bg-gray-800,
+  .bg-slate-800,
+  .bg-zinc-800 {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
+  /* Specific fix for MECHANICAL Section inputs */
+  .mechanical-input {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
+  /* Override any existing text color classes on inputs */
+  input.text-gray-700,
+  input.text-gray-600,
+  input.text-gray-500,
+  input.text-slate-700,
+  input.text-slate-600,
+  input.text-slate-500 {
+    color: #000000 !important;
+  }
+  
+  /* Universal input visibility - catch all */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  textarea,
+  select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
+  /* Ensure all input containers have visible text */
+  .space-y-2 input,
+  .space-y-4 input,
+  .grid input,
+  .flex input {
+    color: #000000 !important;
+  }
+  
+  /* Photo capture and modal input styling */
+  .modal input,
+  .card input,
+  .photo-capture input {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    border-color: #D1D5DB !important;
+  }
+  
+  /* Dark theme input overrides */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
+  /* Card and modal text visibility */
+  .card p,
+  .card span,
+  .modal p,
+  .modal span,
+  .bg-white p,
+  .bg-white span,
+  .bg-dark-card p,
+  .bg-dark-card span {
+    color: #000000 !important;
+  }
+  
+  /* Ensure all text in white backgrounds is black */
+  .bg-white * {
+    color: #000000 !important;
+  }
+  
+  /* Override any light text colors on white backgrounds */
+  .text-gray-600,
+  .text-gray-500,
+  .text-gray-400,
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400 {
+    color: #000000 !important;
+  }
+  
+  /* Specific fixes for workflow components */
+  .bg-blue-50 p,
+  .bg-blue-50 span,
+  .bg-blue-50 div {
+    color: #000000 !important;
+  }
+  
+  /* Ensure all text in cards with light backgrounds is black */
+  .bg-gray-50 p,
+  .bg-gray-50 span,
+  .bg-gray-50 div,
+  .bg-green-50 p,
+  .bg-green-50 span,
+  .bg-green-50 div {
+    color: #000000 !important;
   }
 }

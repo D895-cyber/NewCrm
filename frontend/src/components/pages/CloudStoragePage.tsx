@@ -159,8 +159,8 @@ export function CloudStoragePage() {
       <header className="bg-dark-bg border-b border-dark-color px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-dark-primary">Cloud Storage</h1>
-            <p className="text-sm text-dark-secondary mt-1">Manage and monitor cloud storage for service visit photos</p>
+            <h1 className="text-2xl font-semibold text-white">Cloud Storage</h1>
+            <p className="text-sm text-gray-300 mt-1">Manage and monitor cloud storage for service visit photos</p>
           </div>
           <div className="flex items-center space-x-3">
             <Button
@@ -189,7 +189,7 @@ export function CloudStoragePage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-dark-secondary" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : cloudStats ? (
           <>
@@ -197,12 +197,12 @@ export function CloudStoragePage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="dark-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Total Folders</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Folders</CardTitle>
                   <Folder className="h-4 w-4 text-blue-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{cloudStats.totalFolders}</div>
-                  <p className="text-xs text-dark-secondary">
+                  <div className="text-2xl font-bold text-white">{cloudStats.totalFolders}</div>
+                  <p className="text-xs text-gray-200">
                     Serial number folders
                   </p>
                 </CardContent>
@@ -210,12 +210,12 @@ export function CloudStoragePage() {
 
               <Card className="dark-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Total Files</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Files</CardTitle>
                   <FileImage className="h-4 w-4 text-green-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{cloudStats.totalFiles}</div>
-                  <p className="text-xs text-dark-secondary">
+                  <div className="text-2xl font-bold text-white">{cloudStats.totalFiles}</div>
+                  <p className="text-xs text-gray-200">
                     Photos uploaded
                   </p>
                 </CardContent>
@@ -223,12 +223,12 @@ export function CloudStoragePage() {
 
               <Card className="dark-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Storage Used</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-300">Storage Used</CardTitle>
                   <HardDrive className="h-4 w-4 text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">{formatFileSize(cloudStats.cloudinaryUsage?.storage?.usage || 0)}</div>
-                  <p className="text-xs text-dark-secondary">
+                  <div className="text-2xl font-bold text-white">{formatFileSize(cloudStats.cloudinaryUsage?.storage?.usage || 0)}</div>
+                  <p className="text-xs text-gray-200">
                     {getCloudinaryUsagePercentage().toFixed(1)}% of credits used
                   </p>
                 </CardContent>
@@ -236,14 +236,14 @@ export function CloudStoragePage() {
 
               <Card className="dark-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-dark-secondary">Cloudinary Plan</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-300">Cloudinary Plan</CardTitle>
                   <Server className="h-4 w-4 text-orange-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-dark-primary">
+                  <div className="text-2xl font-bold text-white">
                     {cloudStats.cloudinaryUsage?.plan || 'Free'}
                   </div>
-                  <p className="text-xs text-dark-secondary">
+                  <p className="text-xs text-gray-200">
                     {cloudStats.cloudinaryUsage?.credits?.usage || 0} / {cloudStats.cloudinaryUsage?.credits?.limit || 25} credits used
                   </p>
                 </CardContent>
@@ -253,36 +253,36 @@ export function CloudStoragePage() {
             {/* Cloudinary Usage */}
             <Card className="dark-card">
               <CardHeader>
-                <CardTitle className="text-dark-primary">Cloudinary Usage</CardTitle>
-                <CardDescription className="text-dark-secondary">
+                <CardTitle className="text-white">Cloudinary Usage</CardTitle>
+                <CardDescription className="text-gray-300">
                   Cloudinary storage and bandwidth usage
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-dark-bg rounded-lg">
-                    <div className="text-lg font-bold text-dark-primary">
+                    <div className="text-lg font-bold text-white">
                       {cloudStats.cloudinaryUsage?.objects?.usage || 0}
                     </div>
-                    <div className="text-xs text-dark-secondary">Images</div>
+                    <div className="text-xs text-gray-200">Images</div>
                   </div>
                   <div className="text-center p-4 bg-dark-bg rounded-lg">
-                    <div className="text-lg font-bold text-dark-primary">
+                    <div className="text-lg font-bold text-white">
                       {formatFileSize(cloudStats.cloudinaryUsage?.storage?.usage || 0)}
                     </div>
-                    <div className="text-xs text-dark-secondary">Storage</div>
+                    <div className="text-xs text-gray-200">Storage</div>
                   </div>
                   <div className="text-center p-4 bg-dark-bg rounded-lg">
-                    <div className="text-lg font-bold text-dark-primary">
+                    <div className="text-lg font-bold text-white">
                       {formatFileSize(cloudStats.cloudinaryUsage?.bandwidth?.usage || 0)}
                     </div>
-                    <div className="text-xs text-dark-secondary">Bandwidth</div>
+                    <div className="text-xs text-gray-200">Bandwidth</div>
                   </div>
                   <div className="text-center p-4 bg-dark-bg rounded-lg">
-                    <div className="text-lg font-bold text-dark-primary">
+                    <div className="text-lg font-bold text-white">
                       {cloudStats.cloudinaryUsage?.requests || 0}
                     </div>
-                    <div className="text-xs text-dark-secondary">Requests</div>
+                    <div className="text-xs text-gray-200">Requests</div>
                   </div>
                 </div>
               </CardContent>
@@ -291,8 +291,8 @@ export function CloudStoragePage() {
             {/* Folders by Serial Number */}
             <Card className="dark-card">
               <CardHeader>
-                <CardTitle className="text-dark-primary">Folders by Serial Number</CardTitle>
-                <CardDescription className="text-dark-secondary">
+                <CardTitle className="text-white">Folders by Serial Number</CardTitle>
+                <CardDescription className="text-gray-300">
                   Storage breakdown by projector serial number
                 </CardDescription>
               </CardHeader>
@@ -306,16 +306,16 @@ export function CloudStoragePage() {
                             <Folder className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <h3 className="text-sm font-medium text-dark-primary">{folder.serialNumber}</h3>
-                            <p className="text-xs text-dark-secondary">
+                            <h3 className="text-sm font-medium text-white">{folder.serialNumber}</h3>
+                            <p className="text-xs text-gray-400">
                               {folder.visits} visits, {folder.files} files
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-4">
                           <div className="text-right">
-                            <p className="text-sm font-medium text-dark-primary">{formatFileSize(folder.size)}</p>
-                            <p className="text-xs text-dark-secondary">{folder.files} files</p>
+                            <p className="text-sm font-medium text-white">{formatFileSize(folder.size)}</p>
+                            <p className="text-xs text-gray-400">{folder.files} files</p>
                           </div>
                           <div className="flex space-x-2">
                             <Button
@@ -345,8 +345,8 @@ export function CloudStoragePage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Cloud className="w-12 h-12 mx-auto mb-4 text-dark-secondary" />
-                    <p className="text-dark-secondary">No cloud storage folders found</p>
+                    <Cloud className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-300">No cloud storage folders found</p>
                   </div>
                 )}
               </CardContent>
@@ -355,8 +355,8 @@ export function CloudStoragePage() {
             {/* Storage Actions */}
             <Card className="dark-card">
               <CardHeader>
-                <CardTitle className="text-dark-primary">Storage Actions</CardTitle>
-                <CardDescription className="text-dark-secondary">
+                <CardTitle className="text-white">Storage Actions</CardTitle>
+                <CardDescription className="text-gray-300">
                   Manage cloud storage and perform maintenance tasks
                 </CardDescription>
               </CardHeader>
@@ -413,14 +413,14 @@ export function CloudStoragePage() {
           <div className="bg-dark-bg border-2 border-dark-color rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-dark-primary">Folder: {selectedFolder}</h2>
-                <p className="text-sm text-dark-secondary mt-1">
+                <h2 className="text-xl font-semibold text-white">Folder: {selectedFolder}</h2>
+                <p className="text-sm text-gray-300 mt-1">
                   {folderPhotos.length} photos • {formatFileSize(folderPhotos.reduce((sum, photo) => sum + (photo.fileSize || 0), 0))}
                 </p>
               </div>
               <Button
                 onClick={() => setShowFolderModal(false)}
-                className="text-dark-secondary hover:text-dark-primary"
+                className="text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600"
               >
                 ×
               </Button>
@@ -432,26 +432,32 @@ export function CloudStoragePage() {
                   <div key={index} className="relative group">
                     <div className="aspect-square bg-dark-bg border border-dark-color rounded-lg overflow-hidden">
                       <img
-                        src={photo.cloudUrl || '/placeholder-image.jpg'}
+                        src={photo.cloudUrl || photo.path || '/placeholder-image.jpg'}
                         alt={photo.description || photo.originalName}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                         onError={(e) => {
-                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjM0I0MjU5Ii8+CjxwYXRoIGQ9Ik02MCAxMDBMMTAwIDgwTDE0MCAxMDBMMTgwIDEyMEgxNDBMMTAwIDE0MEw2MCAxMjBINjBaIiBmaWxsPSIjN0M4Q0E5Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIxMCIgZmlsbD0iIzdDOENBOSIvPgo8L3N2Zz4K';
+                          // If both cloudUrl and path fail, show placeholder
+                          if (e.currentTarget.src !== 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjM0I0MjU5Ii8+CjxwYXRoIGQ9Ik02MCAxMDBMMTAwIDgwTDE0MCAxMDBMMTgwIDEyMEgxNDBMMTAwIDE0MEw2MCAxMjBINjBaIiBmaWxsPSIjN0M4Q0E5Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIxMCIgZmlsbD0iIzdDOENBOSIvPgo8L3N2Zz4K') {
+                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjM0I0MjU5Ii8+CjxwYXRoIGQ9Ik02MCAxMDBMMTAwIDgwTDE0MCAxMDBMMTgwIDEyMEgxNDBMMTAwIDE0MEw2MCAxMjBINjBaIiBmaWxsPSIjN0M4Q0E5Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIxMCIgZmlsbD0iIzdDOENBOSIvPgo8L3N2Zz4K';
+                          }
                         }}
                       />
                     </div>
-                    <div className="mt-2 text-xs text-dark-secondary">
-                      <div className="font-medium text-dark-primary">{photo.visitId}</div>
-                      <div>{photo.category}</div>
-                      <div>{new Date(photo.uploadedAt).toLocaleDateString()}</div>
+                    <div className="mt-2 text-xs text-gray-300">
+                      <div className="font-medium text-white">{photo.visitId}</div>
+                      <div className="text-gray-400">{photo.category}</div>
+                      <div className="text-gray-400">{new Date(photo.uploadedAt).toLocaleDateString()}</div>
+                      {!photo.cloudUrl && photo.path && photo.path.startsWith('blob:') && (
+                        <div className="text-yellow-400 text-xs mt-1">⚠️ Local file (not uploaded)</div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8">
-                <FileImage className="w-12 h-12 mx-auto mb-4 text-dark-secondary" />
-                <p className="text-dark-secondary">No photos found in this folder</p>
+                <FileImage className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-300">No photos found in this folder</p>
               </div>
             )}
           </div>

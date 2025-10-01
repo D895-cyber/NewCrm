@@ -122,3 +122,4 @@ console.log('2. If authentication fails, check your email/password');
 console.log('3. For Gmail, use App Password instead of regular password');
 console.log('4. Restart your backend server after making changes');
 console.log('5. Test service assignment to see if emails are sent');
+

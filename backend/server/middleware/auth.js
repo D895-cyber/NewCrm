@@ -18,4 +18,18 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken }; 
+const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const userRole = req.user.role || req.user.userRole;
+
+  if (!roles.includes(userRole)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  next();
+};
+
+module.exports = { authenticateToken, authorizeRoles };

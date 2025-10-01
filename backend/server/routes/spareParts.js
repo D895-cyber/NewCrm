@@ -43,6 +43,118 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk upload spare parts
+router.post('/bulk-upload', async (req, res) => {
+  try {
+    const { spareParts } = req.body;
+    
+    if (!Array.isArray(spareParts) || spareParts.length === 0) {
+      return res.status(400).json({ error: 'Spare parts array is required and cannot be empty' });
+    }
+
+    const results = {
+      successful: [],
+      failed: [],
+      total: spareParts.length
+    };
+
+    for (let i = 0; i < spareParts.length; i++) {
+      const partData = spareParts[i];
+      try {
+        // Validate required fields
+        const requiredFields = ['partNumber', 'partName', 'brand', 'projectorModel', 'stockQuantity', 'unitPrice', 'supplier', 'location'];
+        const missingFields = requiredFields.filter(field => !partData[field]);
+        
+        if (missingFields.length > 0) {
+          results.failed.push({
+            row: i + 1,
+            partNumber: partData.partNumber || 'N/A',
+            error: `Missing required fields: ${missingFields.join(', ')}`
+          });
+          continue;
+        }
+
+        // Check if part number already exists - allow duplicates but warn
+        const existingPart = await SparePart.findOne({ partNumber: partData.partNumber });
+        if (existingPart) {
+          // Instead of failing, update the existing part or create with a modified part number
+          console.log(`Part number ${partData.partNumber} already exists. Updating existing part.`);
+          
+          // Update the existing part with new data
+          const updatedPart = await SparePart.findByIdAndUpdate(
+            existingPart._id,
+            {
+              partName: partData.partName,
+              category: partData.category || 'Spare Parts',
+              brand: partData.brand,
+              projectorModel: partData.projectorModel,
+              projectorSerial: partData.projectorSerial || '',
+              stockQuantity: parseInt(partData.stockQuantity) || existingPart.stockQuantity,
+              reorderLevel: parseInt(partData.reorderLevel) || existingPart.reorderLevel,
+              unitPrice: parseFloat(partData.unitPrice) || existingPart.unitPrice,
+              supplier: partData.supplier,
+              location: partData.location,
+              status: partData.status || existingPart.status,
+              description: partData.description || existingPart.description
+            },
+            { new: true }
+          );
+          
+          results.successful.push({
+            row: i + 1,
+            partNumber: partData.partNumber,
+            partName: partData.partName,
+            action: 'Updated existing part'
+          });
+          continue;
+        }
+
+        // Create new spare part
+        const newPart = new SparePart({
+          partNumber: partData.partNumber,
+          partName: partData.partName,
+          category: partData.category || 'Spare Parts',
+          brand: partData.brand,
+          projectorModel: partData.projectorModel,
+          projectorSerial: partData.projectorSerial || '',
+          stockQuantity: parseInt(partData.stockQuantity) || 0,
+          reorderLevel: parseInt(partData.reorderLevel) || 5,
+          unitPrice: parseFloat(partData.unitPrice) || 0,
+          supplier: partData.supplier,
+          location: partData.location,
+          status: partData.status || 'In Stock',
+          description: partData.description || ''
+        });
+
+        await newPart.save();
+        results.successful.push({
+          row: i + 1,
+          partNumber: partData.partNumber,
+          partName: partData.partName,
+          action: 'Created new part'
+        });
+
+      } catch (error) {
+        results.failed.push({
+          row: i + 1,
+          partNumber: partData.partNumber || 'N/A',
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk upload completed. ${results.successful.length} successful, ${results.failed.length} failed.`,
+      results
+    });
+
+  } catch (error) {
+    console.error('Error in bulk upload:', error);
+    res.status(500).json({ error: 'Failed to process bulk upload', details: error.message });
+  }
+});
+
 // Update spare part
 router.put('/:id', async (req, res) => {
   try {

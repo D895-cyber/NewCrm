@@ -66,13 +66,56 @@ const projectorSchema = new mongoose.Schema({
   // Status and condition
   status: {
     type: String,
-    enum: ['Active', 'Under Service', 'Inactive', 'Needs Repair'],
+    enum: ['Active', 'Under Service', 'Inactive', 'Needs Repair', 'In Storage', 'Disposed', 'Maintenance', 'Testing'],
     default: 'Active'
   },
   condition: {
     type: String,
-    enum: ['Excellent', 'Good', 'Fair', 'Needs Repair'],
+    enum: ['Excellent', 'Good', 'Fair', 'Poor', 'Needs Repair', 'Critical'],
     default: 'Good'
+  },
+
+  // Tracking fields
+  isTracked: {
+    type: Boolean,
+    default: true
+  },
+  lastMovementDate: {
+    type: Date
+  },
+  totalMovements: {
+    type: Number,
+    default: 0
+  },
+  currentLocation: {
+    siteId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Site'
+    },
+    siteName: {
+      type: String,
+      trim: true
+    },
+    siteCode: {
+      type: String,
+      trim: true
+    },
+    auditoriumId: {
+      type: String,
+      trim: true
+    },
+    auditoriumName: {
+      type: String,
+      trim: true
+    },
+    position: {
+      type: String,
+      trim: true
+    },
+    rackPosition: {
+      type: String,
+      trim: true
+    }
   },
   
   // Service tracking

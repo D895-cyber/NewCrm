@@ -111,6 +111,58 @@ export function SparePartsPage() {
     }
   };
 
+  // Helper function to properly parse CSV lines with quoted fields
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Escaped quote
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // End of field
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    // Add the last field
+    result.push(current.trim());
+    
+    return result;
+  };
+
+  const downloadTemplate = () => {
+    const templateData = `partNumber,partName,category,brand,projectorModel,projectorSerial,stockQuantity,reorderLevel,unitPrice,supplier,location,status,description
+LAMP-001,Projector Lamp Assembly,Spare Parts,Christie,CP2220,SN123456,10,5,299.99,Christie Parts,Main Warehouse,In Stock,High-quality lamp assembly for CP2220 projector
+FILTER-001,Air Filter,Spare Parts,Christie,CP2220,SN123456,25,10,45.50,Christie Parts,Main Warehouse,In Stock,Replacement air filter for CP2220
+CABLE-001,HDMI Cable 10ft,Spare Parts,Generic,Universal,SN123456,50,20,15.99,Electronics Supply,Main Warehouse,In Stock,High-speed HDMI cable for projector connections
+LENS-001,Projector Lens,Spare Parts,Christie,CP2220,SN123456,5,2,899.99,Christie Parts,Main Warehouse,In Stock,Replacement lens for CP2220 projector
+REMOTE-001,Projector Remote Control,Spare Parts,Christie,CP2220,SN123456,15,5,89.99,Christie Parts,Main Warehouse,In Stock,Wireless remote control for CP2220`;
+
+    const blob = new Blob([templateData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'spare-parts-bulk-upload-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleBulkUpload = async () => {
     try {
       setIsLoading(true);
@@ -123,57 +175,48 @@ export function SparePartsPage() {
         return;
       }
       
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      const expectedHeaders = ['partNumber', 'partName', 'category', 'projectorModel'];
+      const headers = parseCSVLine(lines[0]);
+      const requiredHeaders = ['partNumber', 'partName', 'brand', 'projectorModel', 'stockQuantity', 'unitPrice', 'supplier', 'location'];
       
       // Validate headers (case-insensitive and handle quotes)
       const normalizedHeaders = headers.map(h => h.toLowerCase());
-      const normalizedExpected = expectedHeaders.map(h => h.toLowerCase());
+      const normalizedRequired = requiredHeaders.map(h => h.toLowerCase());
       
-      if (!normalizedExpected.every(h => normalizedHeaders.includes(h))) {
-        setBulkUploadError(`CSV must have these exact headers: ${expectedHeaders.join(', ')}. Found: ${headers.join(', ')}`);
+      const missingHeaders = normalizedRequired.filter(h => !normalizedHeaders.includes(h));
+      if (missingHeaders.length > 0) {
+        setBulkUploadError(`CSV must have these required headers: ${requiredHeaders.join(', ')}. Missing: ${missingHeaders.join(', ')}`);
         return;
       }
       
       // Parse data rows
       const parts = lines.slice(1).map((line, index) => {
-        // Handle CSV with quoted values
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        // Properly parse CSV with quoted values that may contain commas
+        const values = parseCSVLine(line);
         if (values.length !== headers.length) {
           throw new Error(`Row ${index + 2} has ${values.length} columns, expected ${headers.length}`);
         }
         
-        // Map category to valid enum values
-        const categoryMapping: { [key: string]: string } = {
-          'TEST': 'Spare Parts',
-          'Lamps': 'Spare Parts',
-          'Filters': 'Spare Parts',
-          'Boards': 'Spare Parts',
-          'Cables': 'Spare Parts',
-          'Other': 'Spare Parts',
-          'RMA': 'RMA'
+        // Helper function to get value by header name
+        const getValue = (headerName: string) => {
+          const index = headers.findIndex(h => h.toLowerCase() === headerName.toLowerCase());
+          return index >= 0 ? values[index] : '';
         };
         
-        const csvCategory = values[headers.indexOf('category')];
-        const mappedCategory = categoryMapping[csvCategory] || 'Spare Parts';
-        
-        // Create part object with all required fields explicitly set
+        // Create part object with all fields from CSV
         const part: any = {
-          // CSV fields
-          partNumber: values[headers.indexOf('partNumber')],
-          partName: values[headers.indexOf('partName')],
-          category: mappedCategory, // Use mapped category
-          projectorModel: values[headers.indexOf('projectorModel')],
-          
-          // Required default fields
-          stockQuantity: 0,
-          reorderLevel: 5,
-          unitPrice: 1,
-          status: 'In Stock',
-          brand: 'Christie',
-          supplier: 'TBD',
-          location: 'Warehouse',
-          description: ''
+          partNumber: getValue('partNumber'),
+          partName: getValue('partName'),
+          category: getValue('category') || 'Spare Parts',
+          brand: getValue('brand'),
+          projectorModel: getValue('projectorModel'),
+          projectorSerial: getValue('projectorSerial') || '',
+          stockQuantity: parseInt(getValue('stockQuantity')) || 0,
+          reorderLevel: parseInt(getValue('reorderLevel')) || 5,
+          unitPrice: parseFloat(getValue('unitPrice')) || 0,
+          supplier: getValue('supplier'),
+          location: getValue('location'),
+          status: getValue('status') || 'In Stock',
+          description: getValue('description') || ''
         };
         
         // Verify all required fields are present
@@ -222,61 +265,37 @@ export function SparePartsPage() {
         console.log('First part keys:', Object.keys(parts[0]));
       }
       
-      // Create all parts
-      const createdParts = [];
-      const failedParts = [];
-      
       console.log('Starting bulk upload with', parts.length, 'parts');
       console.log('First few parts:', parts.slice(0, 3));
       
-      for (const part of parts) {
-        try {
-          console.log('Creating part:', part.partNumber, part.partName);
-          const created = await apiClient.createSparePart(part);
-          createdParts.push(created);
-          console.log('Successfully created:', part.partNumber);
-        } catch (error: any) {
-          console.error(`Failed to create part ${part.partNumber}:`, error);
-          console.error('Part data that failed:', part);
-          failedParts.push({
-            partNumber: part.partNumber,
-            error: error.message || 'Unknown error',
-            details: error.response?.data || error.data || 'No additional details'
-          });
-          // Continue with other parts
-        }
-      }
-      
-      console.log('Bulk upload completed. Created:', createdParts.length, 'Failed:', failedParts.length);
-      if (failedParts.length > 0) {
-        console.log('Failed parts:', failedParts.slice(0, 5)); // Show first 5 failures
-      }
+      // Use the new bulk upload endpoint
+      const response = await apiClient.bulkUploadSpareParts(parts);
       
       setShowBulkUploadModal(false);
       setBulkUploadData("");
       setBulkUploadPreview([]);
       await loadSpareParts();
       
-      if (createdParts.length === 0 && failedParts.length > 0) {
+      if (response.results.successful.length === 0 && response.results.failed.length > 0) {
         // Show error if no parts were created
         (window as any).showToast?.({
           type: 'error',
           title: 'Bulk Upload Failed',
-          message: `Failed to add any spare parts. Check console for details.`
+          message: `Failed to add any spare parts. ${response.results.failed.length} parts failed.`
         });
-      } else if (failedParts.length > 0) {
+      } else if (response.results.failed.length > 0) {
         // Show partial success
         (window as any).showToast?.({
           type: 'warning',
           title: 'Bulk Upload Partial Success',
-          message: `Successfully added ${createdParts.length} out of ${parts.length} spare parts. ${failedParts.length} failed.`
+          message: `Successfully added ${response.results.successful.length} out of ${response.results.total} spare parts. ${response.results.failed.length} failed.`
         });
       } else {
         // Show full success
         (window as any).showToast?.({
           type: 'success',
           title: 'Bulk Upload Successful',
-          message: `Successfully added ${createdParts.length} out of ${parts.length} spare parts`
+          message: `Successfully added ${response.results.successful.length} spare parts`
         });
       }
       
@@ -324,22 +343,23 @@ export function SparePartsPage() {
         return;
       }
       
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      const expectedHeaders = ['partNumber', 'partName', 'category', 'projectorModel'];
+      const headers = parseCSVLine(lines[0]);
+      const requiredHeaders = ['partNumber', 'partName', 'brand', 'projectorModel', 'stockQuantity', 'unitPrice', 'supplier', 'location'];
       
       // Validate headers (case-insensitive and handle quotes)
       const normalizedHeaders = headers.map(h => h.toLowerCase());
-      const normalizedExpected = expectedHeaders.map(h => h.toLowerCase());
+      const normalizedRequired = requiredHeaders.map(h => h.toLowerCase());
       
-      if (!normalizedExpected.every(h => normalizedHeaders.includes(h))) {
-        setBulkUploadError(`CSV must have these exact headers: ${expectedHeaders.join(', ')}. Found: ${headers.join(', ')}`);
+      const missingHeaders = normalizedRequired.filter(h => !normalizedHeaders.includes(h));
+      if (missingHeaders.length > 0) {
+        setBulkUploadError(`CSV must have these required headers: ${requiredHeaders.join(', ')}. Missing: ${missingHeaders.join(', ')}`);
         return;
       }
       
       // Check for rows with incorrect number of columns
       const invalidRows: number[] = [];
       lines.slice(1).forEach((line, index) => {
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const values = parseCSVLine(line);
         if (values.length !== headers.length) {
           invalidRows.push(index + 2); // +2 because we start from row 2 (after header) and want 1-based row numbers
         }
@@ -354,7 +374,7 @@ export function SparePartsPage() {
         const problemRowsData = invalidRows.map(rowNum => {
           const lineIndex = rowNum - 2; // Convert back to 0-based index
           const line = lines[lineIndex + 1]; // +1 because we skipped header
-          const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+          const values = parseCSVLine(line);
           return {
             row: rowNum,
             content: line,
@@ -368,11 +388,31 @@ export function SparePartsPage() {
       
       const preview = lines.slice(1, 6).map((line, index) => {
         // Handle CSV with quoted values
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-        const part: any = {};
-        headers.forEach((header, i) => {
-          part[header] = values[i];
-        });
+        const values = parseCSVLine(line);
+        
+        // Helper function to get value by header name
+        const getValue = (headerName: string) => {
+          const index = headers.findIndex(h => h.toLowerCase() === headerName.toLowerCase());
+          return index >= 0 ? values[index] : '';
+        };
+        
+        // Create part object with all fields from CSV
+        const part: any = {
+          partNumber: getValue('partNumber'),
+          partName: getValue('partName'),
+          category: getValue('category') || 'Spare Parts',
+          brand: getValue('brand'),
+          projectorModel: getValue('projectorModel'),
+          projectorSerial: getValue('projectorSerial') || '',
+          stockQuantity: parseInt(getValue('stockQuantity')) || 0,
+          reorderLevel: parseInt(getValue('reorderLevel')) || 5,
+          unitPrice: parseFloat(getValue('unitPrice')) || 0,
+          supplier: getValue('supplier'),
+          location: getValue('location'),
+          status: getValue('status') || 'In Stock',
+          description: getValue('description') || ''
+        };
+        
         return part;
       });
       
@@ -1102,23 +1142,37 @@ export function SparePartsPage() {
               <div className="bg-blue-900 bg-opacity-30 border border-blue-600 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-blue-400">CSV Format Instructions</h3>
-
+                  <button
+                    onClick={downloadTemplate}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download Template
+                  </button>
                 </div>
                 <p className="text-blue-300 text-sm mb-2">
-                  Upload a CSV file with exactly 4 columns for reference purposes:
+                  Upload a CSV file with the following columns (required fields marked with *):
                 </p>
                 <ul className="text-blue-300 text-sm space-y-1">
-                  <li><strong>partNumber:</strong> Manufacturer part number (e.g., LMP-001)</li>
-                  <li><strong>partName:</strong> Name of the spare part (e.g., Lamp Module)</li>
-                  <li><strong>category:</strong> Category (e.g., Lamps, Filters, Boards, Cables, Other)</li>
-                  <li><strong>projectorModel:</strong> Compatible projector model (e.g., CP2220, CP2230, CP4220, CP4230, CP2215, CP4425-RGB)</li>
+                  <li><strong>partNumber*:</strong> Unique part number (e.g., LAMP-001)</li>
+                  <li><strong>partName*:</strong> Name of the spare part (e.g., Projector Lamp Assembly)</li>
+                  <li><strong>category:</strong> Category (Spare Parts, RMA) - defaults to "Spare Parts"</li>
+                  <li><strong>brand*:</strong> Brand name (e.g., Christie, Sony, Epson)</li>
+                  <li><strong>projectorModel*:</strong> Compatible projector model (e.g., CP2220, CP2230)</li>
+                  <li><strong>projectorSerial:</strong> Specific projector serial (optional)</li>
+                  <li><strong>stockQuantity*:</strong> Current stock quantity (number)</li>
+                  <li><strong>reorderLevel:</strong> Reorder threshold (defaults to 5)</li>
+                  <li><strong>unitPrice*:</strong> Price per unit (number)</li>
+                  <li><strong>supplier*:</strong> Supplier name (e.g., Christie Parts)</li>
+                  <li><strong>location*:</strong> Storage location (e.g., Main Warehouse)</li>
+                  <li><strong>status:</strong> Status (In Stock, Low Stock, Out of Stock, RMA Pending, RMA Approved)</li>
+                  <li><strong>description:</strong> Additional description (optional)</li>
                 </ul>
                 <div className="mt-3 p-2 bg-dark-bg rounded border border-blue-600">
                   <p className="text-blue-300 text-xs font-mono">
-                    partNumber,partName,category,projectorModel<br/>
-                    LMP-001,Lamp Module,Lamps,CP2220<br/>
-                    FLT-002,Air Filter,Filters,CP2230<br/>
-                    BRD-003,Main Board,Boards,CP4220
+                    partNumber,partName,category,brand,projectorModel,projectorSerial,stockQuantity,reorderLevel,unitPrice,supplier,location,status,description<br/>
+                    LAMP-001,Projector Lamp Assembly,Spare Parts,Christie,CP2220,SN123456,10,5,299.99,Christie Parts,Main Warehouse,In Stock,High-quality lamp assembly<br/>
+                    FILTER-001,Air Filter,Spare Parts,Christie,CP2220,SN123456,25,10,45.50,Christie Parts,Main Warehouse,In Stock,Replacement air filter
                   </p>
                 </div>
               </div>
@@ -1196,7 +1250,7 @@ export function SparePartsPage() {
                     value={bulkUploadData}
                     onChange={(e) => setBulkUploadData(e.target.value)}
                     className="w-full h-48 px-3 py-2 bg-dark-bg border border-dark-color rounded-lg text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta font-mono text-sm"
-                    placeholder="partNumber,partName,category,projectorModel"
+                    placeholder="partNumber,partName,category,brand,projectorModel,projectorSerial,stockQuantity,reorderLevel,unitPrice,supplier,location,status,description"
                   />
                 </div>
               )}
@@ -1227,24 +1281,32 @@ export function SparePartsPage() {
                   <h3 className="font-semibold text-dark-primary mb-3">Preview (First 5 rows)</h3>
                   <div className="bg-dark-bg border border-dark-color rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
-                                              <thead className="bg-dark-color">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-dark-secondary">Part Number</th>
-                            <th className="px-3 py-2 text-left text-dark-secondary">Part Name</th>
-                            <th className="px-3 py-2 text-left text-dark-secondary">Category</th>
-                            <th className="px-3 py-2 text-left text-dark-secondary">Projector Model</th>
+                      <thead className="bg-dark-color">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Part Number</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Part Name</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Brand</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Model</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Stock</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Price</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Supplier</th>
+                          <th className="px-3 py-2 text-left text-dark-secondary">Location</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkUploadPreview.map((part, index) => (
+                          <tr key={index} className="border-t border-dark-color">
+                            <td className="px-3 py-2 text-dark-primary">{part.partNumber}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.partName}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.brand}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.projectorModel}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.stockQuantity}</td>
+                            <td className="px-3 py-2 text-dark-primary">${part.unitPrice}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.supplier}</td>
+                            <td className="px-3 py-2 text-dark-primary">{part.location}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {bulkUploadPreview.map((part, index) => (
-                            <tr key={index} className="border-t border-dark-color">
-                              <td className="px-3 py-2 text-dark-primary">{part.partNumber}</td>
-                              <td className="px-3 py-2 text-dark-primary">{part.partName}</td>
-                              <td className="px-3 py-2 text-dark-primary">{part.category}</td>
-                              <td className="px-3 py-2 text-dark-primary">{part.projectorModel}</td>
-                            </tr>
-                          ))}
-                        </tbody>
+                        ))}
+                      </tbody>
                     </table>
                   </div>
                 </div>

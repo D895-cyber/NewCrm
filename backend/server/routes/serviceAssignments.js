@@ -448,23 +448,78 @@ router.get('/fse/:fseId/today', authenticateToken, async (req, res) => {
   }
 });
 
+// Recalculate progress for all assignments
+router.post('/recalculate-progress', authenticateToken, async (req, res) => {
+  try {
+    console.log('Starting progress recalculation for all assignments...');
+    
+    // Get all assignments
+    const assignments = await ServiceAssignment.find({});
+    console.log(`Found ${assignments.length} assignments to process`);
+    
+    let updatedCount = 0;
+    
+    for (const assignment of assignments) {
+      console.log(`Processing assignment: ${assignment.assignmentId}`);
+      console.log(`Current progress: ${assignment.progress.percentage}%`);
+      
+      // Trigger progress recalculation by saving the assignment
+      // The pre-save middleware will recalculate the progress
+      const originalProgress = { ...assignment.progress };
+      assignment.markModified('generatedSchedule');
+      assignment.markModified('progress');
+      
+      await assignment.save();
+      
+      // Check if progress changed
+      if (JSON.stringify(originalProgress) !== JSON.stringify(assignment.progress)) {
+        updatedCount++;
+        console.log(`✅ Updated assignment ${assignment.assignmentId} - New progress: ${assignment.progress.percentage}%`);
+      } else {
+        console.log(`⏭️  No changes needed for assignment ${assignment.assignmentId}`);
+      }
+    }
+    
+    console.log(`🎉 Progress recalculation completed! Updated ${updatedCount} assignments.`);
+    
+    res.json({
+      message: `Progress recalculation completed! Updated ${updatedCount} assignments.`,
+      updatedCount,
+      totalAssignments: assignments.length
+    });
+    
+  } catch (error) {
+    console.error('Error recalculating progress:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Helper function to create service visits from assignment
 async function createServiceVisitsFromAssignment(assignment) {
   const serviceVisits = [];
   
+  // Get projector details for each projector
+  const projectorSerials = assignment.projectors.map(p => p.projectorSerial);
+  const projectors = await Projector.find({ serialNumber: { $in: projectorSerials } });
+  
   for (const scheduleDay of assignment.generatedSchedule) {
     for (const projector of scheduleDay.projectors) {
+      // Find the projector details
+      const projectorDetails = projectors.find(p => p.serialNumber === projector.projectorSerial);
+      
       const serviceVisit = new ServiceVisit({
         visitId: `VISIT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         fseId: assignment.fseId,
         fseName: assignment.fseName,
         siteId: assignment.siteId,
         siteName: assignment.siteName,
+        siteAddress: assignment.siteAddress,
         projectorSerial: projector.projectorSerial,
+        projectorModel: projectorDetails?.model || projector.projectorModel || 'Unknown Model',
         visitType: projector.serviceType,
         scheduledDate: scheduleDay.date,
         priority: projector.priority,
-        description: projector.notes || `Service for ${projector.projectorModel}`,
+        description: projector.notes || `Service for ${projectorDetails?.model || projector.projectorModel}`,
         status: 'Scheduled',
         amcContractId: assignment.amcContractId,
         amcServiceInterval: assignment.amcServiceInterval

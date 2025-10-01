@@ -1,6 +1,5 @@
-// Import PDF generation libraries
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// Import ASCOMP style report generator
+import { exportASCOMPStyleReport } from './ascomp-report-generator';
 
 
 // Export utility functions
@@ -34,18 +33,40 @@ const printHtml = (title: string, htmlContent: string): void => {
           <title>${title}</title>
           <meta charset="UTF-8">
           <style>
-        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
-        .header { margin-bottom: 20px; }
-        .company-info { }
-        .company-logo { font-size: 24px; font-weight: bold; color: #87CEEB; display: inline-block; margin-right: 5px; }
-        .company-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 5px; display: inline-block; }
-        .website { font-weight: bold; color: #000; text-decoration: underline; }
-        .right { text-align: right; }
-        .small { font-size: 10px; }
-        .report-title { font-size: 32px; font-weight: bold; text-align: left; margin: 15px 0; color: #000; font-family: Arial, sans-serif; }
-        .subtitle { font-size: 14px; text-align: left; margin-bottom: 20px; color: #333; }
-        .personnel-info { margin-bottom: 15px; }
-        .replacement-status { margin-left: 20px; }
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; background: white; }
+        
+        /* ASCOMP Header Styles */
+        .ascomp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .header-left { flex: 1; }
+        .header-right { text-align: right; }
+        .date-time { font-size: 12px; margin-bottom: 10px; }
+        .ascomp-logo-section { display: flex; align-items: flex-start; }
+        .ascomp-logo { width: 40px; height: 40px; background: #0066CC; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; margin-right: 15px; }
+        .ascomp-company { flex: 1; }
+        .company-name { font-size: 18px; font-weight: bold; color: #0066CC; margin-bottom: 5px; }
+        .company-address { font-size: 12px; margin-bottom: 5px; }
+        .company-contact { font-size: 12px; margin-bottom: 5px; }
+        .company-contact span { margin-right: 15px; }
+        .website { font-weight: bold; color: #0066CC; text-decoration: underline; }
+        .company-email { font-size: 12px; }
+        .service-report-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .report-details { font-size: 12px; }
+        .report-details div { margin: 2px 0; }
+        
+        /* Report Title */
+        .report-title { font-size: 36px; font-weight: bold; text-align: center; margin: 20px 0; color: #0066CC; font-family: 'Times New Roman', serif; letter-spacing: 3px; }
+        .subtitle { font-size: 14px; text-align: center; margin-bottom: 30px; color: #333; }
+        
+        /* Site and Personnel Info */
+        .site-personnel-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .site-info { flex: 1; margin-right: 30px; }
+        .projector-info { flex: 1; }
+        .site-info div, .projector-info div { margin: 5px 0; font-size: 12px; }
+        .personnel-details { margin-left: 20px; }
+        .lamp-info { margin-top: 15px; }
+        
+        /* Sections Header */
+        .sections-header h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #0066CC; text-decoration: underline; }
         
         /* Main Service Checklist Table */
         .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
@@ -53,6 +74,25 @@ const printHtml = (title: string, htmlContent: string): void => {
         .main-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
         .replacement-header { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
         .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
+        
+        /* Technical Sections */
+        .technical-sections { margin-bottom: 20px; }
+        .voltage-section, .evaluation-section, .content-server-section, .lamp-power-section, .placement-section { margin-bottom: 15px; }
+        .voltage-section h3, .content-server-section h3, .lamp-power-section h3, .placement-section h3 { font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #000; }
+        
+        /* Voltage Table */
+        .voltage-table { width: 200px; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
+        .voltage-table td { border: 1px solid #000; padding: 4px 8px; }
+        
+        /* Content Server Field */
+        .content-server-field { border: 1px solid #000; padding: 4px 8px; width: 200px; min-height: 20px; }
+        
+        /* Lamp Power Table */
+        .lamp-power-table { width: 200px; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
+        .lamp-power-table td { border: 1px solid #000; padding: 4px 8px; }
+        
+        /* Placement Field */
+        .placement-field { border: 1px solid #000; padding: 4px 8px; width: 200px; min-height: 20px; }
         
         /* Additional Info Tables */
         .additional-info { margin-top: 20px; display: flex; gap: 30px; }
@@ -76,6 +116,14 @@ const printHtml = (title: string, htmlContent: string): void => {
         .color-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
         .color-table th, .color-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
         .color-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
+        
+        /* Color Coordinates and CIE Sections */
+        .color-coordinates-section, .cie-color-section { margin-bottom: 20px; }
+        .color-coordinates-section h3, .cie-color-section h3 { font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #000; }
+        
+        /* Screen Info Section */
+        .screen-info-section { margin-bottom: 20px; }
+        .screen-info-section h3 { font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #000; }
         
         /* Screen Table */
         .screen-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
@@ -144,7 +192,7 @@ const printHtml = (title: string, htmlContent: string): void => {
   printWindow.document.close();
 };
 
-// Generate comprehensive HTML for the report
+// Generate comprehensive HTML for the report - ASCOMP Format
 const generateReportHTML = (report: any): string => {
   const safe = (v: any, fallback: string = '-') => (v == null || v === '' ? fallback : String(v));
   const fmtDate = (d: any) => {
@@ -268,34 +316,68 @@ const generateReportHTML = (report: any): string => {
   };
 
   return `
-    <div class="header">
-      <div class="company-info">
-        <div class="company-logo">A</div>
-        <div class="company-name">ASCOMP INC.</div>
-        <div>Address: 9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
-        <div>Desk: 011-45501226 Mobile: 8882475207 - <span class="website">WWW.ASCOMPINC.IN</span></div>
-        <div>Email - helpdesk@ascompinc.in</div>
+    <!-- ASCOMP Service Report Header -->
+    <div class="ascomp-header">
+      <div class="header-left">
+        <div class="date-time">${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}, ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</div>
+        <div class="ascomp-logo-section">
+          <div class="ascomp-logo">A</div>
+          <div class="ascomp-company">
+            <div class="company-name">ASCOMP INC.</div>
+            <div class="company-address">9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
+            <div class="company-contact">
+              <span>Desk: 011-45501226</span>
+              <span>Mobile: 8882475207</span>
+              <span class="website">WWW.ASCOMPINC.IN</span>
+            </div>
+            <div class="company-email">Email - helpdesk@ascompinc.in</div>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="service-report-title">Service Report</div>
+        <div class="report-details">
+          <div>Report: ${safe(safeAccess(report, ['reportNumber']))}</div>
+          <div>Type: ${safe(safeAccess(report, ['reportType']))}</div>
+          <div>Date: ${fmtDate(safeAccess(report, ['date']))}</div>
+        </div>
       </div>
     </div>
     
     <div class="report-title">CHRISTIE<sup>®</sup></div>
     <div class="subtitle">Projector Service Report - ${safe(safeAccess(report, ['reportType']))} done on Date – ${fmtDate(safeAccess(report, ['date']))}</div>
     
-    <div class="site-info">
-      <div><strong>Site -</strong> ${safe(safeAccess(report, ['siteName']))}</div>
-    </div>
-    
-    <div class="personnel-info">
-      <div>In presence of Site In-charge - Mr. ${getSiteInchargeName(report)} - <strong>${getSiteInchargePhone(report)}</strong>, Ascomp Engineer - ${getEngineerName(report)}</div>
-    </div>
-    
-    <div class="projector-info">
-      <div><strong>Projector Model</strong> ${safe(safeAccess(report, ['projectorModel']))} <strong>with Serial Number</strong> <strong>${safe(safeAccess(report, ['projectorSerial']))}</strong> <strong>and Software Version -</strong> ${safe(safeAccess(report, ['softwareVersion']))}</div>
-      <div><strong>Projector running hours -</strong> <strong>${safe(safeAccess(report, ['projectorRunningHours']))}</strong> <strong>Lamp Model and running hours -</strong> ${safe(safeAccess(report, ['lampModel']))} - <strong>${safe(safeAccess(report, ['lampRunningHours']))}</strong> <strong>Current Lamp Hours -</strong> <strong>${safe(safeAccess(report, ['currentLampHours']))}</strong></div>
-      <div class="replacement-status"><strong>Replacement Required</strong></div>
+    <div class="site-personnel-info">
+      <div class="site-info">
+        <div><strong>Site:</strong> ${safe(safeAccess(report, ['siteName']))}</div>
+        <div><strong>Personnel:</strong></div>
+        <div class="personnel-details">
+          <div>Site In-charge: Mr. ${getSiteInchargeName(report)} - <strong>${getSiteInchargePhone(report)}</strong></div>
+          <div>Ascomp Engineer: ${getEngineerName(report)}</div>
+        </div>
+      </div>
+      
+      <div class="projector-info">
+        <div><strong>Projector Information:</strong></div>
+        <div>Model: ${safe(safeAccess(report, ['projectorModel']))}</div>
+        <div>Serial Number: ${safe(safeAccess(report, ['projectorSerial']))}</div>
+        <div>Software Version: ${safe(safeAccess(report, ['softwareVersion']))}</div>
+        <div>Projector running hours: ${safe(safeAccess(report, ['projectorRunningHours']))}</div>
+        
+        <div class="lamp-info">
+          <div><strong>Lamp Information:</strong></div>
+          <div>Lamp Model: ${safe(safeAccess(report, ['lampModel']))}</div>
+          <div>Lamp running hours: ${safe(safeAccess(report, ['lampRunningHours']))}</div>
+          <div>Current Lamp Hours: ${safe(safeAccess(report, ['currentLampHours']))}</div>
+          <div>Replacement Required: ${safe(safeAccess(report, ['replacementRequired'])) === 'true' ? 'Yes' : 'No'}</div>
+        </div>
+      </div>
     </div>
 
     <!-- Main Service Checklist Table -->
+    <div class="sections-header">
+      <h3>SECTIONS</h3>
+    </div>
     <table class="main-table">
       <thead>
         <tr>
@@ -307,8 +389,8 @@ const generateReportHTML = (report: any): string => {
       </thead>
       <tbody>
         ${generateSectionRows(safeAccess(report, ['sections', 'opticals']) || [
-          { description: 'Reflector', status: '-', result: 'OK' },
-          { description: 'UV filter', status: '-', result: 'OK' },
+          { description: 'Reflector', status: 'damage', result: 'OK' },
+          { description: 'UV filter', status: 'solrized', result: 'OK' },
           { description: 'Integrator Rod', status: '-', result: 'OK' },
           { description: 'Cold Mirror', status: '-', result: 'OK' },
           { description: 'Fold Mirror', status: '-', result: 'OK' }
@@ -327,7 +409,7 @@ const generateReportHTML = (report: any): string => {
           result: 'OK'
         }, 'Serial Number verified')}
         ${generateSectionRows(safeAccess(report, ['sections', 'disposableConsumables']) || [
-          { description: 'Air Intake, LAD and RAD', status: 'replaced', result: 'OK' }
+          { description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }
         ], 'Disposable Consumables')}
         ${generateSingleSectionRow(safeAccess(report, ['sections', 'coolant']) || {
           description: 'Level and Color',
@@ -335,16 +417,16 @@ const generateReportHTML = (report: any): string => {
           result: 'OK'
         }, 'Coolant')}
         ${generateSectionRows(safeAccess(report, ['sections', 'lightEngineTestPatterns']) || [
-          { color: 'White', status: '-', result: 'OK' },
-          { color: 'Red', status: '-', result: 'OK' },
-          { color: 'Green', status: '-', result: 'OK' },
-          { color: 'Blue', status: '-', result: 'OK' },
-          { color: 'Black', status: '-', result: 'OK' }
+          { description: '', status: '-', result: 'OK' },
+          { description: '', status: '-', result: 'OK' },
+          { description: '', status: '-', result: 'OK' },
+          { description: '', status: '-', result: 'OK' },
+          { description: '', status: '-', result: 'OK' }
         ], 'Light Engine Test Pattern')}
         ${generateSectionRows(safeAccess(report, ['sections', 'mechanical']) || [
           { description: 'AC blower and Vane Switch', status: '-', result: 'OK' },
           { description: 'Extractor Vane Switch', status: '-', result: 'OK' },
-          { description: 'Exhaust CFM', status: '-', result: 'OK' },
+          { description: 'Exhaust CFM', status: '7.5 M/S', result: 'OK' },
           { description: 'Light Engine 4 fans with LAD fan', status: '-', result: 'OK' },
           { description: 'Card Cage Top and Bottom fans', status: '-', result: 'OK' },
           { description: 'Radiator fan and Pump', status: '-', result: 'OK' },
@@ -355,21 +437,90 @@ const generateReportHTML = (report: any): string => {
       </tbody>
     </table>
 
+    <!-- Additional Technical Sections -->
+    <div class="technical-sections">
+      <!-- Voltage Parameters -->
+      <div class="voltage-section">
+        <h3>Voltage Parameters</h3>
+        <table class="voltage-table">
+          <tbody>
+            <tr><td>P vs N</td><td class="text-center">-</td></tr>
+            <tr><td>P vs E</td><td class="text-center">-</td></tr>
+            <tr><td>N vs E</td><td class="text-center">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Image Evaluation -->
+      <div class="evaluation-section">
+        <table class="evaluation-table">
+          <thead>
+            <tr>
+              <th>Image Evaluation</th>
+              <th>OK - Yes/No</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Focus/boresight</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'focusBoresight']) || 'Yes')}</td></tr>
+            <tr><td>Integrator Position</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'integratorPosition']) || 'Yes')}</td></tr>
+            <tr><td>Any Spot on the Screen after PPM</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'spotOnScreen']) || 'No')}</td></tr>
+            <tr><td>Check Screen Cropping - FLAT and SCOPE</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'screenCropping']) || 'Yes')}</td></tr>
+            <tr><td>Convergence Checked</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'convergenceChecked']) || 'Yes')}</td></tr>
+            <tr><td>Channels Checked - Scope, Flat, Alternative</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'channelsChecked']) || 'Yes')}</td></tr>
+            <tr><td>Pixel defects</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'pixelDefects']) || 'No')}</td></tr>
+            <tr><td>Excessive image vibration</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'imageVibration']) || 'No')}</td></tr>
+            <tr><td>LiteLOC</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'liteLoc']) || 'No')}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Content Playing Server -->
+      <div class="content-server-section">
+        <h3>Content Playing Server</h3>
+        <div class="content-server-field">-</div>
+      </div>
+
+      <!-- FL ON 100% LAMP POWER BEFORE AND AFTER -->
+      <div class="lamp-power-section">
+        <h3>FL ON 100% LAMP POWER BEFORE AND AFTER</h3>
+        <table class="lamp-power-table">
+          <tbody>
+            <tr><td>Before</td><td class="text-center">-</td></tr>
+            <tr><td>After</td><td class="text-center">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Projector Placement, Room, Environment -->
+      <div class="placement-section">
+        <h3>Projector Placement, Room, Environment</h3>
+        <div class="placement-field">${safe(safeAccess(report, ['projectorPlacement']) || 'ok')}</div>
+      </div>
+    </div>
+
     <!-- Observations and Recommended Parts Section -->
     <div class="observations-section">
       <h3>Observations and Remarks</h3>
-      <div class="observations">
-        ${safeArray(safeAccess(report, ['observations']), [
-          { description: 'Service completed successfully' },
-          { description: 'All systems functioning normally' },
-          { description: '-' },
-          { description: '-' },
-          { description: '-' },
-          { description: '-' }
-        ]).map((obs: any, index: number) => 
-          `<div class="observation-item">${index + 1}. ${safe(obs.description || obs || '-')}</div>`
-        ).join('')}
-      </div>
+      <table class="observations-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Observation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${safeArray(safeAccess(report, ['observations']), [
+            { description: 'ok' },
+            { description: '-' },
+            { description: '-' },
+            { description: '-' },
+            { description: '-' },
+            { description: '-' }
+          ]).map((obs: any, index: number) => 
+            `<tr><td>${index + 1}</td><td>${safe(obs.description || obs || '-')}</td></tr>`
+          ).join('')}
+        </tbody>
+      </table>
     </div>
 
     <!-- Recommended Parts Section -->
@@ -381,125 +532,126 @@ const generateReportHTML = (report: any): string => {
             <th>S. No.</th>
             <th>Part Name</th>
             <th>Part Number</th>
+            <th>Qty</th>
+            <th>Notes</th>
           </tr>
         </thead>
         <tbody>
           ${safeArray(safeAccess(report, ['recommendedParts']), [
-            { partName: '-', partNumber: '-' },
-            { partName: '-', partNumber: '-' },
-            { partName: '-', partNumber: '-' },
-            { partName: '-', partNumber: '-' },
-            { partName: '-', partNumber: '-' },
-            { partName: '-', partNumber: '-' }
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' },
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' },
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' },
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' },
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' },
+            { partName: '-', partNumber: '-', quantity: '-', notes: '-' }
           ]).map((part: any, index: number) => 
             `<tr>
               <td>${index + 1}.</td>
               <td>${safe(part.partName || '-')}</td>
               <td>${safe(part.partNumber || '-')}</td>
+              <td>${safe(part.quantity || '-')}</td>
+              <td>${safe(part.notes || '-')}</td>
             </tr>`
           ).join('')}
         </tbody>
       </table>
     </div>
 
-    <!-- Image Evaluation Section -->
-    <div class="evaluation-section">
-      <table class="evaluation-table">
+    <!-- Measured Color Coordinates Section -->
+    <div class="color-coordinates-section">
+      <h3>Measured Color Coordinates (MCGD)</h3>
+      <table class="color-table">
         <thead>
           <tr>
-            <th>Image Evaluation</th>
-            <th>OK - Yes/No</th>
+            <th>Test Pattern</th>
+            <th>fL</th>
+            <th>x</th>
+            <th>y</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>Focus/boresight</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'focusBoresight']) || 'Yes')}</td></tr>
-          <tr><td>Integrator Position</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'integratorPosition']) || 'Yes')}</td></tr>
-          <tr><td>Any Spot on the Screen after PPM</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'spotOnScreen']) || 'No')}</td></tr>
-          <tr><td>Check Screen Cropping - FLAT and SCOPE</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'screenCropping']) || 'Yes')}</td></tr>
-          <tr><td>Convergence Checked</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'convergenceChecked']) || 'Yes')}</td></tr>
-          <tr><td>Channels Checked - Scope, Flat, Alternative</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'channelsChecked']) || 'Yes')}</td></tr>
-          <tr><td>Pixel defects</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'pixelDefects']) || 'No')}</td></tr>
-          <tr><td>Excessive image vibration</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'imageVibration']) || 'Yes')}</td></tr>
-          <tr><td>LiteLOC</td><td class="text-center">${safe(safeAccess(report, ['imageEvaluation', 'liteLoc']) || 'No')}</td></tr>
+          ${safeArray(safeAccess(report, ['measuredColorCoordinates']), [
+            { testPattern: 'White 2K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'White 4K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Red 2K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Red 4K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Green 2K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Green 4K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Blue 2K', fl: '-', x: '-', y: '-' },
+            { testPattern: 'Blue 4K', fl: '-', x: '-', y: '-' }
+          ]).map((item: any) => 
+            `<tr>
+              <td>${safe(item.testPattern)}</td>
+              <td class="text-center">${safe(item.fl || '-')}</td>
+              <td class="text-center">${safe(item.x || '-')}</td>
+              <td class="text-center">${safe(item.y || '-')}</td>
+            </tr>`
+          ).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CIE XYZ Color Accuracy Section -->
+    <div class="cie-color-section">
+      <h3>CIE XYZ Color Accuracy</h3>
+      <table class="color-table">
+        <thead>
+          <tr>
+            <th>Test Pattern</th>
+            <th>x</th>
+            <th>y</th>
+            <th>fL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${safeArray(safeAccess(report, ['cieColorAccuracy']), [
+            { testPattern: 'BW Step-10 2K', x: '-', y: '-', fl: '-' },
+            { testPattern: 'BW Step-10 4K', x: '-', y: '-', fl: '-' }
+          ]).map((item: any) => 
+            `<tr>
+              <td>${safe(item.testPattern)}</td>
+              <td class="text-center">${safe(item.x || '-')}</td>
+              <td class="text-center">${safe(item.y || '-')}</td>
+              <td class="text-center">${safe(item.fl || '-')}</td>
+            </tr>`
+          ).join('')}
         </tbody>
       </table>
     </div>
 
 
-    <!-- Technical Data Tables -->
-    <div class="technical-tables">
-      <div class="color-coordinates">
-        <h3>Measured color coordinates (MCGD)</h3>
-        <table class="color-table">
-          <thead>
-            <tr>
-              <th>fL</th>
-              <th>x</th>
-              <th>y</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${safeArray(safeAccess(report, ['measuredColorCoordinates']), []).map((item: any) => 
-              `<tr><td>${safe(item.testPattern)}</td><td class="text-center">${safe(item.fl || '-')}</td><td class="text-center">${safe(item.x || '-')}</td><td class="text-center">${safe(item.y || '-')}</td></tr>`
-            ).join('')}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="color-accuracy">
-        <h3>CIE XYZ Color Accuracy</h3>
-        <table class="color-table">
-          <thead>
-            <tr>
-              <th>Test Pattern</th>
-              <th>x</th>
-              <th>y</th>
-              <th>fL</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${safeArray(safeAccess(report, ['cieColorAccuracy']), []).map((item: any) => 
-              `<tr><td>${safe(item.testPattern)}</td><td class="text-center">${safe(item.x || '-')}</td><td class="text-center">${safe(item.y || '-')}</td><td class="text-center">${safe(item.fl || '-')}</td></tr>`
-            ).join('')}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="screen-info">
-        <h3>Screen Information in metres</h3>
-        <table class="screen-table">
-          <thead>
-            <tr>
-              <th>Height</th>
-              <th>Width</th>
-              <th>Gain</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>SCOPE</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'height']) || '6.81')}</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'width']) || '16.27')}</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'scope', 'gain']) || '-')}</td>
-            </tr>
-            <tr>
-              <td>FLAT</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'height']) || '-')}</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'width']) || '-')}</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'flat', 'gain']) || '-')}</td>
-            </tr>
-            <tr>
-              <td>Screen: Make,</td>
-              <td class="text-center">${safe(safeAccess(report, ['screenInfo', 'screenMake']) || '-')}</td>
-              <td class="text-center"></td>
-              <td class="text-center"></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="throw-distance">
-          <strong>Throw Distance</strong> ${safe(safeAccess(report, ['screenInfo', 'throwDistance']) || '21.1')}
-        </div>
-      </div>
+    <!-- Screen Information Section -->
+    <div class="screen-info-section">
+      <h3>Screen Information in metres</h3>
+      <table class="screen-table">
+        <thead>
+          <tr>
+            <th>Height</th>
+            <th>Width</th>
+            <th>Gain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SCOPE</td>
+            <td class="text-center">-</td>
+            <td class="text-center">-</td>
+            <td class="text-center">-</td>
+          </tr>
+          <tr>
+            <td>FLAT</td>
+            <td class="text-center">-</td>
+            <td class="text-center">-</td>
+            <td class="text-center">-</td>
+          </tr>
+          <tr>
+            <td>Screen Make</td>
+            <td class="text-center">-</td>
+            <td class="text-center">Throw Distance -</td>
+            <td class="text-center"></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Air Pollution Level -->
@@ -512,22 +664,22 @@ const generateReportHTML = (report: any): string => {
             <th>HCHO</th>
             <th>TVOC</th>
             <th>PM 1.0</th>
-            <th>PM2.5</th>
-            <th>PM10</th>
+            <th>PM 2.5</th>
+            <th>PM 10</th>
             <th>Temperature C</th>
             <th>Humidity %</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'overall']) || '28')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'hcho']) || '0.098')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'tvoc']) || '0.424')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm1']) || '12')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm25']) || '16')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['airPollutionLevel', 'pm10']) || '18')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['environmentalConditions', 'temperature']) || '25')}</td>
-            <td class="text-center">${safe(safeAccess(report, ['environmentalConditions', 'humidity']) || '34%')}</td>
+            <td class="text-center">4</td>
+            <td class="text-center">32</td>
+            <td class="text-center">3</td>
+            <td class="text-center">3</td>
+            <td class="text-center">4</td>
+            <td class="text-center">3</td>
+            <td class="text-center">-</td>
+            <td class="text-center">-</td>
           </tr>
         </tbody>
       </table>
@@ -535,9 +687,9 @@ const generateReportHTML = (report: any): string => {
 
     <!-- System Status -->
     <div class="status-section">
-      <div class="status-item">LE Status During PM: <strong>${safe(safeAccess(report, ['systemStatus', 'leStatus']) || 'Removed')}</strong></div>
-      <div class="status-item">AC Status: <strong>${safe(safeAccess(report, ['systemStatus', 'acStatus']) || 'Working')}</strong></div>
-      <div class="status-item">Review Photos <strong class="underline">Click Here.</strong></div>
+      <div class="status-item">LE Status During PM: <strong>-</strong></div>
+      <div class="status-item">AC Status: <strong>-</strong></div>
+      <div class="status-item">Review Photos: <strong class="underline">Click Here.</strong></div>
       <div class="status-item underline">Note: The ODD file number is BEFORE and EVEN file number is AFTER, PM</div>
     </div>
 
@@ -547,7 +699,7 @@ const generateReportHTML = (report: any): string => {
   `;
 };
 
-// Main PDF export function
+// Main PDF export function - Now uses ASCOMP style
 export const exportServiceReportToPDF = async (report: any): Promise<void> => {
   console.log('exportServiceReportToPDF called with report:', report);
   
@@ -563,19 +715,12 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
     return;
   }
 
-  // Check if required libraries are available
-  if (typeof jsPDF === 'undefined' || typeof html2canvas === 'undefined') {
-    console.error('❌ PDF libraries not available. jsPDF:', typeof jsPDF, 'html2canvas:', typeof html2canvas);
-    alert('PDF generation libraries not loaded. Please refresh the page and try again.');
-    return;
-  }
-
   try {
-    console.log('🔄 Attempting PDF export...');
-    await generateAndDownloadPDF(report);
-    console.log('✅ PDF export completed successfully');
+    console.log('🔄 Generating ASCOMP style report...');
+    await exportASCOMPStyleReport(report);
+    console.log('✅ ASCOMP style report generated successfully');
   } catch (error: any) {
-    console.error('❌ PDF export failed with error:', error);
+    console.error('❌ ASCOMP style report generation failed:', error);
     console.error('Error details:', {
       message: error?.message,
       stack: error?.stack,
@@ -583,7 +728,7 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
     });
     
     // Show user-friendly error message with options
-    const userChoice = confirm(`PDF generation failed: ${error?.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
+    const userChoice = confirm(`ASCOMP style report generation failed: ${error?.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
     
     if (userChoice) {
       // Fallback to HTML print version
@@ -596,208 +741,6 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
   }
 };
 
-const generateAndDownloadPDF = async (report: any): Promise<void> => {
-  console.log('🔄 Starting PDF generation...');
-
-  // Generate HTML content with proper styling
-  const htmlContent = generateReportHTML(report);
-  console.log('Generated HTML content length:', htmlContent.length);
-
-  // Create a complete HTML document with inline styles
-  const fullHtmlDocument = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>ASCOMP Service Report</title>
-        <style>
-          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-          .company-info { flex: 1; }
-          .company-logo { font-size: 24px; font-weight: bold; color: #000; }
-          .company-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 5px; }
-          .website { font-weight: bold; color: #000; text-decoration: underline; }
-          .right { text-align: right; }
-          .small { font-size: 10px; }
-          .report-title { font-size: 24px; font-weight: bold; text-align: center; margin: 15px 0; color: #000; font-family: 'Times New Roman', serif; letter-spacing: 2px; }
-          .subtitle { font-size: 14px; text-align: center; margin-bottom: 20px; color: #333; }
-          
-          /* Main Service Checklist Table */
-          .main-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .main-table th, .main-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-          .main-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          .replacement-header { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          .section-cell { background: #e9e9e9; font-weight: bold; text-align: center; }
-          
-          /* Additional Info Tables */
-          .additional-info { margin-top: 20px; display: flex; gap: 30px; }
-          .info-left { flex: 1; }
-          .info-right { flex: 1; }
-          .info-item { margin: 3px 0; font-size: 11px; line-height: 1.2; }
-          .table-section { margin-bottom: 20px; }
-          .table-section h3 { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #000; text-decoration: underline; }
-          
-          /* Evaluation Table */
-          .evaluation-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px; }
-          .evaluation-table th, .evaluation-table td { border: 1px solid #000; padding: 4px 6px; text-align: left; vertical-align: top; }
-          .evaluation-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 9px; }
-          
-          /* Parts Table */
-          .parts-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
-          .parts-table th, .parts-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-          .parts-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          
-          /* Color Tables */
-          .color-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
-          .color-table th, .color-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-          .color-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          
-          /* Screen Table */
-          .screen-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
-          .screen-table th, .screen-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-          .screen-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          
-          /* Pollution Table */
-          .pollution-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; }
-          .pollution-table th, .pollution-table td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
-          .pollution-table th { background: #f5f5f5; font-weight: bold; text-align: center; font-size: 10px; }
-          
-          /* Observations Section */
-          .observations-section { margin-bottom: 20px; }
-          .observations { margin-top: 10px; }
-          .observation-item { margin: 5px 0; font-size: 12px; }
-          
-          /* Parts Section */
-          .parts-section { margin-bottom: 20px; }
-          
-          /* Technical Tables */
-          .technical-tables { display: flex; gap: 15px; margin-bottom: 20px; }
-          .color-coordinates { flex: 1; }
-          .color-accuracy { flex: 1; }
-          .screen-info { flex: 1; }
-          
-          /* Pollution Section */
-          .pollution-section { margin-bottom: 20px; }
-          
-          /* Status Section */
-          .status-section { margin-bottom: 20px; }
-          .status-item { margin: 5px 0; font-size: 12px; }
-          
-          /* Footer */
-          .footer { margin-top: 30px; text-align: right; }
-          .version { font-size: 10px; color: #666; }
-          
-          /* Site and Projector Info */
-          .site-info { margin-bottom: 15px; }
-          .site-info div { margin: 2px 0; font-size: 12px; }
-          .projector-info { margin-bottom: 20px; }
-          .projector-info div { margin: 2px 0; font-size: 12px; }
-          
-          /* Grid Layout */
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
-          .info-box { border: 1px solid #ccc; padding: 10px; background: #f9f9f9; margin-bottom: 10px; }
-          .indent { margin-left: 20px; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .font-bold { font-weight: bold; }
-          .underline { text-decoration: underline; }
-        </style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-    </html>
-  `;
-
-  // Create a temporary container for the HTML content
-  const tempContainer = document.createElement('div');
-  tempContainer.style.position = 'absolute';
-  tempContainer.style.left = '-9999px';
-  tempContainer.style.top = '0';
-  tempContainer.style.width = '800px';
-  tempContainer.style.backgroundColor = 'white';
-  tempContainer.style.fontFamily = 'Arial, sans-serif';
-  tempContainer.style.fontSize = '12px';
-  tempContainer.style.lineHeight = '1.4';
-  tempContainer.style.padding = '20px';
-  tempContainer.style.color = '#000';
-  
-  // Use the full HTML document instead of just the content
-  tempContainer.innerHTML = fullHtmlDocument;
-  document.body.appendChild(tempContainer);
-
-  try {
-    // Generate canvas from HTML
-    console.log('🔄 Generating canvas from HTML...');
-    const canvas = await html2canvas(tempContainer, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff'
-    });
-    
-    console.log('Canvas created:', canvas.width, 'x', canvas.height);
-
-    // Remove temporary container
-    document.body.removeChild(tempContainer);
-
-    // Create PDF
-    console.log('🔄 Creating PDF...');
-    const imgData = canvas.toDataURL('image/png');
-    console.log('Image data length:', imgData.length);
-    
-    if (!imgData || imgData.length < 100) {
-      throw new Error('Failed to generate image data from HTML content');
-    }
-    
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    console.log('PDF object created');
-    
-    if (!pdf || typeof pdf.addImage !== 'function') {
-      throw new Error('Failed to create PDF object - jsPDF library may not be properly loaded');
-    }
-    
-    // Calculate dimensions to fit the page
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 295; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-
-    let position = 0;
-
-    // Add image to PDF
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    // Add new pages if needed
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    // Generate filename
-    const reportNumber = report?.reportNumber || 'Unknown';
-    const filename = `ASCOMP_Report_${reportNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-
-    // Download the PDF
-    console.log('🔄 Downloading PDF with filename:', filename);
-    
-    try {
-      pdf.save(filename);
-      console.log('✅ PDF generation and download completed successfully');
-    } catch (downloadError: any) {
-      console.error('❌ PDF download failed:', downloadError);
-      throw new Error(`Failed to download PDF: ${downloadError?.message || 'Unknown download error'}`);
-    }
-  } catch (error) {
-    console.error('❌ Error generating PDF:', error);
-    // Fallback to HTML print version
-    console.log('🔄 Falling back to HTML print version...');
-    printHtml(`ASCOMP Service Report - ${report?.reportNumber || 'Unknown'}`, htmlContent);
-  }
-};
 
 // Helper function for safe access (moved to top of file to avoid duplication)
 

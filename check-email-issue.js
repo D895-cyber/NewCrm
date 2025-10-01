@@ -172,3 +172,4 @@ console.log('1. Check if FSEs have valid email addresses');
 console.log('2. Check if FSEs have assignment notifications enabled');
 console.log('3. Test email sending with the test above');
 console.log('4. Check server logs when assigning services');
+

@@ -535,7 +535,32 @@ class ApiClient {
   }
 
   async createServiceReport(reportData: any) {
-    return this.post('/service-reports', reportData);
+    try {
+      console.log('🌐 API Client: Creating service report...');
+      console.log('📊 Report data being sent:', {
+        reportNumber: reportData.reportNumber,
+        siteName: reportData.siteName,
+        projectorSerial: reportData.projectorSerial,
+        projectorModel: reportData.projectorModel,
+        brand: reportData.brand,
+        engineerName: reportData.engineer?.name,
+        dataSize: JSON.stringify(reportData).length
+      });
+      
+      const response = await this.post('/service-reports', reportData);
+      console.log('✅ API Client: Service report created successfully');
+      return response;
+    } catch (error: any) {
+      console.error('❌ API Client: Error creating service report:', error);
+      console.error('🔍 API Error details:', {
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        response: error.response,
+        data: error.response?.data
+      });
+      throw error;
+    }
   }
 
   async updateServiceReport(id: string, updates: any) {
@@ -589,6 +614,31 @@ class ApiClient {
 
   async getFSESpecificAnalytics(fseName: string) {
     return this.get(`/service-reports/analytics/fse/${encodeURIComponent(fseName)}`);
+  }
+
+  // Report template + export helpers
+  async getReportTemplates() {
+    return this.get('/report-templates');
+  }
+
+  async uploadReportTemplate(formData: FormData) {
+    return this.post('/report-templates', formData);
+  }
+
+  async deleteReportTemplate(id: string) {
+    return this.delete(`/report-templates/${encodeURIComponent(id)}`);
+  }
+
+  async getReportTemplateFieldMap(id: string) {
+    return this.get(`/report-templates/${encodeURIComponent(id)}/field-map`);
+  }
+
+  async updateReportTemplateFieldMap(id: string, mappings: Array<{ token: string; dataPath: string; defaultValue?: string }>) {
+    return this.put(`/report-templates/${encodeURIComponent(id)}/field-map`, { mappings });
+  }
+
+  async generateServiceReportDoc(id: string, options: { templateId?: string; generatePdf?: boolean } = {}) {
+    return this.post(`/service-reports/${encodeURIComponent(id)}/generate-doc`, options);
   }
 
   // AMC Contract methods
@@ -701,6 +751,10 @@ class ApiClient {
 
   async updateSparePartStock(id: string, stockQuantity: number) {
     return this.patch(`/spare-parts/${encodeURIComponent(id)}/stock`, { stockQuantity });
+  }
+
+  async bulkUploadSpareParts(spareParts: any[]) {
+    return this.post('/spare-parts/bulk-upload', { spareParts });
   }
 
 

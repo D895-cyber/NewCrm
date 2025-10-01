@@ -69,3 +69,4 @@ transporter.verify((error, success) => {
     console.log('3. Check server logs for email sending confirmation');
   }
 });
+

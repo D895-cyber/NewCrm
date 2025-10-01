@@ -173,7 +173,7 @@ const proformaInvoiceSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-proformaInvoiceSchema.index({ piNumber: 1 });
+// piNumber already has unique: true, so no need for explicit index
 proformaInvoiceSchema.index({ clientName: 1 });
 proformaInvoiceSchema.index({ issueDate: -1 });
 proformaInvoiceSchema.index({ dueDate: 1 });

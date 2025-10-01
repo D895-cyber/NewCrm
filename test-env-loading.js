@@ -51,3 +51,4 @@ console.log('\n💡 If environment variables are not loaded:');
 console.log('1. Make sure .env file exists in backend/server/ directory');
 console.log('2. Check that .env file has correct format (KEY=VALUE)');
 console.log('3. Restart your backend server after making changes');
+

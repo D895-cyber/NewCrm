@@ -363,7 +363,7 @@ export function PurchaseOrdersPage() {
           </div>
           
           <div className="dark-card text-center">
-            <h3 className="text-2xl font-bold text-gray-400 mb-1">
+            <h3 className="text-2xl font-bold text-gray-300 mb-1">
               {purchaseOrders.filter(po => po.status === "Completed").length}
             </h3>
             <p className="text-sm text-dark-secondary">Completed</p>

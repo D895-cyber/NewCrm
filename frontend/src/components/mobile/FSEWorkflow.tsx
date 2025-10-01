@@ -91,6 +91,7 @@ export function FSEWorkflow() {
   const [showASCOMPForm, setShowASCOMPForm] = useState(false);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [isCompletingService, setIsCompletingService] = useState(false);
+  const [projectorBrand, setProjectorBrand] = useState('Christie'); // Default brand
   const [workflowData, setWorkflowData] = useState({
     serviceStartTime: '',
     serviceEndTime: '',
@@ -186,7 +187,14 @@ export function FSEWorkflow() {
       }
       
       console.log('FSE visits response:', response);
-      setVisits(Array.isArray(response) ? response : response?.data || []);
+      const visitsData = Array.isArray(response) ? response : response?.data || [];
+      console.log('🔍 Loaded visits data:', visitsData.map(v => ({
+        siteName: v.siteName,
+        projectorSerial: v.projectorSerial,
+        projectorModel: v.projectorModel,
+        hasProjectorModel: !!v.projectorModel
+      })));
+      setVisits(visitsData);
     } catch (err: any) {
       console.error('Error loading FSE reports:', err);
       setError(err.message || 'Failed to load service visits');
@@ -261,10 +269,39 @@ export function FSEWorkflow() {
     }
   };
 
-  const handleVisitSelect = (visit: ServiceVisit) => {
+  const handleVisitSelect = async (visit: ServiceVisit) => {
+    console.log('🔍 Visit selected:', {
+      siteName: visit.siteName,
+      projectorSerial: visit.projectorSerial,
+      projectorModel: visit.projectorModel,
+      hasProjectorModel: !!visit.projectorModel
+    });
     setSelectedVisit(visit);
     updateStepStatus('select-visit', 'completed');
     setCurrentStep(1);
+    
+    // Try to fetch projector details from the projector data
+    try {
+      const projectors = await apiClient.getAllProjectors();
+      const projector = projectors.find((p: any) => p.serialNumber === visit.projectorSerial);
+      if (projector) {
+        if (projector.brand) {
+          setProjectorBrand(projector.brand);
+        }
+        // If the visit doesn't have projector model, update it
+        if (!visit.projectorModel && projector.model) {
+          console.log('🔧 Updating visit with projector model:', projector.model);
+          // Update the selectedVisit with the projector model
+          setSelectedVisit(prev => ({
+            ...prev,
+            projectorModel: projector.model
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch projector details, using defaults:', err);
+      // Keep default brand 'Christie'
+    }
   };
 
   const handleStartService = () => {
@@ -310,13 +347,26 @@ export function FSEWorkflow() {
   const handleASCOMPReportSubmit = async (reportData: any) => {
     try {
       setIsSubmittingReport(true);
-      console.log('ASCOMP Report submitted from workflow:', reportData);
+      console.log('🚀 ASCOMP Report submitted from workflow:', reportData);
+      console.log('📋 Report data structure:', {
+        hasReportNumber: !!reportData.reportNumber,
+        hasSiteName: !!reportData.siteName,
+        hasProjectorSerial: !!reportData.projectorSerial,
+        hasProjectorModel: !!reportData.projectorModel,
+        hasBrand: !!reportData.brand,
+        hasEngineer: !!reportData.engineer,
+        engineerName: reportData.engineer?.name,
+        dataKeys: Object.keys(reportData)
+      });
       
       // Check if user is authenticated
       const token = localStorage.getItem('authToken');
       if (!token) {
+        console.error('❌ No authentication token found');
         throw new Error('Authentication required. Please log in again.');
       }
+      
+      console.log('✅ Authentication token found, proceeding with submission...');
       
       // First, upload photos to Cloudinary if any exist
       let uploadedPhotos = [];
@@ -403,8 +453,27 @@ export function FSEWorkflow() {
       console.log('Submitting report with data:', mergedReportData);
 
       // Submit the comprehensive report
+      console.log('📤 Submitting report to API with merged data:', {
+        reportNumber: mergedReportData.reportNumber,
+        siteName: mergedReportData.siteName,
+        projectorSerial: mergedReportData.projectorSerial,
+        projectorModel: mergedReportData.projectorModel,
+        brand: mergedReportData.brand,
+        engineerName: mergedReportData.engineer?.name,
+        hasPhotos: mergedReportData.photos?.length > 0,
+        dataSize: JSON.stringify(mergedReportData).length
+      });
+      
       const response = await apiClient.createServiceReport(mergedReportData);
-      console.log('ASCOMP Report created successfully:', response);
+      console.log('✅ ASCOMP Report created successfully:', response);
+
+      if (response.generatedDoc || response.generatedPdf) {
+        setWorkflowData(prev => ({
+          ...prev,
+          generatedDocReport: response.generatedDoc,
+          generatedPdfReport: response.generatedPdf,
+        }));
+      }
       
       // Update visit status to Completed
       if (selectedVisit) {
@@ -431,25 +500,63 @@ export function FSEWorkflow() {
       (window as any).showToast?.({
         type: 'success',
         title: 'Report Submitted Successfully!',
-        message: 'Your comprehensive ASCOMP service report has been completed and saved.'
+        message: response.generatedDoc
+          ? 'Documents generated automatically. You can download them from the report detail page.'
+          : 'Your comprehensive ASCOMP service report has been completed and saved.'
       });
       
     } catch (err: any) {
-      console.error('Error submitting ASCOMP report:', err);
+      console.error('❌ Error submitting ASCOMP report:', err);
+      console.error('🔍 Error details:', {
+        message: err.message,
+        status: err.status,
+        statusText: err.statusText,
+        response: err.response,
+        stack: err.stack,
+        name: err.name
+      });
       
       // Handle specific error types
       let errorMessage = 'There was an error submitting your report. Please try again.';
+      let errorTitle = 'Submission Failed';
+      
       if (err.message?.includes('Authentication required')) {
         errorMessage = 'Please log in again to submit the report.';
+        errorTitle = 'Authentication Required';
       } else if (err.message?.includes('Invalid or expired token')) {
         errorMessage = 'Your session has expired. Please log in again.';
+        errorTitle = 'Session Expired';
       } else if (err.message?.includes('projectorModel')) {
         errorMessage = 'Missing projector information. Please check your data.';
+        errorTitle = 'Missing Information';
+      } else if (err.message?.includes('Validation failed')) {
+        errorMessage = err.message;
+        errorTitle = 'Validation Error';
+      } else if (err.message?.includes('Missing required fields')) {
+        errorMessage = err.message;
+        errorTitle = 'Missing Required Fields';
+      } else if (err.status === 400) {
+        errorMessage = 'Invalid data provided. Please check all required fields.';
+        errorTitle = 'Invalid Data';
+      } else if (err.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+        errorTitle = 'Authentication Failed';
+      } else if (err.status === 403) {
+        errorMessage = 'Access denied. Please check your permissions.';
+        errorTitle = 'Access Denied';
+      } else if (err.status === 500) {
+        errorMessage = 'Server error occurred. Please try again later.';
+        errorTitle = 'Server Error';
+      } else if (err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+        errorTitle = 'Network Error';
       }
+      
+      console.error('📢 Showing error to user:', { title: errorTitle, message: errorMessage });
       
       (window as any).showToast?.({
         type: 'error',
-        title: 'Submission Failed',
+        title: errorTitle,
         message: errorMessage
       });
     } finally {
@@ -692,13 +799,15 @@ export function FSEWorkflow() {
   // Set up global function for ASCOMP form opening
   useEffect(() => {
     (window as any).openASCOMPForm = () => {
+      console.log('🔍 Opening ASCOMP form with selectedVisit:', selectedVisit);
+      console.log('🔍 Projector model from selectedVisit:', selectedVisit?.projectorModel);
       setShowASCOMPForm(true);
     };
     
     return () => {
       delete (window as any).openASCOMPForm;
     };
-  }, []);
+  }, [selectedVisit]);
 
   const progress = ((currentStep + 1) / workflowSteps.length) * 100;
   const completedSteps = workflowSteps.filter(step => step.status === 'completed').length;
@@ -838,23 +947,35 @@ export function FSEWorkflow() {
             <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
               <ASCOMPServiceReportForm
                 onSubmit={handleASCOMPReportSubmit}
-                initialData={{
-                  engineer: {
-                    name: user?.profile?.firstName + ' ' + user?.profile?.lastName || user?.username,
-                    phone: user?.profile?.phone || '',
-                    email: user?.email || ''
-                  },
-                  date: new Date().toISOString().split('T')[0],
-                  siteName: selectedVisit?.siteName || '',
-                  projectorSerial: selectedVisit?.projectorSerial || '',
-                  projectorModel: selectedVisit?.projectorModel || '',
-                  visitId: selectedVisit?.visitId || '',
-                  siteId: selectedVisit?.siteId || '',
-                  workPerformed: workflowData.workPerformed,
-                  issuesFound: workflowData.issuesFound,
-                  partsUsed: workflowData.partsUsed,
-                  recommendations: workflowData.recommendations
-                }}
+                initialData={(() => {
+                  const data = {
+                    engineer: {
+                      name: user?.profile?.firstName + ' ' + user?.profile?.lastName || user?.username,
+                      phone: user?.profile?.phone || '',
+                      email: user?.email || ''
+                    },
+                    date: new Date().toISOString().split('T')[0],
+                    siteName: selectedVisit?.siteName || '',
+                    siteAddress: selectedVisit?.siteAddress || '',
+                    projectorSerial: selectedVisit?.projectorSerial || '',
+                    projectorModel: selectedVisit?.projectorModel || 'Unknown Model',
+                    brand: projectorBrand,
+                    visitId: selectedVisit?.visitId || '',
+                    siteId: selectedVisit?.siteId || '',
+                    workPerformed: workflowData.workPerformed,
+                    issuesFound: workflowData.issuesFound,
+                    partsUsed: workflowData.partsUsed,
+                    recommendations: workflowData.recommendations
+                  };
+                  console.log('🚀 Passing initialData to ASCOMP form:', {
+                    siteName: data.siteName,
+                    projectorSerial: data.projectorSerial,
+                    projectorModel: data.projectorModel,
+                    brand: data.brand,
+                    selectedVisit: selectedVisit
+                  });
+                  return data;
+                })()}
                 onClose={() => setShowASCOMPForm(false)}
               />
             </div>
@@ -988,7 +1109,7 @@ function StartServiceStep({ visit, onStart }: StartServiceStepProps) {
         {visit.description && (
           <div className="mt-2">
             <span className="font-medium">Description:</span>
-            <p className="text-sm text-gray-600 mt-1">{visit.description}</p>
+            <p className="text-sm text-black mt-1">{visit.description}</p>
           </div>
         )}
       </div>

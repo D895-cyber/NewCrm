@@ -525,7 +525,7 @@ export function SitesPage() {
                 
                 <div>
                   <h4 className="font-semibold text-dark-primary mb-2">3. Verify Backend</h4>
-                  <p className="text-dark-secondary text-sm mb-2">
+                  <p className="text-gray-300 text-sm mb-2">
                     Check that the backend is running by visiting:{' '}
                     <a 
                       href="http://localhost:4000/api/health" 

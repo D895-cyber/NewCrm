@@ -286,6 +286,24 @@ const ServiceReportSchema = new mongoose.Schema({
     fileSize: Number,
     mimeType: String
   },
+
+  // System generated documents
+  generatedDocReport: {
+    filename: String,
+    cloudUrl: String,
+    publicId: String,
+    generatedAt: Date,
+    generatedBy: String,
+    fileSize: Number
+  },
+  generatedPdfReport: {
+    filename: String,
+    cloudUrl: String,
+    publicId: String,
+    generatedAt: Date,
+    generatedBy: String,
+    fileSize: Number
+  },
   
   // Metadata
   metadata: { type: [KeyValueSchema], default: [] }

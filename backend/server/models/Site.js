@@ -204,7 +204,7 @@ siteSchema.index({ status: 1 });
 siteSchema.index({ 'contactPerson.email': 1 });
 siteSchema.index({ region: 1 });
 siteSchema.index({ state: 1 });
-siteSchema.index({ siteCode: 1 });
+// siteCode already has unique: true, so no need for explicit index
 siteSchema.index({ 'auditoriums.audiNumber': 1 });
 
 // Virtual for full address

@@ -383,7 +383,7 @@ const RealFSEWorkflow: React.FC = () => {
         }
 
         // Create service report
-        await apiClient.createServiceReport({
+        const serviceReportResponse = await apiClient.createServiceReport({
           visitId: selectedVisit._id,
           fseId: selectedVisit.fseId,
           fseName: selectedVisit.fseName,
@@ -402,6 +402,14 @@ const RealFSEWorkflow: React.FC = () => {
             ? new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString()
             : undefined
         });
+
+        if (serviceReportResponse.generatedDoc || serviceReportResponse.generatedPdf) {
+          setWorkflowData(prev => ({
+            ...prev,
+            generatedDocReport: serviceReportResponse.generatedDoc,
+            generatedPdfReport: serviceReportResponse.generatedPdf,
+          }));
+        }
 
         alert('Service completed successfully!');
         setCurrentStep(1);
@@ -653,19 +661,19 @@ const RealFSEWorkflow: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-dark-secondary">Site</label>
-                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.siteName}</p>
+                  <p className="mt-1 text-sm text-black">{selectedVisit.siteName}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-dark-secondary">Projector</label>
-                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.projectorSerial}</p>
+                  <p className="mt-1 text-sm text-black">{selectedVisit.projectorSerial}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-dark-secondary">Visit Type</label>
-                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.visitType}</p>
+                  <p className="mt-1 text-sm text-black">{selectedVisit.visitType}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-dark-secondary">Priority</label>
-                  <p className="mt-1 text-sm text-dark-primary">{selectedVisit.priority}</p>
+                  <p className="mt-1 text-sm text-black">{selectedVisit.priority}</p>
                 </div>
               </div>
               <div className="mt-6">
@@ -992,7 +1000,7 @@ const RealFSEWorkflow: React.FC = () => {
               <div className="text-center">
                 <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-600" />
                 <h3 className="text-lg font-medium text-dark-primary mb-2">Service Summary</h3>
-                <div className="space-y-2 text-sm text-dark-secondary mb-6">
+                <div className="space-y-2 text-sm text-black mb-6">
                   <p>Site: {selectedVisit?.siteName}</p>
                   <p>Projector: {selectedVisit?.projectorSerial}</p>
                   <p>Parts Used: {workflowData.partsUsed.length}</p>

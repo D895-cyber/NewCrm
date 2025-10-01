@@ -598,7 +598,7 @@ export function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-dark-primary font-medium">{po.site}</p>
-                          <p className="text-dark-secondary text-sm">{po.projectors} projectors • {po.date}</p>
+                          <p className="text-gray-300 text-sm">{po.projectors} projectors • {po.date}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -636,7 +636,7 @@ export function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-dark-primary font-medium">{service.site}</p>
-                          <p className="text-dark-secondary text-sm">{service.projector} • {service.date}</p>
+                          <p className="text-gray-300 text-sm">{service.projector} • {service.date}</p>
                         </div>
                       </div>
                       <div className="text-right">

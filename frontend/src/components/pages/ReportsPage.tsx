@@ -100,7 +100,10 @@ export function ReportsPage() {
       // Handle specific authentication errors
       if (err.message?.includes('Access token required') || err.message?.includes('Unauthorized')) {
         setError('Your session has expired. Please log in again.');
-        logout(); // Clear the invalid token
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          logout();
+        }, 2000);
       } else {
         setError(err.message || 'Failed to load analytics data');
       }
@@ -135,8 +138,8 @@ export function ReportsPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Error Loading Data</h3>
+            <p className="text-gray-300 mb-4">{error}</p>
             <Button onClick={loadAnalyticsData} variant="outline">
               Try Again
             </Button>
@@ -152,8 +155,8 @@ export function ReportsPage() {
       <header className="bg-white border-b border-gray-200 px-8 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">FSE Service Report Analytics</h1>
-            <p className="text-sm text-gray-500 mt-1">Comprehensive analysis of Field Service Engineer performance and service reports</p>
+            <h1 className="text-2xl font-semibold text-white">FSE Service Report Analytics</h1>
+            <p className="text-sm text-gray-300 mt-1">Comprehensive analysis of Field Service Engineer performance and service reports</p>
           </div>
           <div className="flex items-center space-x-3">
             <Button variant="outline" size="sm" className="gap-2">
@@ -186,25 +189,25 @@ export function ReportsPage() {
           <Card className="rounded-xl border-0 shadow-sm bg-white">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-gray-900 mb-1">{analyticsData?.fsePerformance.length || 0}</div>
-              <div className="text-sm text-gray-500">Active FSEs</div>
+              <div className="text-sm text-gray-300">Active FSEs</div>
             </CardContent>
           </Card>
           <Card className="rounded-xl border-0 shadow-sm bg-white">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-mint-600 mb-1">{totalReports}</div>
-              <div className="text-sm text-gray-500">Total Service Reports</div>
+              <div className="text-sm text-gray-300">Total Service Reports</div>
             </CardContent>
           </Card>
           <Card className="rounded-xl border-0 shadow-sm bg-white">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-blue-600 mb-1">{avgCompletionTime}h</div>
-              <div className="text-sm text-gray-500">Avg Completion Time</div>
+              <div className="text-sm text-gray-300">Avg Completion Time</div>
             </CardContent>
           </Card>
           <Card className="rounded-xl border-0 shadow-sm bg-white">
             <CardContent className="p-6 text-center">
               <div className="text-3xl font-bold text-purple-600 mb-1">{avgSatisfaction}/5</div>
-              <div className="text-sm text-gray-500">Avg Customer Satisfaction</div>
+              <div className="text-sm text-gray-300">Avg Customer Satisfaction</div>
             </CardContent>
           </Card>
         </div>
@@ -339,8 +342,8 @@ export function ReportsPage() {
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-900">{fse.fseName}</span>
+                        <User className="w-4 h-4 text-gray-300" />
+                        <span className="text-white">{fse.fseName}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -407,7 +410,7 @@ export function ReportsPage() {
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <Calendar className="w-4 h-4 text-gray-300" />
                         <span>{new Date(row.date).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric' 

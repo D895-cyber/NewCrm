@@ -16,6 +16,7 @@ async function createRealVisit() {
       siteId: 'SITE-REAL-001',
       siteName: 'Telangana Hyderabad RK Cineplex Mall',
       projectorSerial: '407799009',
+      projectorModel: 'Unknown Model', // Added required field
       visitType: 'Scheduled Maintenance',
       scheduledDate: new Date().toISOString(),
       status: 'In Progress',

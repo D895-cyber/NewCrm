@@ -31,6 +31,7 @@ async function createTestVisit() {
       siteId: 'SITE-001',
       siteName: 'Test Site',
       projectorSerial: 'PROJ-001',
+      projectorModel: 'Test Model', // Added required field
       visitType: 'Scheduled Maintenance',
       scheduledDate: new Date(),
       status: 'Scheduled',

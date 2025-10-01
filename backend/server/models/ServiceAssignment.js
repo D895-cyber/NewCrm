@@ -290,9 +290,13 @@ serviceAssignmentSchema.pre('save', function(next) {
     let completedDays = 0;
     
     this.generatedSchedule.forEach(day => {
-      if (day.status === 'Completed') {
+      // Count completed projectors from ALL days, not just completed days
+      const dayCompletedProjectors = day.projectors.filter(p => p.status === 'Completed').length;
+      completedProjectors += dayCompletedProjectors;
+      
+      // Count completed days (days where all projectors are completed)
+      if (day.status === 'Completed' || (day.projectors.length > 0 && day.projectors.every(p => p.status === 'Completed'))) {
         completedDays++;
-        completedProjectors += day.projectors.filter(p => p.status === 'Completed').length;
       }
     });
     
@@ -388,6 +392,10 @@ serviceAssignmentSchema.methods.markProjectorCompleted = function(projectorId, d
         scheduleDay.status = 'Completed';
         scheduleDay.completedAt = new Date();
       }
+      
+      // Trigger progress recalculation by marking the document as modified
+      this.markModified('generatedSchedule');
+      this.markModified('progress');
       
       return true;
     }

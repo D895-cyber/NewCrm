@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '../../utils/api/client';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Loader2, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
 import { ValidationSummary } from '../ui/ValidationField';
 import { validateServiceReport, ValidationError } from '../../utils/validation/reportValidation';
@@ -25,6 +28,12 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [readOnly, setReadOnly] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [generatePdf, setGeneratePdf] = useState(true);
+  const [generateState, setGenerateState] = useState<'idle'|'working'|'done'|'error'>('idle');
+  const [generatedLinks, setGeneratedLinks] = useState<{ doc?: string; pdf?: string }>({});
 
   const load = useCallback(async () => {
     try {
@@ -49,8 +58,19 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
     // Detect read-only mode from hash
     const hash = window.location.hash || '';
     const readonly = /readonly=1|\/readonly/.test(hash);
-    setReadOnly(readonly);
-    load();
+      setReadOnly(readonly);
+      load();
+      setTemplatesLoading(true);
+      apiClient.getReportTemplates()
+        .then(list => {
+          setTemplates(list || []);
+        })
+        .catch((err) => {
+          console.error('Failed to load templates', err);
+        })
+        .finally(() => {
+          setTemplatesLoading(false);
+        });
   }, [load]);
 
   const debouncedSave = useDebouncedCallback(async (updated: Report) => {
@@ -124,6 +144,137 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
     </div>
   ), [report, saveState]);
 
+  const templateControls = useMemo(() => {
+    if (!report || readOnly) {
+      return null;
+    }
+
+    const handleGenerate = async () => {
+      setGenerateState('working');
+      setGeneratedLinks({});
+      try {
+        const payload: any = { generatePdf };
+        if (selectedTemplateId) {
+          payload.templateId = selectedTemplateId;
+        }
+        const response = await apiClient.generateServiceReportDoc(reportId, payload);
+        setGeneratedLinks({
+          doc: response.generatedDoc?.cloudUrl,
+          pdf: response.generatedPdf?.cloudUrl,
+        });
+        setGenerateState('done');
+        setTimeout(() => setGenerateState('idle'), 2000);
+      } catch (err) {
+        console.error('Failed to generate report doc', err);
+        setGenerateState('error');
+        setTimeout(() => setGenerateState('idle'), 3000);
+      }
+    };
+
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white text-gray-900 p-4 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Generate Report Document</h2>
+            <p className="text-sm text-gray-600">Fill a Word template with the latest report data and optionally convert to PDF.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              setTemplatesLoading(true);
+              apiClient.getReportTemplates()
+                .then(list => setTemplates(list || []))
+                .finally(() => setTemplatesLoading(false));
+            }}
+          >
+            <RefreshCw className={templatesLoading ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />
+            Refresh templates
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <Label htmlFor="template-select" className="text-sm text-gray-700">Template</Label>
+            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+              <SelectTrigger id="template-select">
+                <SelectValue placeholder={templatesLoading ? 'Loading templates…' : 'Select template'} />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((tpl: any) => (
+                  <SelectItem key={tpl._id} value={tpl._id}>
+                    {tpl.name}
+                    {tpl.reportType ? ` (${tpl.reportType})` : ''}
+                    {tpl.isDefault ? ' ★' : ''}
+                  </SelectItem>
+                ))}
+                {templates.length === 0 && (
+                  <SelectItem value="" disabled>
+                    {templatesLoading ? 'Loading…' : 'No templates available'}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-3 border rounded-md px-3 py-2">
+            <Switch
+              id="generate-pdf"
+              checked={generatePdf}
+              onCheckedChange={(checked) => setGeneratePdf(Boolean(checked))}
+            />
+            <Label htmlFor="generate-pdf" className="text-sm text-gray-700">
+              Also generate PDF
+            </Label>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 gap-2"
+              disabled={generateState === 'working' || (templates.length > 0 && !selectedTemplateId)}
+              onClick={handleGenerate}
+            >
+              {generateState === 'working' ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Generate Document
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {generateState === 'error' && (
+          <p className="text-sm text-red-500">Failed to generate document. Try again or refresh templates.</p>
+        )}
+        {generateState === 'done' && (
+          <p className="text-sm text-green-600">Report document generated successfully.</p>
+        )}
+
+        {(generatedLinks.doc || generatedLinks.pdf) && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {generatedLinks.doc && (
+              <Button variant="outline" onClick={() => window.open(generatedLinks.doc, '_blank')}>
+                Download DOCX
+              </Button>
+            )}
+            {generatedLinks.pdf && (
+              <Button variant="outline" onClick={() => window.open(generatedLinks.pdf, '_blank')}>
+                Download PDF
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }, [generatePdf, generateState, generatedLinks, readOnly, report, reportId, selectedTemplateId, templates, templatesLoading]);
+
   if (loading) {
     return (
       <div className="p-8 bg-dark-bg min-h-screen text-dark-secondary flex items-center justify-center">
@@ -163,6 +314,7 @@ export function ServiceReportEditor({ reportId }: { reportId: string }) {
     <div className="min-h-screen bg-dark-bg text-dark-primary p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {header}
+        {templateControls}
         {/* Validation Summary */}
         {validationErrors.length > 0 && (
           <div className="rounded-lg p-4 bg-white text-gray-900">

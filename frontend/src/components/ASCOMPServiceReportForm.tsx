@@ -68,78 +68,126 @@ import { apiClient } from '../utils/api/client';
 import { EnvironmentalField, TechnicalField, ValidationSummary } from './ui/ValidationField';
 import { validateServiceReport, validateEnvironmentalConditions, validateTechnicalParameters, ValidationError } from '../utils/validation/reportValidation';
 
-// Service Report Data Interface
+// Service Report Data Interface - Updated to match exact ASCOMP specification
 interface ServiceReportData {
+  // 1. General Information
   reportNumber: string;
-  reportTitle: string;
-  reportType: string;
+  reportType: 'First' | 'Follow-up' | 'Final';
   date: string;
-  companyName: string;
-  companyAddress: string;
-  companyContact: {
-    desk: string;
-    mobile: string;
-    email: string;
-    website: string;
-  };
-  siteId: string;
-  visitId: string;
   siteName: string;
+  siteAddress: string;
   siteIncharge: {
     name: string;
     contact: string;
   };
-  projectorSerial: string;
-  projectorModel: string;
-  brand: string;
-  softwareVersion: string;
-  projectorRunningHours: string;
-  lampModel: string;
-  lampRunningHours: string;
-  currentLampHours: string;
-  replacementRequired: boolean;
   engineer: {
     name: string;
     phone: string;
     email: string;
   };
-  sections: {
-    opticals: Array<{ description: string; status: string; result: string }>;
-    electronics: Array<{ description: string; status: string; result: string }>;
-    mechanical: Array<{ description: string; status: string; result: string }>;
-    disposableConsumables: Array<{ description: string; status: string; result: string }>;
-    coolant: Array<{ description: string; status: string; result: string }>;
-    lightEngineTestPatterns: Array<{ description: string; status: string; result: string }>;
-    serialNumberVerified: { description: string; status: string; result: string };
+
+  // 2. Projector Information
+  projectorModel: string;
+  projectorSerial: string;
+  brand: string;
+  softwareVersion: string;
+  projectorRunningHours: string;
+
+  // 3. Lamp Information
+  lampModel: string;
+  lampRunningHours: string;
+  currentLampHours: string;
+  replacementRequired: boolean;
+
+  // 4. Inspection Sections (Fixed checklists with OK/Not OK/Yes/No options)
+  inspectionSections: {
+    // OPTICALS Section
+    opticals: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
+    // ELECTRONICS Section
+    electronics: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
+    // MECHANICAL Section
+    mechanical: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
   };
+
+  // 5. Voltage Parameters (Values to be filled)
+  voltageParameters: {
+    pVsN: string;
+    pVsE: string;
+    nVsE: string;
+  };
+
+  // 6. Content & Functionality Checks
+  contentFunctionality: {
+    serverContentPlaying: string;
+    lampPowerTestBefore: string;
+    lampPowerTestAfter: string;
+    projectorPlacementEnvironment: string;
+  };
+
+  // 7. Observations & Remarks (Numbered list 4-6 observations)
+  observations: Array<{ number: string; description: string }>;
+
+  // 8. Image Evaluation (Yes/No options)
   imageEvaluation: {
-    focusBoresight: string;
-    integratorPosition: string;
-    spotOnScreen: string;
-    screenCropping: string;
-    convergenceChecked: string;
-    channelsChecked: string;
-    pixelDefects: string;
-    imageVibration: string;
-    liteLoc: string;
+    focusBoresight: 'Yes' | 'No';
+    integratorPosition: 'Yes' | 'No';
+    screenSpots: 'Yes' | 'No';
+    croppingFlat: 'Yes' | 'No';
+    croppingScope: 'Yes' | 'No';
+    convergenceChecked: 'Yes' | 'No';
+    channelsChecked: 'Yes' | 'No';
+    pixelDefects: 'Yes' | 'No';
+    imageVibration: 'Yes' | 'No';
+    liteLOC: 'Yes' | 'No';
   };
+
+  // 9. Recommended Parts to Change
+  recommendedParts: Array<{ partName: string; partNumber: string; quantity: number; notes: string }>;
+
+  // 10. Measured Color Coordinates (MCGD)
   measuredColorCoordinates: Array<{ testPattern: string; fl: string; x: string; y: string }>;
+
+  // 11. CIE XYZ Color Accuracy
   cieColorAccuracy: Array<{ testPattern: string; x: string; y: string; fl: string }>;
-  screenAndVoltage: {
-    screenType: string;
-    screenSize: string;
-    screenGain: string;
-    voltage: string;
-    frequency: string;
+
+  // 12. Screen Information
+  screenInfo: {
+    scope: {
+      height: string;
+      width: string;
+      gain: string;
+    };
+    flat: {
+      height: string;
+      width: string;
+      gain: string;
+    };
+    scopeDetails: string;
+    flatDetails: string;
+    screenMake: string;
+    throwDistance: string;
   };
-  environmentAndSystem: {
+
+  // 13. Air Pollution Levels
+  airPollutionLevels: {
+    hcho: string;
+    tvoc: string;
+    pm1: string;
+    pm25: string;
+    pm10: string;
     temperature: string;
     humidity: string;
-    airQuality: string;
-    systemStatus: string;
   };
-  observations: Array<{ number: string; description: string }>;
-  recommendedParts: Array<{ partName: string; partNumber: string; quantity: number; notes: string }>;
+
+  // Final Status
+  finalStatus: {
+    leStatusDuringPM: string;
+    acStatus: string;
+    photosBefore: string;
+    photosAfter: string;
+  };
+
+  // Additional fields
   photos: Array<{ url: string; description: string; category: string }>;
   notes: string;
 }
@@ -191,216 +239,187 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const [currentStep, setCurrentStep] = useState(1);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const defaultFormData = {
-    // Report Header Information
+    // 1. General Information
     reportNumber: `ASCOMP-${Date.now()}`,
-    reportTitle: 'Projector Service Report',
-    reportType: 'First',
+    reportType: 'First' as 'First' | 'Follow-up' | 'Final',
     date: new Date().toISOString().split('T')[0],
-    
-    // Company Information (Pre-filled as per ASCOMP)
-    companyName: 'ASCOMP INC.',
-    companyAddress: '9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064',
-    companyContact: {
-      desk: '011-45501226',
-      mobile: '8882475207',
-      email: 'helpdesk@ascompinc.in',
-      website: 'WWW.ASCOMPINC.IN'
-    },
-    
-    // Site Information
     siteName: '',
+    siteAddress: '',
     siteIncharge: {
       name: '',
       contact: ''
     },
-    
-    // Projector Information
-    projectorModel: '',
-    projectorSerial: '',
-    brand: '',
-    softwareVersion: '',
-    projectorRunningHours: '',
-    
-    // Lamp Information
-    lampModel: '',
-    lampRunningHours: '',
-    currentLampHours: '',
-    replacementRequired: false,
-    
-    // Engineer Information
     engineer: {
       name: '',
       phone: '',
       email: ''
     },
-    
-    // Service Checklist Sections - EXACTLY as per ASCOMP format
-    sections: {
+
+    // 2. Projector Information
+    projectorModel: '',
+    projectorSerial: '',
+    brand: '',
+    softwareVersion: '',
+    projectorRunningHours: '',
+
+    // 3. Lamp Information
+    lampModel: '',
+    lampRunningHours: '',
+    currentLampHours: '',
+    replacementRequired: false,
+
+    // 4. Inspection Sections (Fixed checklists)
+    inspectionSections: {
       // OPTICALS Section
       opticals: [
-        { description: 'Reflector', status: '-', result: 'OK' },
-        { description: 'UV filter', status: '-', result: 'OK' },
-        { description: 'Integrator Rod', status: '-', result: 'OK' },
-        { description: 'Cold Mirror', status: '-', result: 'OK' },
-        { description: 'Fold Mirror', status: '-', result: 'OK' }
+        { description: 'Reflector', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'UV filter', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Integrator Rod', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Cold Mirror', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Fold Mirror', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
       ],
-      
       // ELECTRONICS Section
       electronics: [
-        { description: 'Touch Panel', status: '-', result: 'OK' },
-        { description: 'EVB Board', status: '-', result: 'OK' },
-        { description: 'IMCB Board/s', status: '-', result: 'OK' },
-        { description: 'PIB Board', status: '-', result: 'OK' },
-        { description: 'ICP Board', status: '-', result: 'OK' },
-        { description: 'IMB/S Board', status: '-', result: 'OK' }
+        { description: 'Touch Panel', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'EVB Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'IMCB Board/s', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'PIB Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'ICP Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'IMB/S Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
       ],
-      
-      // Serial Number Verification
-      serialNumberVerified: {
-        description: 'Chassis label vs Touch Panel',
-        status: '-',
-        result: 'OK'
-      },
-      
-      // Disposable Consumables
-      disposableConsumables: [
-        { description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }
-      ],
-      
-      // Coolant
-      coolant: {
-        description: 'Level and Color',
-        status: '-',
-        result: 'OK'
-      },
-      
-      // Light Engine Test Patterns
-      lightEngineTestPatterns: [
-        { color: 'White', status: '-', result: 'OK' },
-        { color: 'Red', status: '-', result: 'OK' },
-        { color: 'Green', status: '-', result: 'OK' },
-        { color: 'Blue', status: '-', result: 'OK' },
-        { color: 'Black', status: '-', result: 'OK' }
-      ],
-      
       // MECHANICAL Section
       mechanical: [
-        { description: 'AC blower and Vane Switch', status: '-', result: 'OK' },
-        { description: 'Extractor Vane Switch', status: '-', result: 'OK' },
-        { description: 'Exhaust CFM', status: '7.5 M/S', result: 'OK' },
-        { description: 'Light Engine 4 fans with LAD fan', status: '-', result: 'OK' },
-        { description: 'Card Cage Top and Bottom fans', status: '-', result: 'OK' },
-        { description: 'Radiator fan and Pump', status: '-', result: 'OK' },
-        { description: 'Connector and hose for the Pump', status: '-', result: 'OK' },
-        { description: 'Security and lamp house lock switch', status: '-', result: 'OK' },
-        { description: 'Lamp LOC Mechanism X, Y and Z movement', status: '-', result: 'OK' }
+        { description: 'AC blower and Vane Switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Extractor Vane Switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Exhaust CFM', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Light Engine 4 fans with LAD fan', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Card Cage Top and Bottom fans', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Radiator fan and Pump', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Connector and hose for the Pump', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Security and lamp house lock switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
+        { description: 'Lamp LOC Mechanism X, Y and Z movement', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
       ]
     },
-    
-    // Image Evaluation - EXACTLY as per ASCOMP format
-    imageEvaluation: {
-      focusBoresight: 'Yes',
-      integratorPosition: 'Yes',
-      spotOnScreen: 'No',
-      screenCropping: 'Yes',
-      convergenceChecked: 'Yes',
-      channelsChecked: 'Yes',
-      pixelDefects: 'No',
-      imageVibration: 'No',
-      liteLoc: 'No'
-    },
-    
-    // Recommended Parts
-    recommendedParts: [] as Array<{ partName: string; partNumber: string; quantity: number; notes: string }>,
-    
-    // Measured Color Coordinates (MCGD)
-    measuredColorCoordinates: [
-      { testPattern: 'White 2K', fl: '', x: '', y: '' },
-      { testPattern: 'White 4K', fl: '', x: '', y: '' },
-      { testPattern: 'Red 2K', fl: '', x: '', y: '' },
-      { testPattern: 'Red 4K', fl: '', x: '', y: '' },
-      { testPattern: 'Green 2K', fl: '', x: '', y: '' },
-      { testPattern: 'Green 4K', fl: '', x: '', y: '' },
-      { testPattern: 'Blue 2K', fl: '', x: '', y: '' },
-      { testPattern: 'Blue 4K', fl: '', x: '', y: '' }
-    ],
-    
-    // CIE XYZ Color Accuracy
-    cieColorAccuracy: [
-      { testPattern: 'BW Step-10 2K', fl: '', x: '', y: '' },
-      { testPattern: 'BW Step-10 4K', fl: '', x: '', y: '' }
-    ],
-    
-    // Screen Information
-    screenInfo: {
-      scope: { height: '', width: '', gain: '' },
-      flat: { height: '', width: '', gain: '' },
-      screenMake: '',
-      throwDistance: ''
-    },
-    
-    // Voltage Parameters
+
+    // 5. Voltage Parameters
     voltageParameters: {
       pVsN: '',
       pVsE: '',
       nVsE: ''
     },
-    
-    // Content Playing Server
-    contentPlayingServer: '',
-    
-    // Lamp Power Measurements
-    lampPowerMeasurements: {
-      flBeforePM: '',
-      flAfterPM: ''
+
+    // 6. Content & Functionality Checks
+    contentFunctionality: {
+      serverContentPlaying: '',
+      lampPowerTestBefore: '',
+      lampPowerTestAfter: '',
+      projectorPlacementEnvironment: ''
     },
-    
-    // Environment Status
-    environmentStatus: {
-      projectorPlacement: 'ok',
-      room: 'ok',
-      environment: 'ok'
-    },
-    
-    // Observations and Remarks
+
+    // 7. Observations & Remarks
     observations: [
-      { number: 1, description: '' },
-      { number: 2, description: '' },
-      { number: 3, description: '' },
-      { number: 4, description: '' },
-      { number: 5, description: '' },
-      { number: 6, description: '' }
+      { number: '1', description: '' },
+      { number: '2', description: '' },
+      { number: '3', description: '' },
+      { number: '4', description: '' },
+      { number: '5', description: '' },
+      { number: '6', description: '' }
     ],
-    
-    // Air Pollution Level
-    airPollutionLevel: {
+
+    // 8. Image Evaluation
+    imageEvaluation: {
+      focusBoresight: 'Yes' as 'Yes' | 'No',
+      integratorPosition: 'Yes' as 'Yes' | 'No',
+      screenSpots: 'Yes' as 'Yes' | 'No',
+      croppingFlat: 'Yes' as 'Yes' | 'No',
+      croppingScope: 'Yes' as 'Yes' | 'No',
+      convergenceChecked: 'Yes' as 'Yes' | 'No',
+      channelsChecked: 'Yes' as 'Yes' | 'No',
+      pixelDefects: 'Yes' as 'Yes' | 'No',
+      imageVibration: 'Yes' as 'Yes' | 'No',
+      liteLOC: 'Yes' as 'Yes' | 'No'
+    },
+
+    // 9. Recommended Parts to Change
+    recommendedParts: [
+      { partName: '', partNumber: '', quantity: 1, notes: '' }
+    ],
+
+    // 10. Measured Color Coordinates (MCGD)
+    measuredColorCoordinates: [
+      { testPattern: 'White', fl: '', x: '', y: '' },
+      { testPattern: 'Red', fl: '', x: '', y: '' },
+      { testPattern: 'Green', fl: '', x: '', y: '' },
+      { testPattern: 'Blue', fl: '', x: '', y: '' }
+    ],
+
+    // 11. CIE XYZ Color Accuracy
+    cieColorAccuracy: [
+      { testPattern: 'White', x: '', y: '', fl: '' },
+      { testPattern: 'Red', x: '', y: '', fl: '' },
+      { testPattern: 'Green', x: '', y: '', fl: '' },
+      { testPattern: 'Blue', x: '', y: '', fl: '' }
+    ],
+
+    // 12. Screen Information
+    screenInfo: {
+      scope: {
+        height: '',
+        width: '',
+        gain: ''
+      },
+      flat: {
+        height: '',
+        width: '',
+        gain: ''
+      },
+      scopeDetails: '',
+      flatDetails: '',
+      screenMake: '',
+      throwDistance: ''
+    },
+
+    // 13. Air Pollution Levels
+    airPollutionLevels: {
       hcho: '',
       tvoc: '',
       pm1: '',
       pm25: '',
       pm10: '',
-      overall: ''
-    },
-    
-    // Environmental Conditions
-    environmentalConditions: {
       temperature: '',
       humidity: ''
     },
-    
-    // System Status
-    systemStatus: {
-      leStatus: '',
-      acStatus: ''
+
+    // Final Status
+    finalStatus: {
+      leStatusDuringPM: '',
+      acStatus: '',
+      photosBefore: '',
+      photosAfter: ''
     },
-    
-    // Photos
+
+    // Additional fields
     photos: [],
-    
-    // Notes
     notes: ''
   };
-  const [formData, setFormData] = useState(() => mergeWithDefaults(defaultFormData, initialData));
+  const [formData, setFormData] = useState(() => {
+    const merged = mergeWithDefaults(defaultFormData, initialData);
+    console.log('🔧 ASCOMP Form initialized with data:', {
+      reportNumber: merged.reportNumber,
+      siteName: merged.siteName,
+      projectorSerial: merged.projectorSerial,
+      projectorModel: merged.projectorModel,
+      brand: merged.brand,
+      engineerName: merged.engineer?.name,
+      hasInitialData: !!initialData,
+      initialDataKeys: initialData ? Object.keys(initialData) : []
+    });
+    console.log('🔍 Initial data projectorModel:', initialData?.projectorModel);
+    console.log('🔍 Merged projectorModel:', merged.projectorModel);
+    console.log('🔍 Full initialData:', initialData);
+    console.log('🔍 Full merged data:', merged);
+    return merged;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedReport, setSubmittedReport] = useState<any>(null);
@@ -408,7 +427,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const [availableSpareParts, setAvailableSpareParts] = useState<any[]>([]);
   const [loadingSpareParts, setLoadingSpareParts] = useState(false);
 
-  const totalSteps = 12;
+  const totalSteps = 13;
 
   // Load available spare parts when component mounts
   useEffect(() => {
@@ -417,14 +436,24 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
   const handleInputChange = (field: string, value: any) => {
     if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData((prev: any) => ({
-        ...prev,
-        [parent]: {
-          ...(prev[parent] || {}),
-          [child]: value
+      const fieldParts = field.split('.');
+      setFormData((prev: any) => {
+        const newData = { ...prev };
+        let current = newData;
+        
+        // Navigate to the parent object
+        for (let i = 0; i < fieldParts.length - 1; i++) {
+          if (!current[fieldParts[i]]) {
+            current[fieldParts[i]] = {};
+          }
+          current = current[fieldParts[i]];
         }
-      }));
+        
+        // Set the final value
+        current[fieldParts[fieldParts.length - 1]] = value;
+        
+        return newData;
+      });
     } else {
       setFormData((prev: any) => ({
         ...prev,
@@ -490,7 +519,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   };
 
   const handleSectionItemChange = (section: string, index: number, field: string, value: string) => {
-    const newSections: any = { ...((formData as any).sections) };
+    const newSections: any = { ...((formData as any).inspectionSections) };
     if (Array.isArray(newSections[section])) {
       newSections[section][index] = { ...newSections[section][index], [field]: value };
     } else {
@@ -498,7 +527,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
     }
     setFormData((prev: any) => ({
       ...prev,
-      sections: newSections
+      inspectionSections: newSections
     }));
   };
 
@@ -527,18 +556,62 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const handleSubmit = () => {
     setIsSubmitting(true);
     try {
+      console.log('🔍 Starting ASCOMP report submission validation...');
+      console.log('📊 Form data being submitted:', {
+        reportNumber: formData.reportNumber,
+        siteName: formData.siteName,
+        projectorSerial: formData.projectorSerial,
+        projectorModel: formData.projectorModel,
+        brand: formData.brand,
+        engineerName: formData.engineer?.name,
+        hasEngineer: !!formData.engineer,
+        engineerData: formData.engineer
+      });
+      
       // Validate required fields
       const requiredFields = ['reportNumber', 'siteName', 'projectorSerial', 'projectorModel', 'brand'];
       const missingFields = requiredFields.filter(field => !formData[field] || formData[field].trim() === '');
       
       if (missingFields.length > 0) {
+        console.error('❌ Missing required fields:', missingFields);
         throw new Error(`Please fill in the following required fields: ${missingFields.join(', ')}`);
       }
       
       // Validate engineer information
       if (!formData.engineer?.name || formData.engineer.name.trim() === '') {
+        console.error('❌ Engineer name is missing');
         throw new Error('Engineer name is required');
       }
+      
+      // Check authentication token
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('❌ No authentication token found');
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
+      // Additional validation for critical fields
+      if (!formData.reportNumber || formData.reportNumber.trim() === '') {
+        throw new Error('Report number is required');
+      }
+      
+      if (!formData.siteName || formData.siteName.trim() === '') {
+        throw new Error('Site name is required');
+      }
+      
+      if (!formData.projectorSerial || formData.projectorSerial.trim() === '') {
+        throw new Error('Projector serial number is required');
+      }
+      
+      if (!formData.projectorModel || formData.projectorModel.trim() === '') {
+        throw new Error('Projector model is required');
+      }
+      
+      if (!formData.brand || formData.brand.trim() === '') {
+        throw new Error('Projector brand is required');
+      }
+      
+      console.log('✅ All validations passed, submitting report...');
       
       // Submit the report
       onSubmit(formData);
@@ -546,13 +619,23 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       // Set success state
       setIsSubmitted(true);
       setSubmittedReport(formData);
-      // Don't show download modal here - let parent component handle it
-      // setShowDownloadModal(true);
+      console.log('✅ Report submission initiated successfully');
       
-      // Don't show toast here - let the parent component handle it
-      // This prevents duplicate success/error messages
-    } catch (error) {
-      console.error('Error submitting report:', error);
+    } catch (error: any) {
+      console.error('❌ Error submitting report:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        formData: {
+          reportNumber: formData.reportNumber,
+          siteName: formData.siteName,
+          projectorSerial: formData.projectorSerial,
+          projectorModel: formData.projectorModel,
+          brand: formData.brand,
+          engineer: formData.engineer
+        }
+      });
+      
       // Show validation error to user
       (window as any).showToast?.({
         type: 'error',
@@ -580,17 +663,19 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
   const getStepTitle = (step: number) => {
     const titles: { [key: number]: string } = {
-      1: 'Report Header',
-      2: 'Site & Projector Info',
-      3: 'Opticals & Electronics',
-      4: 'Mechanical & Consumables',
-      5: 'Image Evaluation',
-      6: 'Color Measurements',
-      7: 'Screen & Voltage',
-      8: 'Environment & System',
-      9: 'Observations & Air Quality',
-      10: 'Photos & Documentation',
-      11: 'Review & Submit'
+      1: 'General Information',
+      2: 'Projector Information',
+      3: 'Lamp Information',
+      4: 'Inspection Sections',
+      5: 'Voltage Parameters',
+      6: 'Content & Functionality',
+      7: 'Observations & Remarks',
+      8: 'Image Evaluation',
+      9: 'Recommended Parts',
+      10: 'Color Measurements',
+      11: 'Screen Information',
+      12: 'Air Pollution Levels',
+      13: 'Final Status & Review'
     };
     return titles[step] || `Step ${step}`;
   };
@@ -972,7 +1057,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">OPTICALS Section</h3>
                   <div className="space-y-3">
-                    {formData.sections.opticals.map((item, index) => (
+                    {formData.inspectionSections.opticals.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1013,7 +1098,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">ELECTRONICS Section</h3>
                   <div className="space-y-3">
-                    {formData.sections.electronics.map((item, index) => (
+                    {formData.inspectionSections.electronics.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1056,12 +1141,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                   <div className="grid grid-cols-3 gap-4 items-center">
                     <div>
                       <Label className="text-sm font-medium text-gray-700">
-                        {formData.sections.serialNumberVerified.description}
+                        Chassis label vs Touch Panel
                       </Label>
                     </div>
                     <div>
                       <Input
-                        value={formData.sections.serialNumberVerified.status}
+                        value="OK"
                         onChange={(e) => handleInputChange('sections.serialNumberVerified.status', e.target.value)}
                         placeholder="Status"
                         className="text-center"
@@ -1069,7 +1154,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
                     <div>
                       <Select 
-                        value={formData.sections.serialNumberVerified.result} 
+                        value="OK" 
                         onValueChange={(value) => handleInputChange('sections.serialNumberVerified.result', value)}
                       >
                         <SelectTrigger>
@@ -1104,7 +1189,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">MECHANICAL Section</h3>
                   <div className="space-y-3">
-                    {formData.sections.mechanical.map((item, index) => (
+                    {formData.inspectionSections.mechanical.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1116,7 +1201,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                             value={item.status}
                             onChange={(e) => handleSectionItemChange('mechanical', index, 'status', e.target.value)}
                             placeholder="Status"
-                            className="text-center"
+                            className="text-center mechanical-input"
                           />
                         </div>
                         <div>
@@ -1124,7 +1209,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                             value={item.result} 
                             onValueChange={(value) => handleSectionItemChange('mechanical', index, 'result', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="mechanical-input">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1145,7 +1230,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Disposable Consumables</h3>
                   <div className="space-y-3">
-                    {formData.sections.disposableConsumables.map((item, index) => (
+                    {[{ description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }].map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1188,12 +1273,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                   <div className="grid grid-cols-3 gap-4 items-center">
                     <div>
                       <Label className="text-sm font-medium text-gray-700">
-                        {formData.sections.coolant.description}
+                        Level and Color
                       </Label>
                     </div>
                     <div>
                       <Input
-                        value={formData.sections.coolant.status}
+                        value="OK"
                         onChange={(e) => handleInputChange('sections.coolant.status', e.target.value)}
                         placeholder="Status"
                         className="text-center"
@@ -1201,7 +1286,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
                     <div>
                       <Select 
-                        value={formData.sections.coolant.result} 
+                        value="OK" 
                         onValueChange={(value) => handleInputChange('sections.coolant.result', value)}
                       >
                         <SelectTrigger>
@@ -1223,7 +1308,13 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Light Engine Test Patterns</h3>
                   <div className="space-y-3">
-                    {formData.sections.lightEngineTestPatterns.map((item, index) => (
+                    {[
+                      { color: 'White', status: 'OK', result: 'OK' },
+                      { color: 'Red', status: 'OK', result: 'OK' },
+                      { color: 'Green', status: 'OK', result: 'OK' },
+                      { color: 'Blue', status: 'OK', result: 'OK' },
+                      { color: 'Black', status: 'OK', result: 'OK' }
+                    ].map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1556,7 +1647,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="scopeHeight">Height</Label>
                           <Input
                             id="scopeHeight"
-                            value={formData.screenInfo.scope.height}
+                            value={formData.screenInfo?.scope?.height || ''}
                             onChange={(e) => handleInputChange('screenInfo.scope.height', e.target.value)}
                             placeholder="e.g., 5.53"
                           />
@@ -1565,7 +1656,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="scopeWidth">Width</Label>
                           <Input
                             id="scopeWidth"
-                            value={formData.screenInfo.scope.width}
+                            value={formData.screenInfo?.scope?.width || ''}
                             onChange={(e) => handleInputChange('screenInfo.scope.width', e.target.value)}
                             placeholder="e.g., 13.21"
                           />
@@ -1574,7 +1665,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="scopeGain">Gain</Label>
                           <Input
                             id="scopeGain"
-                            value={formData.screenInfo.scope.gain}
+                            value={formData.screenInfo?.scope?.gain || ''}
                             onChange={(e) => handleInputChange('screenInfo.scope.gain', e.target.value)}
                             placeholder="Gain value"
                           />
@@ -1590,7 +1681,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="flatHeight">Height</Label>
                           <Input
                             id="flatHeight"
-                            value={formData.screenInfo.flat.height}
+                            value={formData.screenInfo?.flat?.height || ''}
                             onChange={(e) => handleInputChange('screenInfo.flat.height', e.target.value)}
                             placeholder="Height value"
                           />
@@ -1599,7 +1690,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="flatWidth">Width</Label>
                           <Input
                             id="flatWidth"
-                            value={formData.screenInfo.flat.width}
+                            value={formData.screenInfo?.flat?.width || ''}
                             onChange={(e) => handleInputChange('screenInfo.flat.width', e.target.value)}
                             placeholder="Width value"
                           />
@@ -1608,7 +1699,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <Label htmlFor="flatGain">Gain</Label>
                           <Input
                             id="flatGain"
-                            value={formData.screenInfo.flat.gain}
+                            value={formData.screenInfo?.flat?.gain || ''}
                             onChange={(e) => handleInputChange('screenInfo.flat.gain', e.target.value)}
                             placeholder="Gain value"
                           />
@@ -1622,7 +1713,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="screenMake">Screen Make</Label>
                       <Input
                         id="screenMake"
-                        value={formData.screenInfo.screenMake}
+                        value={formData.screenInfo?.screenMake || ''}
                         onChange={(e) => handleInputChange('screenInfo.screenMake', e.target.value)}
                         placeholder="Screen manufacturer"
                       />
@@ -1631,7 +1722,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="throwDistance">Throw Distance</Label>
                       <Input
                         id="throwDistance"
-                        value={formData.screenInfo.throwDistance}
+                        value={formData.screenInfo?.throwDistance || ''}
                         onChange={(e) => handleInputChange('screenInfo.throwDistance', e.target.value)}
                         placeholder="e.g., 19.9"
                       />
@@ -1696,8 +1787,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="flBeforePM">fL on 100% lamp power before PM</Label>
                       <Input
                         id="flBeforePM"
-                        value={formData.lampPowerMeasurements.flBeforePM}
-                        onChange={(e) => handleInputChange('lampPowerMeasurements.flBeforePM', e.target.value)}
+                        value={formData.contentFunctionality.lampPowerTestBefore}
+                        onChange={(e) => handleInputChange('contentFunctionality.lampPowerTestBefore', e.target.value)}
                         placeholder="e.g., 10.3"
                       />
                     </div>
@@ -1705,8 +1796,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="flAfterPM">fL on 100% lamp power after PM</Label>
                       <Input
                         id="flAfterPM"
-                        value={formData.lampPowerMeasurements.flAfterPM}
-                        onChange={(e) => handleInputChange('lampPowerMeasurements.flAfterPM', e.target.value)}
+                        value={formData.contentFunctionality.lampPowerTestAfter}
+                        onChange={(e) => handleInputChange('contentFunctionality.lampPowerTestAfter', e.target.value)}
                         placeholder="e.g., 13.4"
                       />
                     </div>
@@ -1733,8 +1824,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <Label htmlFor="projectorPlacement">Projector placement</Label>
                       <Select 
-                        value={formData.environmentStatus.projectorPlacement} 
-                        onValueChange={(value) => handleInputChange('environmentStatus.projectorPlacement', value)}
+                        value={formData.contentFunctionality?.projectorPlacementEnvironment || ''} 
+                        onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1748,8 +1839,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <Label htmlFor="room">Room</Label>
                       <Select 
-                        value={formData.environmentStatus.room} 
-                        onValueChange={(value) => handleInputChange('environmentStatus.room', value)}
+                        value="OK" 
+                        onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1763,8 +1854,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <Label htmlFor="environment">Environment</Label>
                       <Select 
-                        value={formData.environmentStatus.environment} 
-                        onValueChange={(value) => handleInputChange('environmentStatus.environment', value)}
+                        value="OK" 
+                        onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1788,8 +1879,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="leStatus">LE Status During PM</Label>
                       <Input
                         id="leStatus"
-                        value={formData.systemStatus.leStatus}
-                        onChange={(e) => handleInputChange('systemStatus.leStatus', e.target.value)}
+                        value={formData.finalStatus?.leStatusDuringPM || ''}
+                        onChange={(e) => handleInputChange('finalStatus.leStatusDuringPM', e.target.value)}
                         placeholder="e.g., Removed"
                       />
                     </div>
@@ -1797,8 +1888,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <Label htmlFor="acStatus">AC Status</Label>
                       <Input
                         id="acStatus"
-                        value={formData.systemStatus.acStatus}
-                        onChange={(e) => handleInputChange('systemStatus.acStatus', e.target.value)}
+                        value={formData.finalStatus?.acStatus || ''}
+                        onChange={(e) => handleInputChange('finalStatus.acStatus', e.target.value)}
                         placeholder="e.g., Working"
                       />
                     </div>
@@ -1814,8 +1905,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="Temperature"
-                        value={formData.environmentalConditions.temperature}
-                        onChange={(value) => handleInputChange('environmentalConditions.temperature', value)}
+                        value={formData.airPollutionLevels?.temperature || ''}
+                        onChange={(value) => handleInputChange('airPollutionLevels.temperature', value)}
                         placeholder="e.g., 25"
                         validationErrors={validationErrors}
                       />
@@ -1823,8 +1914,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="Humidity"
-                        value={formData.environmentalConditions.humidity}
-                        onChange={(value) => handleInputChange('environmentalConditions.humidity', value)}
+                        value={formData.airPollutionLevels?.humidity || ''}
+                        onChange={(value) => handleInputChange('airPollutionLevels.humidity', value)}
                         placeholder="e.g., 32"
                         validationErrors={validationErrors}
                       />
@@ -2024,8 +2115,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="HCHO"
-                        value={formData.airPollutionLevel.hcho}
-                        onChange={(value) => handleInputChange('airPollutionLevel.hcho', value)}
+                        value={formData.airPollutionLevels?.hcho || ''}
+                        onChange={(value) => handleInputChange('airPollutionLevels.hcho', value)}
                         placeholder="e.g., 0.108"
                         validationErrors={validationErrors}
                       />
@@ -2033,8 +2124,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="TVOC"
-                        value={formData.airPollutionLevel.tvoc}
-                        onChange={(value) => handleInputChange('airPollutionLevel.tvoc', value)}
+                        value={formData.airPollutionLevels?.tvoc}
+                        onChange={(value) => handleInputChange('airPollutionLevels.tvoc', value)}
                         placeholder="e.g., 0.456"
                         validationErrors={validationErrors}
                       />
@@ -2042,8 +2133,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="PM 1.0"
-                        value={formData.airPollutionLevel.pm1}
-                        onChange={(value) => handleInputChange('airPollutionLevel.pm1', value)}
+                        value={formData.airPollutionLevels?.pm1}
+                        onChange={(value) => handleInputChange('airPollutionLevels.pm1', value)}
                         placeholder="e.g., 9"
                         validationErrors={validationErrors}
                       />
@@ -2051,8 +2142,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="PM 2.5"
-                        value={formData.airPollutionLevel.pm25}
-                        onChange={(value) => handleInputChange('airPollutionLevel.pm25', value)}
+                        value={formData.airPollutionLevels?.pm25}
+                        onChange={(value) => handleInputChange('airPollutionLevels.pm25', value)}
                         placeholder="e.g., 12"
                         validationErrors={validationErrors}
                       />
@@ -2060,8 +2151,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="PM 10"
-                        value={formData.airPollutionLevel.pm10}
-                        onChange={(value) => handleInputChange('airPollutionLevel.pm10', value)}
+                        value={formData.airPollutionLevels?.pm10}
+                        onChange={(value) => handleInputChange('airPollutionLevels.pm10', value)}
                         placeholder="e.g., 30"
                         validationErrors={validationErrors}
                       />
@@ -2069,8 +2160,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <EnvironmentalField
                         label="Overall Air Pollution Level"
-                        value={formData.airPollutionLevel.overall}
-                        onChange={(value) => handleInputChange('airPollutionLevel.overall', value)}
+                        value={formData.airPollutionLevels?.overall}
+                        onChange={(value) => handleInputChange('airPollutionLevels.overall', value)}
                         placeholder="e.g., 30"
                         validationErrors={validationErrors}
                       />
@@ -2196,7 +2287,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Opticals</h4>
                       <div className="space-y-1 text-sm">
-                        {formData.sections.opticals.map((item, index) => (
+                        {formData.inspectionSections.opticals.map((item, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <CheckCircle className={`h-4 w-4 ${item.result === 'OK' ? 'text-green-500' : 'text-red-500'}`} />
                             <span>{item.description}: {item.result}</span>
@@ -2207,7 +2298,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     <div>
                       <h4 className="font-medium text-gray-700 mb-2">Electronics</h4>
                       <div className="space-y-1 text-sm">
-                        {formData.sections.electronics.map((item, index) => (
+                        {formData.inspectionSections.electronics.map((item, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <CheckCircle className={`h-4 w-4 ${item.result === 'OK' ? 'text-green-500' : 'text-red-500'}`} />
                             <span>{item.description}: {item.result}</span>

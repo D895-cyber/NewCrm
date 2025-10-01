@@ -662,9 +662,9 @@ export function RMAPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-8 bg-gray-50">
+      <main className="flex-1 overflow-auto p-8 bg-dark-bg">
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200">
+        <div className="bg-dark-card rounded-xl shadow-lg p-6 mb-8 border border-dark-color">
           <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -672,7 +672,7 @@ export function RMAPage() {
                 placeholder="Search RMA number, serial number, part, or site..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 h-11"
+                className="pl-10 bg-dark-bg border-dark-color text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 h-11"
               />
             </div>
             
@@ -680,7 +680,7 @@ export function RMAPage() {
               <select 
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
+                className="px-4 py-2 bg-dark-bg border border-dark-color rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
               >
                 <option value="All">All Status</option>
                 <option value="Under Review">Under Review</option>
@@ -694,7 +694,7 @@ export function RMAPage() {
               <select 
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
+                className="px-4 py-2 bg-dark-bg border border-dark-color rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
               >
                 <option value="All">All Priority</option>
                 <option value="High">High Priority</option>
@@ -719,8 +719,8 @@ export function RMAPage() {
           
           {/* Active Filters Display */}
           {(searchTerm || filterStatus !== "All" || filterPriority !== "All") && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="mt-4 pt-4 border-t border-dark-color">
+              <div className="flex items-center gap-2 text-sm text-gray-300">
                 <span className="font-medium">Active Filters:</span>
                 {searchTerm && (
                   <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
@@ -743,19 +743,19 @@ export function RMAPage() {
         </div>
 
               {/* RMA Table */}
-      <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">RMA Records</h2>
-          <p className="text-sm text-gray-600 mt-1">Showing {filteredRMAs.length} RMA records</p>
+      <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
+        <div className="px-6 py-4 bg-gradient-to-r from-dark-bg to-dark-tag border-b border-dark-color">
+          <h2 className="text-xl font-semibold text-white">RMA Records</h2>
+          <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
         </div>
         <div className="overflow-x-auto">
           {filteredRMAs.length === 0 ? (
             <div className="text-center py-12">
-              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <div className="mx-auto w-24 h-24 bg-dark-tag rounded-full flex items-center justify-center mb-4">
                 <Package className="w-12 h-12 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No RMAs Found</h3>
-              <p className="text-gray-500 mb-4">No RMA records match your current filters.</p>
+              <h3 className="text-lg font-medium text-white mb-2">No RMAs Found</h3>
+              <p className="text-gray-300 mb-4">No RMA records match your current filters.</p>
               <Button 
                 onClick={() => setShowAddModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -767,107 +767,107 @@ export function RMAPage() {
           ) : (
             <table className="w-full text-sm" key={`rma-table-${forceUpdate}`}>
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-blue-50 border-b-2 border-blue-200">
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">RMA #</th>
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">Site & Product</th>
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">Defective Part</th>
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">Replacement Part</th>
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">Status & Priority</th>
-                  <th className="text-left font-bold text-gray-800 py-4 px-4 border-r border-gray-200 text-sm uppercase tracking-wide">Dates & Tracking</th>
-                  <th className="text-center font-bold text-gray-800 py-4 px-4 text-sm uppercase tracking-wide">Actions</th>
+                <tr className="bg-gradient-to-r from-dark-bg to-dark-tag border-b-2 border-dark-color">
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">RMA #</th>
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">Site & Product</th>
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">Defective Part</th>
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">Replacement Part</th>
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">Status & Priority</th>
+                  <th className="text-left font-bold text-white py-4 px-4 border-r border-dark-color text-sm uppercase tracking-wide">Dates & Tracking</th>
+                  <th className="text-center font-bold text-white py-4 px-4 text-sm uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody key={`rma-tbody-${forceUpdate}`}>
                 {filteredRMAs.map((rma, index) => (
-                  <tr key={`${rma._id}-${forceUpdate}`} className={`border-b border-gray-100 transition-all duration-200 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  } hover:bg-blue-50 hover:shadow-sm`}>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                  <tr key={`${rma._id}-${forceUpdate}`} className={`border-b border-dark-color transition-all duration-200 ${
+                    index % 2 === 0 ? 'bg-dark-card' : 'bg-dark-bg'
+                  } hover:bg-dark-tag hover:shadow-sm`}>
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
-                        <div className="font-semibold text-blue-600 hover:text-blue-800 cursor-pointer text-base">
+                        <div className="font-semibold text-blue-400 hover:text-blue-300 cursor-pointer text-base">
                           {rma.rmaNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-300">
                           Call: {rma.callLogNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-300">
                           Order: {rma.rmaOrderNumber || 'N/A'}
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
-                        <div className="font-medium text-gray-800 text-sm">
+                        <div className="font-medium text-white text-sm">
                           {rma.siteName || 'N/A'}
                         </div>
-                        <div className="text-gray-700 text-sm">
+                        <div className="text-gray-300 text-sm">
                           {rma.productName || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600 font-mono">
+                        <div className="text-xs text-gray-300 font-mono">
                           SN: {rma.serialNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Part: {rma.productPartNumber || 'N/A'}
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
-                        <div className="text-gray-700 text-sm">
+                        <div className="text-gray-300 text-sm">
                           {rma.defectivePartName || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Part: {rma.defectivePartNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Serial: {rma.defectiveSerialNumber || 'N/A'}
                         </div>
                         {rma.symptoms && rma.symptoms !== 'N/A' && (
-                          <div className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded" title={rma.symptoms}>
+                          <div className="text-xs text-gray-300 bg-gray-100 px-2 py-1 rounded" title={rma.symptoms}>
                             {rma.symptoms}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
-                        <div className="text-gray-700 text-sm">
+                        <div className="text-gray-300 text-sm">
                           {rma.replacedPartName || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Part: {rma.replacedPartNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Serial: {rma.replacedPartSerialNumber || 'N/A'}
                         </div>
                         {rma.replacementNotes && rma.replacementNotes !== 'N/A' && (
-                          <div className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded" title={rma.replacementNotes}>
+                          <div className="text-xs text-gray-300 bg-gray-100 px-2 py-1 rounded" title={rma.replacementNotes}>
                             {rma.replacementNotes}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-2">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rma.caseStatus || 'Under Review')}`}>
                           {rma.caseStatus || 'Under Review'}
                         </span>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Priority: <span className={`font-semibold ${getPriorityColor(rma.priority || 'Medium')}`}>
                             {rma.priority || 'Medium'}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-300">
                           Created by: {rma.createdBy || 'System'}
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4 border-r border-gray-100">
+                    <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1 text-xs">
-                        <div className="text-gray-600">
+                        <div className="text-gray-300">
                           <span className="font-medium">Raised:</span> {rma.ascompRaisedDate || 'N/A'}
                         </div>
-                        <div className="text-gray-600">
+                        <div className="text-gray-300">
                           <span className="font-medium">Error:</span> {rma.customerErrorDate || 'N/A'}
                         </div>
                         {rma.shippedDate && rma.shippedDate !== 'N/A' && (
@@ -881,7 +881,7 @@ export function RMAPage() {
                           </div>
                         )}
                         {rma.shippedThru && rma.shippedThru !== 'N/A' && (
-                          <div className="text-gray-600">
+                          <div className="text-gray-300">
                             <span className="font-medium">Via:</span> {rma.shippedThru}
                           </div>
                         )}

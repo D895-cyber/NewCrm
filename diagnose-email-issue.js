@@ -162,3 +162,4 @@ console.log('2. For Gmail: Use App Password, not regular password');
 console.log('3. Enable 2-factor authentication for Gmail');
 console.log('4. Check FSE email preferences in database');
 console.log('5. Restart backend server after making changes');
+

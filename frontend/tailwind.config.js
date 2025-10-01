@@ -47,6 +47,9 @@ export default {
         },
         border: "var(--border)",
         input: "var(--input)",
+        "input-background": "var(--input-background)",
+        "input-foreground": "var(--input-foreground)",
+        "input-text-color": "var(--input-text-color)",
         ring: "var(--ring)",
         mint: {
           50: "#f0fdfa",

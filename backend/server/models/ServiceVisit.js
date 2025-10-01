@@ -25,10 +25,19 @@ const serviceVisitSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  siteAddress: {
+    type: String,
+    trim: true
+  },
   projectorSerial: {
     type: String,
     required: true,
     ref: 'Projector'
+  },
+  projectorModel: {
+    type: String,
+    required: true,
+    trim: true
   },
   visitType: {
     type: String,

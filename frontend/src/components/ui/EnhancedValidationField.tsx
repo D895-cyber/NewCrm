@@ -121,7 +121,7 @@ export function EnhancedValidationField({
           min={min}
           max={max}
           step={step}
-          className={`${getBorderColor()} ${getBackgroundColor()} transition-colors duration-200`}
+          className={`${getBorderColor()} ${getBackgroundColor()} text-black bg-white transition-colors duration-200`}
           onFocus={() => setIsFocused(true)}
           onBlur={() => {
             setIsFocused(false);

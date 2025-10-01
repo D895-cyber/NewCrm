@@ -183,7 +183,7 @@ const purchaseOrderSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-purchaseOrderSchema.index({ poNumber: 1 });
+// poNumber already has unique: true, so no need for explicit index
 purchaseOrderSchema.index({ status: 1 });
 purchaseOrderSchema.index({ customer: 1 });
 purchaseOrderSchema.index({ dateRaised: 1 });

@@ -4,9 +4,14 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Download, Eye, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { apiClient } from '../../utils/api/client';
-import { exportServiceReportToPDF } from '../../utils/export';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../ui/loading-spinner';
+
+interface FileInfo {
+  filename?: string;
+  cloudUrl: string;
+  generatedAt?: string;
+}
 
 interface ServiceReport {
   _id: string;
@@ -19,6 +24,9 @@ interface ServiceReport {
   date: string;
   projectorModel: string;
   projectorSerial: string;
+  generatedPdfReport?: FileInfo | null;
+  generatedDocReport?: FileInfo | null;
+  originalPdfReport?: FileInfo | null;
 }
 
 export function ASCOMPReportDownloader() {
@@ -58,14 +66,33 @@ export function ASCOMPReportDownloader() {
     }
   };
 
-  const downloadReport = async (reportId: string, reportNumber: string) => {
+  const downloadFromUrl = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadReport = async (report: ServiceReport) => {
     try {
-      setDownloading(reportId);
+      setDownloading(report._id);
       setError(null);
       setSuccess(null);
       
-      console.log('📥 Starting ASCOMP report download for:', reportId);
+      console.log('📥 Starting ASCOMP report download for:', report._id);
       
+      // Prefer generated PDF if available
+      if (report.generatedPdfReport?.cloudUrl) {
+        console.log('✅ Using generated PDF at:', report.generatedPdfReport.cloudUrl);
+        downloadFromUrl(report.generatedPdfReport.cloudUrl, `${report.reportNumber}.pdf`);
+        setSuccess(`Report ${report.reportNumber} downloaded successfully!`);
+        setTimeout(() => setSuccess(null), 3000);
+        return;
+      }
+
       // Ensure authentication token is set before making the request
       if (token) {
         apiClient.setAuthToken(token);
@@ -73,9 +100,9 @@ export function ASCOMPReportDownloader() {
         throw new Error('No authentication token available');
       }
       
-      // First try to download original PDF if available
+      // Try to download original PDF if available
       try {
-        const response = await fetch(`http://localhost:4000/api/service-reports/${reportId}/download-original-pdf`, {
+        const response = await fetch(`http://localhost:4000/api/service-reports/${report._id}/download-original-pdf`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -87,44 +114,26 @@ export function ASCOMPReportDownloader() {
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `Original_${reportNumber}.pdf`;
+          link.download = `ASCOMP_${report.reportNumber}.pdf`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
           
-          setSuccess(`Original FSE PDF for ${reportNumber} downloaded successfully!`);
+          setSuccess(`ASCOMP report ${report.reportNumber} downloaded successfully!`);
           setTimeout(() => setSuccess(null), 3000);
           return;
+        } else {
+          throw new Error('No PDF available for this report');
         }
-      } catch (originalPdfError) {
-        console.log('No original PDF found, generating new one...');
+      } catch (downloadError) {
+        console.error('❌ Download failed:', downloadError);
+        setError(`No PDF available for report ${report.reportNumber}. Please contact support.`);
       }
-      
-      // Generate comprehensive PDF from complete report data
-      console.log('🔄 Fetching complete report data for comprehensive PDF generation...');
-      const fullReport = await apiClient.getServiceReport(reportId);
-      console.log('📊 Full report data received:', {
-        hasSections: !!fullReport.sections,
-        sectionsKeys: fullReport.sections ? Object.keys(fullReport.sections) : 'No sections',
-        hasImageEvaluation: !!fullReport.imageEvaluation,
-        hasObservations: !!fullReport.observations,
-        hasPhotos: !!fullReport.photos,
-        reportKeys: Object.keys(fullReport)
-      });
-      
-      // Generate comprehensive PDF with all sections
-      await exportServiceReportToPDF(fullReport);
-      console.log('✅ Comprehensive ASCOMP PDF export completed');
-      
-      setSuccess(`Comprehensive ASCOMP report ${reportNumber} downloaded successfully with all sections!`);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
       
     } catch (err: any) {
       console.error('❌ Download failed:', err);
-      setError(`Failed to download report ${reportNumber}: ${err.message}`);
+      setError(`Failed to download report ${report.reportNumber}: ${err.message}`);
     } finally {
       setDownloading(null);
     }
@@ -140,7 +149,7 @@ export function ASCOMPReportDownloader() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner />
-          <p className="mt-4 text-gray-600">Loading ASCOMP reports...</p>
+          <p className="mt-4 text-gray-300">Loading ASCOMP reports...</p>
         </div>
       </div>
     );
@@ -151,8 +160,8 @@ export function ASCOMPReportDownloader() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Reports</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold text-white mb-2">Error Loading Reports</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
           <Button onClick={loadReports} className="bg-blue-600 hover:bg-blue-700">
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
@@ -167,8 +176,8 @@ export function ASCOMPReportDownloader() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">ASCOMP Report Downloader</h1>
-          <p className="text-gray-600">Download comprehensive ASCOMP service reports as PDF with all sections and technical details</p>
+          <h1 className="text-3xl font-bold text-white mb-2">ASCOMP Report Downloader</h1>
+          <p className="text-gray-300">View and download ASCOMP service reports</p>
         </div>
 
         {/* Status Messages */}
@@ -223,14 +232,14 @@ export function ASCOMPReportDownloader() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-300">
                     <strong>Projector:</strong> {report.projectorModel}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-300">
                     <strong>Serial:</strong> {report.projectorSerial}
                   </p>
                   <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                    <strong>PDF includes:</strong> Complete service checklists, technical measurements, environmental data, photos, signatures, and all sections
+                    <strong>Report includes:</strong> Complete service checklists, technical measurements, environmental data, photos, and signatures
                   </div>
                 </div>
                 
@@ -246,7 +255,7 @@ export function ASCOMPReportDownloader() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => downloadReport(report._id, report.reportNumber)}
+                    onClick={() => downloadReport(report)}
                     disabled={downloading === report._id}
                     className="flex-1 bg-blue-600 hover:bg-blue-700"
                   >
@@ -258,7 +267,7 @@ export function ASCOMPReportDownloader() {
                     ) : (
                       <>
                         <Download className="w-4 h-4 mr-1" />
-                        Download Full PDF
+                        Download Report
                       </>
                     )}
                   </Button>
@@ -271,8 +280,8 @@ export function ASCOMPReportDownloader() {
         {reports.length === 0 && (
           <div className="text-center py-12">
             <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No ASCOMP Reports Found</h3>
-            <p className="text-gray-600">No service reports are available for download.</p>
+            <h3 className="text-lg font-medium text-white mb-2">No ASCOMP Reports Found</h3>
+            <p className="text-gray-300">No service reports are available for download.</p>
           </div>
         )}
       </div>

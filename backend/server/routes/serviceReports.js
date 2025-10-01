@@ -5,6 +5,10 @@ const { authenticateToken } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const axios = require('axios');
+
+const ReportTemplate = require('../models/ReportTemplate');
+const reportExportService = require('../services/reportExportService');
 
 // Configure Cloudinary
 cloudinary.config({
@@ -155,6 +159,31 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const newReport = new ServiceReport(reportData);
     const savedReport = await newReport.save();
+
+    try {
+      const template = await ReportTemplate.findOne({
+        $or: [
+          { reportType: savedReport.reportType, isDefault: true },
+          { isDefault: true }
+        ]
+      }).sort({ reportType: -1 });
+
+      if (template) {
+        const templateResponse = await axios.get(template.storage.cloudUrl, { responseType: 'arraybuffer' });
+        const templateBuffer = Buffer.from(templateResponse.data);
+
+        const { docxBuffer, pdfBuffer } = await reportExportService.generateFromTemplate({
+          report: savedReport,
+          templateBuffer,
+          options: { generatePdf: true },
+          templateMappings: template.fieldMappings || []
+        });
+
+        await reportExportService.storeGeneratedFiles(savedReport, { docxBuffer, pdfBuffer }, req.user?.id || req.user?.name || 'system');
+      }
+    } catch (autoGenerateError) {
+      console.error('Automatic report generation failed:', autoGenerateError.message);
+    }
     
     console.log('Service report created successfully:', savedReport._id);
     
@@ -824,6 +853,61 @@ router.post('/:id/upload-original-pdf', authenticateToken, pdfUpload.single('pdf
   } catch (error) {
     console.error('Error uploading original PDF:', error);
     res.status(500).json({ message: 'Error uploading PDF', error: error.message });
+  }
+});
+
+// Generate DOCX/PDF report from template
+router.post('/:id/generate-doc', authenticateToken, async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const { generatePdf = false, templateId } = req.body || {};
+
+    const report = await ServiceReport.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ message: 'Service report not found' });
+    }
+
+    let template = null;
+
+    if (templateId) {
+      template = await ReportTemplate.findById(templateId);
+      if (!template) {
+        return res.status(404).json({ message: 'Template not found' });
+      }
+    } else {
+      template = await ReportTemplate.findOne({
+        $or: [
+          { reportType: report.reportType, isDefault: true },
+          { isDefault: true }
+        ]
+      }).sort({ reportType: -1 });
+    }
+
+    if (!template) {
+      return res.status(400).json({ message: 'No template available for this report type' });
+    }
+
+    const templateResponse = await axios.get(template.storage.cloudUrl, { responseType: 'arraybuffer' });
+    const templateBuffer = Buffer.from(templateResponse.data);
+
+    const { docxBuffer, pdfBuffer } = await reportExportService.generateFromTemplate({
+      report,
+      templateBuffer,
+      options: { generatePdf },
+      templateMappings: template.fieldMappings || []
+    });
+
+    const stored = await reportExportService.storeGeneratedFiles(report, { docxBuffer, pdfBuffer }, req.user?.id || req.user?.name || 'system');
+
+    res.json({
+      message: 'Report generated successfully',
+      generatedDoc: stored.generatedDocReport,
+      generatedPdf: stored.generatedPdfReport
+    });
+
+  } catch (error) {
+    console.error('Error generating report document:', error);
+    res.status(500).json({ message: 'Error generating report document', error: error.message });
   }
 });
 

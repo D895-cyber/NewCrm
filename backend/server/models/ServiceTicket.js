@@ -233,7 +233,7 @@ const serviceTicketSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-serviceTicketSchema.index({ ticketNumber: 1 });
+// ticketNumber already has unique: true, so no need for explicit index
 serviceTicketSchema.index({ amcContractId: 1 });
 serviceTicketSchema.index({ status: 1 });
 serviceTicketSchema.index({ scheduledDate: 1 });

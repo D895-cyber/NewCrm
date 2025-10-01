@@ -442,8 +442,8 @@ export function ServiceManagementPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Service Management</h1>
-          <p className="text-gray-600 mt-2">Plan services and manage service visits in one place</p>
+          <h1 className="text-3xl font-bold text-white">Service Management</h1>
+          <p className="text-gray-300 mt-2">Plan services and manage service visits in one place</p>
         </div>
       </div>
 
@@ -544,7 +544,7 @@ export function ServiceManagementPage() {
                       </TableRow>
                     ) : services.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-300">
                           No service plans found
                         </TableCell>
                       </TableRow>
@@ -662,7 +662,7 @@ export function ServiceManagementPage() {
                       </TableRow>
                     ) : filteredVisits.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-300">
                           No service visits found
                         </TableCell>
                       </TableRow>
@@ -830,7 +830,7 @@ export function ServiceManagementPage() {
                         )}
                       </div>
                       {selectedProjectors.length > 0 && (
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-300 mt-2">
                           💡 {selectedProjectors.length} service plan(s) will be created for the selected projectors
                         </p>
                       )}
@@ -981,7 +981,7 @@ export function ServiceManagementPage() {
                     )}
                   </div>
                   {newVisit.selectedProjectors.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-300 mt-2">
                       💡 {newVisit.selectedProjectors.length} visit(s) will be created for the selected projectors
                     </p>
                   )}

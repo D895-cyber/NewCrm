@@ -202,7 +202,7 @@ const DTRSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-DTRSchema.index({ caseId: 1 });
+// caseId already has unique: true, so no need for explicit index
 DTRSchema.index({ serialNumber: 1 });
 DTRSchema.index({ siteName: 1 });
 DTRSchema.index({ status: 1 });

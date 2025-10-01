@@ -322,8 +322,8 @@ export function ServiceVisitsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Service Visits</h1>
-          <p className="text-gray-600 mt-2">Manage and monitor all service visits</p>
+          <h1 className="text-3xl font-bold text-white">Service Visits</h1>
+          <p className="text-gray-300 mt-2">Manage and monitor all service visits</p>
           <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Workflow:</strong> Admin schedules visit → FSE completes visit → Service report generated → Projector data updated
@@ -398,7 +398,7 @@ export function ServiceVisitsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-300" />
                 <Input
                   placeholder="Search visits..."
                   value={searchTerm}
@@ -410,7 +410,7 @@ export function ServiceVisitsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="text-foreground bg-input-background">
+                <SelectTrigger className="text-input-foreground bg-input-background">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -425,7 +425,7 @@ export function ServiceVisitsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Priority</label>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="text-foreground bg-input-background">
+                <SelectTrigger className="text-input-foreground bg-input-background">
                   <SelectValue placeholder="All Priorities" />
                 </SelectTrigger>
                 <SelectContent>
@@ -438,7 +438,7 @@ export function ServiceVisitsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Results</label>
-              <div className="text-sm text-gray-600 pt-2">
+              <div className="text-sm text-gray-300 pt-2">
                 {filteredVisits.length} of {serviceVisits.length} visits
               </div>
             </div>
@@ -473,7 +473,7 @@ export function ServiceVisitsPage() {
               <TableBody>
                 {filteredVisits.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-300">
                       No service visits found
                     </TableCell>
                   </TableRow>
@@ -483,19 +483,19 @@ export function ServiceVisitsPage() {
                       <TableCell className="font-mono text-sm">{visit.visitId || visit._id || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <MapPin className="h-4 w-4 text-gray-300" />
                           <span>{visit.siteName || visit.site || 'N/A'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Monitor className="h-4 w-4 text-gray-400" />
+                          <Monitor className="h-4 w-4 text-gray-300" />
                           <span className="font-mono text-sm">{visit.projectorSerial || visit.serialNumber || 'N/A'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4 text-gray-400" />
+                          <User className="h-4 w-4 text-gray-300" />
                           <span>{visit.fseName || visit.fse || visit.technician || 'N/A'}</span>
                         </div>
                       </TableCell>
@@ -581,7 +581,7 @@ export function ServiceVisitsPage() {
                 {sites.length === 0 && (
                   <p className="text-xs text-red-500">Loading sites... Please wait or check console for errors.</p>
                 )}
-                <p className="text-xs text-gray-500">Sites loaded: {sites.length}</p>
+                <p className="text-xs text-gray-300">Sites loaded: {sites.length}</p>
               </div>
               
               <div className="space-y-2">
@@ -613,14 +613,14 @@ export function ServiceVisitsPage() {
                   </SelectContent>
                 </Select>
                 {newVisit.siteName && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-300">
                     Projectors for {newVisit.siteName}: {filteredProjectors.length}
                   </p>
                 )}
                 {projectors.length === 0 && (
                   <p className="text-xs text-red-500">Loading projectors... Please wait or check console for errors.</p>
                 )}
-                <p className="text-xs text-gray-500">Projectors loaded: {projectors.length}</p>
+                <p className="text-xs text-gray-300">Projectors loaded: {projectors.length}</p>
               </div>
             </div>
 
@@ -648,7 +648,7 @@ export function ServiceVisitsPage() {
                 {fses.length === 0 && (
                   <p className="text-xs text-red-500">Loading FSEs... Please wait or check console for errors.</p>
                 )}
-                <p className="text-xs text-gray-500">FSEs loaded: {fses.length}</p>
+                <p className="text-xs text-gray-300">FSEs loaded: {fses.length}</p>
               </div>
               
               <div className="space-y-2">
@@ -718,8 +718,8 @@ export function ServiceVisitsPage() {
 
             {/* Summary */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Visit Summary</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+              <h4 className="font-medium text-white mb-2">Visit Summary</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-300">
                 <div>
                   <span className="font-medium">Site:</span> {newVisit.siteName || 'Not selected'}
                 </div>
@@ -877,7 +877,7 @@ export function ServiceVisitsPage() {
                     </SelectContent>
                   </Select>
                   {selectedVisit.siteName && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-300">
                       Projectors for {selectedVisit.siteName}: {projectors.filter(p => 
                         p.siteName === selectedVisit.siteName || p.site === selectedVisit.siteName
                       ).length}
@@ -1037,47 +1037,47 @@ export function ServiceVisitsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="font-medium">Visit ID:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.visitId}</p>
+                  <p className="text-sm text-black">{selectedVisit.visitId}</p>
                 </div>
                 <div>
                   <span className="font-medium">Status:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.status}</p>
+                  <p className="text-sm text-black">{selectedVisit.status}</p>
                 </div>
                 <div>
                   <span className="font-medium">Site:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.siteName}</p>
+                  <p className="text-sm text-black">{selectedVisit.siteName}</p>
                 </div>
                 <div>
                   <span className="font-medium">Projector:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.projectorSerial}</p>
+                  <p className="text-sm text-black">{selectedVisit.projectorSerial}</p>
                 </div>
                 <div>
                   <span className="font-medium">FSE:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.fseName}</p>
+                  <p className="text-sm text-black">{selectedVisit.fseName}</p>
                 </div>
                 <div>
                   <span className="font-medium">Visit Type:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.visitType}</p>
+                  <p className="text-sm text-black">{selectedVisit.visitType}</p>
                 </div>
                 <div>
                   <span className="font-medium">Scheduled Date:</span>
-                  <p className="text-sm text-gray-600">{formatDate(selectedVisit.scheduledDate) || 'N/A'}</p>
+                  <p className="text-sm text-gray-300">{formatDate(selectedVisit.scheduledDate) || 'N/A'}</p>
                 </div>
                 <div>
                   <span className="font-medium">Priority:</span>
-                  <p className="text-sm text-gray-600">{selectedVisit.priority}</p>
+                  <p className="text-sm text-gray-300">{selectedVisit.priority}</p>
                 </div>
               </div>
               {selectedVisit.description && (
                 <div>
                   <span className="font-medium">Description:</span>
-                  <p className="text-sm text-gray-600 mt-1">{selectedVisit.description}</p>
+                  <p className="text-sm text-gray-300 mt-1">{selectedVisit.description}</p>
                 </div>
               )}
               {selectedVisit.notes && (
                 <div>
                   <span className="font-medium">Notes:</span>
-                  <p className="text-sm text-gray-600 mt-1">{selectedVisit.notes}</p>
+                  <p className="text-sm text-gray-300 mt-1">{selectedVisit.notes}</p>
                 </div>
               )}
               <div className="flex justify-end space-x-2">

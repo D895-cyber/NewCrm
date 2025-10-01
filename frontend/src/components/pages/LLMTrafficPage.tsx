@@ -126,7 +126,10 @@ export function LLMTrafficPage() {
       // Handle specific authentication errors
       if (err.message?.includes('Access token required') || err.message?.includes('Unauthorized')) {
         setError('Your session has expired. Please log in again.');
-        logout(); // Clear the invalid token
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          logout();
+        }, 2000);
       } else {
         setError(err.message || 'Failed to load FSE analytics data');
       }

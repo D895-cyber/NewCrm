@@ -187,7 +187,10 @@ export function FSEServiceReportAnalytics() {
       
       if (err.message?.includes('Access token required') || err.message?.includes('Unauthorized')) {
         setError('Your session has expired. Please log in again.');
-        logout();
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          logout();
+        }, 2000);
       } else {
         setError(err.message || 'Failed to load analytics data');
       }
@@ -245,11 +248,18 @@ export function FSEServiceReportAnalytics() {
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-dark-primary mb-2">Error Loading Analytics</h2>
-          <p className="text-dark-secondary mb-4">{error}</p>
-          <Button onClick={loadAnalyticsData} className="bg-blue-600 hover:bg-blue-700">
-            Try Again
-          </Button>
+          <h2 className="text-xl font-semibold text-white mb-2">Error Loading Analytics</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
+          <div className="space-x-4">
+            <Button onClick={loadAnalyticsData} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Try Again
+            </Button>
+            {error.includes('session has expired') && (
+              <Button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white">
+                Go to Login
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );

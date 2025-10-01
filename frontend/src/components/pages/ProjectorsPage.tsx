@@ -879,7 +879,7 @@ export function ProjectorsPage() {
                         </div>
                       </div>
                       <div className="mt-3">
-                        <span className="text-dark-secondary text-sm">Image Evaluation</span>
+                        <span className="text-gray-300 text-sm">Image Evaluation</span>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-xs">
                           {Object.entries(projectorReports[0].sections?.imageEvaluation || {}).map(([k,v]) => (
                             <div key={k} className={`dark-tag ${v ? 'bg-green-600' : 'bg-gray-600'}`}>{k}</div>
@@ -888,7 +888,7 @@ export function ProjectorsPage() {
                       </div>
                       {projectorReports[0].sections?.observations?.length > 0 && (
                         <div className="mt-3">
-                          <span className="text-dark-secondary text-sm">Observations</span>
+                          <span className="text-gray-300 text-sm">Observations</span>
                           <ul className="list-disc pl-5 text-sm text-dark-primary mt-1">
                             {projectorReports[0].sections.observations.filter(Boolean).slice(0,4).map((o: string, i: number) => (
                               <li key={i}>{o}</li>

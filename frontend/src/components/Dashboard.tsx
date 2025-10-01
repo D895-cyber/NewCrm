@@ -19,7 +19,8 @@ import {
   LogOut,
   Menu,
   X,
-  Download
+  Download,
+  Truck
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { NotificationBar } from "./ui/notification-bar";
@@ -51,7 +52,10 @@ import { LLMTrafficPage } from "./pages/LLMTrafficPage";
 import { FSEServiceReportAnalytics } from "./pages/FSEServiceReportAnalytics";
 import { ServiceAssignmentPage } from "./pages/ServiceAssignmentPage";
 import { ASCOMPReportDownloader } from "./pages/ASCOMPReportDownloader";
+import { ReportTemplatesPage } from "./pages/ReportTemplatesPage";
 import { UploadOriginalPDF } from "./pages/UploadOriginalPDF";
+import { ProjectorTrackingPage } from "./pages/ProjectorTrackingPage";
+import { RMATrackingPage } from "./pages/RMATrackingPage";
 
 
 const mainNavItems = [
@@ -69,9 +73,11 @@ const operationsItems = [
   { icon: Users, label: "FSE Management" },
   { icon: Package, label: "Spare Parts" },
   { icon: RotateCcw, label: "RMA Management" },
+  { icon: Truck, label: "RMA Tracking" },
   { icon: AlertTriangle, label: "Daily Trouble Reports" },
   { icon: ClipboardList, label: "Work Orders" },
   { icon: FileText, label: "AMC Contracts" },
+  { icon: Monitor, label: "Projector Tracking" },
 ];
 
 const analyticsItems = [
@@ -89,6 +95,7 @@ const otherItems = [
   { icon: Users, label: "User Management" },
   { icon: Cloud, label: "Cloud Storage" },
   { icon: Settings, label: "Settings" },
+  { icon: FileText, label: "Report Templates" },
   { icon: User, label: "Profile" },
 ];
 
@@ -133,6 +140,9 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
   // Filter navigation items based on user role
   const filteredOtherItems = otherItems.filter(item => {
     if (item.label === "User Management" && user?.role !== 'admin') {
+      return false;
+    }
+    if (item.label === "Report Templates" && !['admin', 'manager'].includes(user?.role ?? '')) {
       return false;
     }
     return true;
@@ -195,10 +205,14 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <SparePartsPage />;
       case "RMA Management":
         return <RMAPage />;
+      case "RMA Tracking":
+        return <RMATrackingPage />;
       case "Daily Trouble Reports":
         return <DTRPage />;
       case "AMC Contracts":
         return <AMCContractsPage />;
+      case "Projector Tracking":
+        return <ProjectorTrackingPage />;
       case "Analytics":
         return <AnalyticsPage />;
       case "Reports":
@@ -220,6 +234,8 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <CloudStoragePage />;
       case "Settings":
         return <SettingsPage />;
+      case "Report Templates":
+        return <ReportTemplatesPage />;
       default:
         return <DashboardPage />;
     }

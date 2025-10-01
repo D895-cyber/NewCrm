@@ -42,3 +42,4 @@ console.log('1. Check backend/server/.env file exists');
 console.log('2. Verify SMTP credentials are correct');
 console.log('3. Test email service with test endpoint');
 console.log('4. Check FSE email preferences in database');
+

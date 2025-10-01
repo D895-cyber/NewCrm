@@ -238,6 +238,17 @@ router.get('/:id', async (req, res) => {
 // Create new service visit
 router.post('/', async (req, res) => {
   try {
+    // Validate required fields
+    const requiredFields = ['fseId', 'fseName', 'siteId', 'siteName', 'projectorSerial', 'projectorModel', 'visitType', 'scheduledDate'];
+    const missingFields = requiredFields.filter(field => !req.body[field] || req.body[field].trim() === '');
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        error: `Missing required fields: ${missingFields.join(', ')}` 
+      });
+    }
+    
     const visit = new ServiceVisit(req.body);
     const newVisit = await visit.save();
     res.status(201).json(newVisit);
