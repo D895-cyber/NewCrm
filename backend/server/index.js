@@ -203,13 +203,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/cloud-storage', express.static('cloud-storage'));
 
 // Serve static files from frontend build when available
-if (NODE_ENV === 'production') {
-  app.use(express.static(FRONTEND_DIST_PATH));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'));
-  });
-}
+app.use(express.static(FRONTEND_DIST_PATH));
 
 // Clear database endpoint - removes all sample data
 app.post('/api/clear-all-data', async (req, res) => {
@@ -255,28 +249,32 @@ app.post('/api/clear-all-data', async (req, res) => {
   }
 });
 
+// Serve frontend for all non-API routes (SPA fallback)
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // Serve index.html for all other routes (SPA routing)
+  res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'), (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err);
+      res.status(404).json({ error: 'Frontend not found' });
+    }
+  });
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server error:', error);
   res.status(500).json({ error: 'Internal server error', details: error.message });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// 404 handler for API routes only
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
-// In non-production environments, serve the built frontend if it exists
-if (NODE_ENV !== 'production') {
-  app.use(express.static(FRONTEND_DIST_PATH));
-
-  app.get('*', (req, res, next) => {
-    res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'), (err) => {
-      if (err) {
-        next();
-      }
-    });
-  });
-}
 
 // Start server with port conflict handling
 const startServer = async (port) => {
