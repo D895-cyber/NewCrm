@@ -102,7 +102,10 @@ export function ASCOMPReportDownloader() {
       
       // Try to download original PDF if available
       try {
-        const response = await fetch(`http://localhost:4000/api/service-reports/${report._id}/download-original-pdf`, {
+        const apiBaseUrl = process.env.NODE_ENV === 'production' 
+          ? window.location.origin 
+          : 'http://localhost:4000';
+        const response = await fetch(`${apiBaseUrl}/api/service-reports/${report._id}/download-original-pdf`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

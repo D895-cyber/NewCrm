@@ -3,12 +3,16 @@ runtime: nodejs16
 build:
   commands:
     build:
-      - echo "Installing dependencies..."
-      - npm install
-      - echo "Build completed"
+      - echo "Installing backend dependencies..."
+      - cd backend/server && npm install
+      - echo "Installing frontend dependencies..."
+      - cd ../../frontend && npm install
+      - echo "Building frontend..."
+      - npm run build
+      - echo "Build completed successfully"
 run:
   runtime-version: 16
-  command: npm start
+  command: cd backend/server && npm start
   network:
     port: 4000
     env: PORT
@@ -20,9 +24,9 @@ run:
     - name: MONGODB_URI
       value: mongodb+srv://dev:dev123@cluster0.es90y1z.mongodb.net/projector_warranty?retryWrites=true&w=majority&appName=Cluster0
     - name: JWT_SECRET
-      value: your-production-jwt-secret-change-this-in-production
+      value: your-production-jwt-secret-change-this-in-production-2024
     - name: FRONTEND_URL
-      value: https://your-cloudfront-url.cloudfront.net
+      value: "*"
     - name: CLOUDINARY_CLOUD_NAME
       value: your-cloud-name
     - name: CLOUDINARY_API_KEY
