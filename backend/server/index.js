@@ -45,23 +45,73 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Middleware
-app.use(cors({
-  origin: NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://yourdomain.com'] // Replace with your actual domain
-    : [
-        'http://localhost:3000', 
-        'http://localhost:5173', 
+// CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    console.log('🌐 CORS request from origin:', origin);
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [];
+    
+    if (NODE_ENV === 'production') {
+      // Production origins
+      if (process.env.FRONTEND_URL) {
+        allowedOrigins.push(process.env.FRONTEND_URL);
+      }
+      
+      // Allow Render.com domains
+      if (origin.includes('onrender.com')) {
+        allowedOrigins.push(origin);
+      }
+      
+      // Allow Vercel domains
+      if (origin.includes('vercel.app')) {
+        allowedOrigins.push(origin);
+      }
+      
+      // Allow Netlify domains
+      if (origin.includes('netlify.app')) {
+        allowedOrigins.push(origin);
+      }
+      
+      // Allow custom domains if specified
+      const customDomains = process.env.ALLOWED_ORIGINS?.split(',') || [];
+      allowedOrigins.push(...customDomains);
+      
+    } else {
+      // Development origins
+      allowedOrigins.push(
+        'http://localhost:3000',
+        'http://localhost:5173',
         'http://localhost:5174',
-        /^http:\/\/192\.168\.1\.\d+:3000$/, // Allow any 192.168.1.x:3000
-        /^http:\/\/192\.168\.1\.\d+:5173$/, // Allow any 192.168.1.x:5173
-        /^http:\/\/192\.168\.1\.\d+:5174$/, // Allow any 192.168.1.x:5174
-        /^http:\/\/192\.168\.1\.\d+:8080$/  // Allow any 192.168.1.x:8080
-      ], // Development origins
+        'http://localhost:8080'
+      );
+      
+      // Allow local network IPs
+      if (origin.match(/^http:\/\/192\.168\.1\.\d+:(3000|5173|5174|8080)$/)) {
+        allowedOrigins.push(origin);
+      }
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
+      console.log('✅ CORS: Origin allowed:', origin);
+      callback(null, true);
+    } else {
+      console.log('❌ CORS: Origin not allowed:', origin);
+      console.log('🔍 Allowed origins:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

@@ -29,25 +29,42 @@ export const config = {
 
 // Helper function to get API URL with fallback
 export const getApiUrl = (): string => {
+  // First priority: Environment variables
   const envApiUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.REACT_APP_API_URL;
 
   if (envApiUrl && typeof envApiUrl === 'string') {
+    console.log('🌐 Using environment API URL:', envApiUrl);
     return envApiUrl;
   }
 
   if (typeof window !== 'undefined') {
     const { hostname, protocol, host } = window.location;
 
+    // Production detection: if not localhost, try to use same domain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // For Render deployments, try common backend URL patterns
+      if (hostname.includes('onrender.com')) {
+        // If frontend is on Render, backend might be on a different Render service
+        // This should be overridden by VITE_API_URL environment variable
+        console.log('🚀 Detected Render deployment, using environment or fallback API URL');
+        return `${protocol}//${host}/api`; // Fallback to same domain
+      }
+      
+      // Generic production fallback
+      console.log('🌍 Production environment detected, using same domain API');
       return `${protocol}//${host}/api`;
     }
 
+    // Browser-configured API URL
     const browserConfigured = (window as any).ENV?.API_URL;
     if (browserConfigured) {
+      console.log('🔧 Using browser-configured API URL:', browserConfigured);
       return browserConfigured;
     }
   }
 
+  // Development fallback
+  console.log('🛠️ Using development API URL:', config.api.baseUrl);
   return config.api.baseUrl;
 };
 

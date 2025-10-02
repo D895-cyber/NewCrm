@@ -168,22 +168,41 @@ export function SitesPage() {
   const checkBackendConnection = async () => {
     try {
       setConnectionError(null);
-      // Simple health check using the health endpoint
-      const response = await fetch('http://localhost:4000/api/health');
+      // Use the configured API URL for health check
+      const healthCheckUrl = `${apiClient.getBaseUrl().replace('/api', '')}/api/health`;
+      console.log('🔍 Checking backend connection at:', healthCheckUrl);
+      
+      const response = await fetch(healthCheckUrl);
       const isConnected = response.ok;
       setIsBackendConnected(isConnected);
+      
       if (!isConnected) {
-        throw new Error('Backend health check failed');
+        throw new Error(`Backend health check failed. Status: ${response.status}`);
       }
+      
+      console.log('✅ Backend connection successful');
     } catch (err: any) {
-      console.error('Backend connection failed:', err);
+      console.error('❌ Backend connection failed:', err);
       setIsBackendConnected(false);
-      setConnectionError(
-        'Cannot connect to backend server. Please ensure:\n' +
-        '1. Express.js server is running on http://localhost:4000\n' +
-        '2. MongoDB is connected and running\n' +
-        '3. Run "cd server && npm start" to start backend'
-      );
+      
+      const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if (isDev) {
+        setConnectionError(
+          'Cannot connect to backend server. Please ensure:\n' +
+          '1. Express.js server is running on http://localhost:4000\n' +
+          '2. MongoDB is connected and running\n' +
+          '3. Run "cd backend && npm run dev" to start backend'
+        );
+      } else {
+        setConnectionError(
+          'Cannot connect to backend server. Please check:\n' +
+          '1. Backend service is deployed and running\n' +
+          '2. VITE_API_URL environment variable is set correctly\n' +
+          '3. CORS is configured to allow requests from this domain\n' +
+          `4. Trying to connect to: ${apiClient.getBaseUrl()}`
+        );
+      }
     }
   };
 
