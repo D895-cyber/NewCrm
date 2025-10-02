@@ -31,6 +31,12 @@ const schedulerService = require('./services/schedulerService');
 const trackingUpdateService = require('./services/TrackingUpdateService');
 const FRONTEND_DIST_PATH = path.resolve(__dirname, '../../frontend/dist');
 
+// Verify frontend dist path on startup
+console.log('🔍 Checking frontend dist path...');
+console.log('📁 FRONTEND_DIST_PATH:', FRONTEND_DIST_PATH);
+console.log('📄 index.html exists:', require('fs').existsSync(path.join(FRONTEND_DIST_PATH, 'index.html')));
+console.log('📂 dist folder exists:', require('fs').existsSync(FRONTEND_DIST_PATH));
+
 // Load environment variables
 dotenv.config({ path: __dirname + '/.env' });
 dotenv.config({ path: __dirname + '/../.env' });
@@ -203,7 +209,15 @@ app.use('/uploads', express.static('uploads'));
 app.use('/cloud-storage', express.static('cloud-storage'));
 
 // Serve static files from frontend build when available
-app.use(express.static(FRONTEND_DIST_PATH));
+console.log('📁 Setting up static file serving from:', FRONTEND_DIST_PATH);
+app.use(express.static(FRONTEND_DIST_PATH, {
+  dotfiles: 'ignore',
+  etag: false,
+  extensions: ['htm', 'html'],
+  index: ['index.html'],
+  maxAge: '1d',
+  redirect: false
+}));
 
 // Clear database endpoint - removes all sample data
 app.post('/api/clear-all-data', async (req, res) => {
@@ -251,16 +265,24 @@ app.post('/api/clear-all-data', async (req, res) => {
 
 // Serve frontend for all non-API routes (SPA fallback)
 app.get('*', (req, res, next) => {
+  console.log(`🔄 Request for: ${req.path}`);
+  
   // Skip API routes
   if (req.path.startsWith('/api/')) {
+    console.log('⏭️  Skipping API route');
     return next();
   }
   
+  const indexPath = path.join(FRONTEND_DIST_PATH, 'index.html');
+  console.log('📄 Serving SPA fallback - index.html from:', indexPath);
+  
   // Serve index.html for all other routes (SPA routing)
-  res.sendFile(path.join(FRONTEND_DIST_PATH, 'index.html'), (err) => {
+  res.sendFile(indexPath, (err) => {
     if (err) {
-      console.error('Error serving index.html:', err);
+      console.error('❌ Error serving index.html:', err);
       res.status(404).json({ error: 'Frontend not found' });
+    } else {
+      console.log('✅ Successfully served index.html for:', req.path);
     }
   });
 });
