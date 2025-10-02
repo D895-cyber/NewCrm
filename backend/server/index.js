@@ -81,16 +81,25 @@ const corsOptions = {
       allowedOrigins.push(...customDomains);
       
     } else {
-      // Development origins
+      // Development origins - be more permissive
       allowedOrigins.push(
         'http://localhost:3000',
         'http://localhost:5173',
         'http://localhost:5174',
-        'http://localhost:8080'
+        'http://localhost:8080',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:8080'
       );
       
+      // Allow any localhost port for development
+      if (origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+        allowedOrigins.push(origin);
+      }
+      
       // Allow local network IPs
-      if (origin.match(/^http:\/\/192\.168\.1\.\d+:(3000|5173|5174|8080)$/)) {
+      if (origin && origin.match(/^http:\/\/192\.168\.1\.\d+:\d+$/)) {
         allowedOrigins.push(origin);
       }
     }
@@ -102,6 +111,8 @@ const corsOptions = {
     } else {
       console.log('❌ CORS: Origin not allowed:', origin);
       console.log('🔍 Allowed origins:', allowedOrigins);
+      console.log('🔍 NODE_ENV:', NODE_ENV);
+      console.log('🔍 Origin type:', typeof origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
