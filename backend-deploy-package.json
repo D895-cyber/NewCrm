@@ -1,0 +1,13 @@
+{
+  "name": "projector-crm-backend-deploy", 
+  "version": "1.0.0",
+  "description": "Backend deployment package for Projector CRM",
+  "scripts": {
+    "build": "cd backend && npm install",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

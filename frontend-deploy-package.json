@@ -1,0 +1,14 @@
+{
+  "name": "projector-crm-frontend-deploy",
+  "version": "1.0.0",
+  "description": "Frontend deployment package for Projector CRM",
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd frontend && npm run preview"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

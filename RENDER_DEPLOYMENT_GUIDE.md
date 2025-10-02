@@ -8,15 +8,21 @@ This guide will help you deploy your CRM application on Render with proper envir
 2. **GitHub Repository**: Your code should be in a GitHub repository
 3. **MongoDB Database**: Either MongoDB Atlas or a cloud MongoDB instance
 
+## Important: Deploy as Separate Services
+
+⚠️ **Critical**: This is a monorepo that needs to be deployed as **TWO SEPARATE SERVICES** on Render:
+1. Backend API Service
+2. Frontend Static Site
+
 ## Deployment Steps
 
 ### 1. Deploy Backend Service
 
 1. **Create Web Service** on Render:
    - Connect your GitHub repository
-   - Select the `backend` folder as the root directory
-   - Set build command: `npm install`
-   - Set start command: `npm start`
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
 
 2. **Environment Variables** for Backend:
    ```
@@ -36,9 +42,9 @@ This guide will help you deploy your CRM application on Render with proper envir
 
 1. **Create Static Site** on Render:
    - Connect your GitHub repository
-   - Select the `frontend` folder as the root directory
-   - Set build command: `npm install && npm run build`
-   - Set publish directory: `dist`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
 
 2. **Environment Variables** for Frontend:
    ```
@@ -81,6 +87,20 @@ This guide will help you deploy your CRM application on Render with proper envir
 
 ## Troubleshooting
 
+### Build Errors
+
+#### "vite: not found" Error
+This happens when you try to deploy the entire monorepo as a single service. **Solution**:
+1. Delete the failed deployment
+2. Create **two separate services** as described above
+3. Use `backend` and `frontend` as root directories respectively
+
+#### Workspace Build Issues
+If you see workspace-related errors:
+1. Make sure you're deploying each service separately
+2. Don't use the root directory for deployment
+3. Each service should have its own build process
+
 ### CORS Issues
 - Ensure `FRONTEND_URL` in backend matches your frontend URL
 - Check that both services are deployed and running
@@ -95,6 +115,7 @@ This guide will help you deploy your CRM application on Render with proper envir
 - Check build logs for missing dependencies
 - Verify Node.js version compatibility
 - Ensure all required files are committed to repository
+- **Most Important**: Deploy as separate services, not as a monorepo
 
 ## Health Checks
 
