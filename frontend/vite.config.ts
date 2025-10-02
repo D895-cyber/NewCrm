@@ -24,23 +24,22 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false, // Disable sourcemaps for production
-    minify: 'terser', // Use terser for better minification
+    sourcemap: false, // Disable sourcemaps to save memory
+    minify: 'esbuild', // Use esbuild for faster, less memory-intensive minification
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
-          charts: ['recharts'],
-          forms: ['react-hook-form', 'date-fns']
-        }
+        // Reduce chunk splitting to use less memory
+        manualChunks: undefined
       }
     },
-    chunkSizeWarningLimit: 1000,
-    // Optimize for production
+    chunkSizeWarningLimit: 2000,
+    // Optimize for production with less memory usage
     target: 'es2015',
-    cssCodeSplit: true,
-    assetsInlineLimit: 4096
+    cssCodeSplit: false, // Disable CSS code splitting to reduce memory
+    assetsInlineLimit: 2048, // Reduce inline limit
+    // Memory optimization
+    reportCompressedSize: false, // Skip compression reporting to save memory
+    emptyOutDir: true
   },
   // For deployment on platforms like Vercel/Netlify
   base: '/'
