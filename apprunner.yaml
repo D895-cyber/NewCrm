@@ -4,15 +4,15 @@ build:
   commands:
     build:
       - echo "Installing backend dependencies..."
-      - cd backend/server && npm install
+      - cd backend && npm install
       - echo "Installing frontend dependencies..."
-      - cd ../../frontend && npm install
+      - cd ../frontend && npm install
       - echo "Building frontend..."
       - npm run build
       - echo "Build completed successfully"
 run:
   runtime-version: 16
-  command: cd backend/server && npm start
+  command: cd backend && npm start
   network:
     port: 4000
     env: PORT
