@@ -42,15 +42,7 @@ export const getApiUrl = (): string => {
 
     // Production detection: if not localhost, try to use same domain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // For Render deployments, try common backend URL patterns
-      if (hostname.includes('onrender.com')) {
-        // If frontend is on Render, backend might be on a different Render service
-        // This should be overridden by VITE_API_URL environment variable
-        console.log('🚀 Detected Render deployment, using environment or fallback API URL');
-        return `${protocol}//${host}/api`; // Fallback to same domain
-      }
-      
-      // Generic production fallback
+      // For single service deployments (backend serves frontend)
       console.log('🌍 Production environment detected, using same domain API');
       return `${protocol}//${host}/api`;
     }
