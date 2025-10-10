@@ -458,6 +458,7 @@ export function EnhancedRMAForm({ rma, onSubmit, onCancel, isLoading = false }: 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="Open">Open</SelectItem>
                         <SelectItem value="Under Review">Under Review</SelectItem>
                         <SelectItem value="Sent to CDS">Sent to CDS</SelectItem>
                         <SelectItem value="CDS Approved">CDS Approved</SelectItem>

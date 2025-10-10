@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>RMA Dashboard Error Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>🔧 Fix Applied</h3>
+        <p>Fixed the API response structure mismatch in the RMA dashboard. The frontend was expecting data wrapped in a <code>data</code> property, but the backend was returning it directly.</p>
+        <p><strong>Change:</strong> Updated <code>frontend/src/pages/RMADashboardPage.tsx</code> to correctly handle the API response structure.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 API Endpoint Tests</h3>
+        <button onclick="testAPI('public-kpis')">Test KPIs API</button>
+        <button onclick="testAPI('public-status-distribution')">Test Status Distribution API</button>
+        <button onclick="testAPI('public-priority-queue')">Test Priority Queue API</button>
+        <button onclick="testAPI('public-site-stats')">Test Site Stats API</button>
+        <button onclick="testAPI('public-projector-stats')">Test Projector Stats API</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🌐 Frontend Access Test</h3>
+        <button onclick="testFrontend()">Test Frontend Access</button>
+        <div id="frontend-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 Instructions</h3>
+        <ol>
+            <li>Make sure both backend (port 4000) and frontend (port 3000) servers are running</li>
+            <li>Click the API test buttons above to verify the endpoints are working</li>
+            <li>Access the RMA dashboard at: <a href="http://localhost:3000/#rma-dashboard" target="_blank">http://localhost:3000/#rma-dashboard</a></li>
+            <li>The dashboard should now load without authentication errors</li>
+        </ol>
+    </div>
+
+    <script>
+        async function testAPI(endpoint) {
+            const resultsDiv = document.getElementById('api-results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-section';
+            testDiv.innerHTML = `<h4>Testing /api/dashboard/${endpoint}</h4><p>Loading...</p>`;
+            resultsDiv.appendChild(testDiv);
+
+            try {
+                const response = await fetch(`http://localhost:4000/api/dashboard/${endpoint}`);
+                const data = await response.json();
+                
+                testDiv.className = 'test-section success';
+                testDiv.innerHTML = `
+                    <h4>✅ /api/dashboard/${endpoint}</h4>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2).substring(0, 500)}${JSON.stringify(data, null, 2).length > 500 ? '...' : ''}</pre>
+                `;
+            } catch (error) {
+                testDiv.className = 'test-section error';
+                testDiv.innerHTML = `
+                    <h4>❌ /api/dashboard/${endpoint}</h4>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testFrontend() {
+            const resultsDiv = document.getElementById('frontend-results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-section';
+            testDiv.innerHTML = `<h4>Testing Frontend Access</h4><p>Loading...</p>`;
+            resultsDiv.appendChild(testDiv);
+
+            try {
+                const response = await fetch('http://localhost:3000/');
+                testDiv.className = 'test-section success';
+                testDiv.innerHTML = `
+                    <h4>✅ Frontend Server</h4>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>URL:</strong> <a href="http://localhost:3000/#rma-dashboard" target="_blank">http://localhost:3000/#rma-dashboard</a></p>
+                `;
+            } catch (error) {
+                testDiv.className = 'test-section error';
+                testDiv.innerHTML = `
+                    <h4>❌ Frontend Server</h4>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testAPI('public-kpis');
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
+

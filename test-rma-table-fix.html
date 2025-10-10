@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Table Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>RMA Table Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>🔧 Fix Applied</h3>
+        <p><strong>Problem:</strong> RMA dashboard was showing KPI data (347 Total RMAs) but the table was empty, displaying "Showing 1-0 of 0 RMAs".</p>
+        <p><strong>Root Cause:</strong> The table was trying to display <code>recentConversions</code> data (which was empty) instead of actual RMA data.</p>
+        <p><strong>Solution:</strong> 
+            <ul>
+                <li>Added <code>rmaData</code> state to store actual RMA records</li>
+                <li>Created <code>loadRMAData()</code> function to fetch RMA data from API</li>
+                <li>Updated table to display <code>rmaData</code> instead of <code>recentConversions</code></li>
+                <li>Fixed pagination to show correct count from <code>rmaData.length</code></li>
+                <li>Added proper data mapping for RMA fields (rmaNumber, siteName, productName, etc.)</li>
+            </ul>
+        </p>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 RMA Data Test</h3>
+        <button onclick="testRMAData()">Test RMA API Data</button>
+        <div id="rma-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 Expected Results</h3>
+        <ul>
+            <li>✅ RMA table should now display actual RMA records (not empty)</li>
+            <li>✅ Pagination should show "Showing 1-8 of 347 RMAs" (or similar)</li>
+            <li>✅ Table should show RMA Number, Site, Product, Status, Priority, Created date</li>
+            <li>✅ KPI cards should continue to show correct totals</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🌐 Test the Fix</h3>
+        <p>Access the RMA dashboard at: <a href="http://localhost:3000/#rma-dashboard" target="_blank">http://localhost:3000/#rma-dashboard</a></p>
+        <p>The table should now show actual RMA data instead of being empty.</p>
+    </div>
+
+    <script>
+        async function testRMAData() {
+            const resultsDiv = document.getElementById('rma-results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-section';
+            testDiv.innerHTML = `<h4>Testing RMA API Data</h4><p>Loading...</p>`;
+            resultsDiv.appendChild(testDiv);
+
+            try {
+                const response = await fetch('http://localhost:4000/api/rma');
+                const rmaData = await response.json();
+                
+                testDiv.className = 'test-section success';
+                testDiv.innerHTML = `
+                    <h4>✅ RMA API Data Loaded</h4>
+                    <p><strong>Total RMAs:</strong> ${rmaData.length}</p>
+                    <p><strong>Sample RMA Data:</strong></p>
+                    <table>
+                        <tr>
+                            <th>RMA Number</th>
+                            <th>Site Name</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                        </tr>
+                        ${rmaData.slice(0, 5).map(rma => `
+                            <tr>
+                                <td>${rma.rmaNumber || 'N/A'}</td>
+                                <td>${rma.siteName || 'N/A'}</td>
+                                <td>${rma.productName || 'N/A'}</td>
+                                <td>${rma.caseStatus || rma.approvalStatus || 'N/A'}</td>
+                                <td>${rma.priority || 'N/A'}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                    <p><strong>Expected Table Count:</strong> Showing 1-8 of ${rmaData.length} RMAs</p>
+                `;
+            } catch (error) {
+                testDiv.className = 'test-section error';
+                testDiv.innerHTML = `
+                    <h4>❌ RMA API Error</h4>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testRMAData();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
+

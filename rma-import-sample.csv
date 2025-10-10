@@ -1,0 +1,16 @@
+RMA Number,Call Log Number,RMA Order Number,ASCOMP Raised Date,Customer Error Date,Site Name,Product Name,Product Part Number,Serial Number,Defective Part Number,Defective Part Name,Defective Serial Number,Symptoms,Replaced Part Number,Replaced Part Name,Replaced Part Serial Number,Replacement Notes,Shipped Date,Tracking Number,Shipped Through,Remarks,Created By,Case Status,Approval Status,RMA Return Shipped Date,RMA Return Tracking Number,RMA Return Shipped Through,Days Count Shipped to Site,Days Count Return to CDS,Projector Serial,Brand,Projector Model,Customer Site,Priority,Warranty Status,Estimated Cost,Notes,Outbound Tracking Number,Outbound Carrier,Outbound Carrier Service,Outbound Shipped Date,Outbound Estimated Delivery,Outbound Actual Delivery,Outbound Status,Outbound Tracking URL,Outbound Weight,Outbound Insurance Value,Outbound Requires Signature,Return Tracking Number,Return Carrier,Return Carrier Service,Return Shipped Date,Return Estimated Delivery,Return Actual Delivery,Return Status,Return Tracking URL,Return Weight,Return Insurance Value,Return Requires Signature,Target Delivery Days,Actual Delivery Days,SLA Breached,Breach Reason
+RMA-2024-001,CL-2024-001,PO-2024-001,2024-01-15,2024-01-10,Site A,Projector Model X,PART-001,SN-001,DEFECT-001,Lamp Assembly,DEF-SN-001,No display output,REPLACE-001,New Lamp Assembly,REPL-SN-001,Replaced under warranty,2024-01-20,TRK-001,Blue Dart,Urgent replacement needed,John Doe,Under Review,Pending Review,2024-02-01,TRK-002,Blue Dart,5,12,SN-001,Brand X,Model X,Site A,High,In Warranty,5000,Replaced lamp assembly,TRK-001,BLUE_DART,EXPRESS,2024-01-20,2024-01-23,2024-01-22,delivered,https://bluedart.com/track/TRK-001,2.5,5000,true,TRK-002,BLUE_DART,EXPRESS,2024-02-01,2024-02-04,,in_transit,https://bluedart.com/track/TRK-002,2.5,5000,true,3,2,false,
+RMA-2024-002,CL-2024-002,PO-2024-002,2024-01-16,2024-01-11,Site B,Projector Model Y,PART-002,SN-002,DEFECT-002,Power Supply,DEF-SN-002,Power issues,REPLACE-002,New Power Supply,REPL-SN-002,Power supply replacement,2024-01-25,TRK-003,DTDC,Power supply replacement,Jane Smith,Replacement Shipped,Approved,2024-02-05,TRK-004,DTDC,9,11,SN-002,Brand Y,Model Y,Site B,Medium,In Warranty,7500,Power supply replacement,TRK-003,DTDC,STANDARD,2024-01-25,2024-01-28,2024-01-27,delivered,https://dtdc.com/track/TRK-003,3.0,7500,false,TRK-004,DTDC,STANDARD,2024-02-05,2024-02-08,,in_transit,https://dtdc.com/track/TRK-004,3.0,7500,false,3,1,false,
+RMA-2024-003,CL-2024-003,PO-2024-003,2024-01-17,2024-01-12,Site C,Projector Model Z,PART-003,SN-003,DEFECT-003,Main Board,DEF-SN-003,No signal input,REPLACE-003,New Main Board,REPL-SN-003,Main board replacement,2024-01-30,TRK-005,FedEx,Main board replacement,Bob Wilson,Completed,Approved,2024-02-10,TRK-006,FedEx,13,11,SN-003,Brand Z,Model Z,Site C,Low,Extended Warranty,12000,Main board replacement,TRK-005,FEDEX,EXPRESS,2024-01-30,2024-02-02,2024-02-01,delivered,https://fedex.com/track/TRK-005,4.0,12000,true,TRK-006,FEDEX,EXPRESS,2024-02-10,2024-02-13,2024-02-12,delivered,https://fedex.com/track/TRK-006,4.0,12000,true,3,2,false,
+
+
+
+
+
+
+
+
+
+
+
+

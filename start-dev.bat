@@ -18,3 +18,16 @@ echo Frontend: http://localhost:5173 (or check the frontend terminal for actual 
 echo.
 echo Press any key to exit...
 pause > nul
+
+
+
+
+
+
+
+
+
+
+
+
+

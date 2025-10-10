@@ -236,6 +236,7 @@ npm run migrate
 
 ## 📚 Documentation
 
+- [Technical README](TECHNICAL_README.md)
 - [API Documentation](docs/api.md)
 - [Database Schema](docs/database.md)
 - [Deployment Guide](docs/deployment.md)

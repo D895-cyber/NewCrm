@@ -592,7 +592,7 @@ const RealFSEDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(report.reportDate)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.serviceType}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${report.totalCost.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(report.totalCost || 0).toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button className="text-blue-600 hover:text-blue-900">

@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { useData } from '../../contexts/DataContext';
 
 interface TrackingData {
   rmaNumber: string;
@@ -52,7 +53,7 @@ interface DeliveryProvider {
 }
 
 export function RMATrackingPage() {
-  const [rmas, setRmas] = useState<any[]>([]);
+  const { rma: rmaItems, refreshRMA, isLoading: dataLoading } = useData();
   const [selectedRMA, setSelectedRMA] = useState<any | null>(null);
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
   const [activeShipments, setActiveShipments] = useState<Shipment[]>([]);
@@ -63,52 +64,201 @@ export function RMATrackingPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [carrierFilter, setCarrierFilter] = useState('all');
 
+  // Map backend data to frontend display format (same as RMA page)
+  const mapBackendDataToFrontend = (backendRMA: any) => {
+    return {
+      _id: backendRMA._id,
+      rmaNumber: backendRMA.rmaNumber || 'N/A',
+      siteName: backendRMA.siteName || 'N/A',
+      productName: backendRMA.productName || 'N/A',
+      serialNumber: backendRMA.serialNumber || 'N/A',
+      caseStatus: backendRMA.caseStatus || 'Under Review',
+      shipping: backendRMA.shipping || { outbound: {}, return: {} },
+      // Include legacy tracking fields
+      trackingNumber: backendRMA.trackingNumber || '',
+      rmaReturnTrackingNumber: backendRMA.rmaReturnTrackingNumber || '',
+      shippedThru: backendRMA.shippedThru || '',
+      rmaReturnShippedThru: backendRMA.rmaReturnShippedThru || ''
+    };
+  };
+
+  // Use RMA data from DataContext with proper mapping
+  const rmas = (rmaItems || []).map(mapBackendDataToFrontend);
+
+  // Helper function to check if RMA has tracking information
+  const hasTrackingInfo = (rma: any) => {
+    // Check all possible tracking number fields
+    const hasOutboundTracking = rma.shipping?.outbound?.trackingNumber && rma.shipping.outbound.trackingNumber !== '';
+    const hasReturnTracking = rma.shipping?.return?.trackingNumber && rma.shipping.return.trackingNumber !== '';
+    const hasLegacyTracking = rma.trackingNumber && rma.trackingNumber !== '';
+    const hasReturnLegacyTracking = rma.rmaReturnTrackingNumber && rma.rmaReturnTrackingNumber !== '';
+    
+    console.log('🔍 Checking tracking info for RMA:', rma.rmaNumber, {
+      hasOutboundTracking,
+      hasReturnTracking,
+      hasLegacyTracking,
+      hasReturnLegacyTracking,
+      outboundTracking: rma.shipping?.outbound?.trackingNumber,
+      returnTracking: rma.shipping?.return?.trackingNumber,
+      legacyTracking: rma.trackingNumber,
+      returnLegacyTracking: rma.rmaReturnTrackingNumber
+    });
+    
+    return hasOutboundTracking || hasReturnTracking || hasLegacyTracking || hasReturnLegacyTracking;
+  };
+
   // Load initial data
   useEffect(() => {
-    loadRMAs();
+    setError(null); // Clear any previous errors
     loadActiveShipments();
     loadDeliveryProviders();
   }, []);
 
-  const loadRMAs = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiClient.get('/rma');
-      setRmas(response.data);
-    } catch (error) {
-      console.error('Error loading RMAs:', error);
-      setError('Failed to load RMA records');
-    } finally {
-      setIsLoading(false);
+  // Clear error when data loads
+  useEffect(() => {
+    if (rmas.length > 0) {
+      setError(null); // Clear error when RMA data is available
     }
-  };
+  }, [rmas.length]);
+
+  // Debug: Log RMA data
+  useEffect(() => {
+    console.log('🔍 RMA Tracking Page Debug:');
+    console.log('  - rmaItems from DataContext:', rmaItems?.length || 0, 'items');
+    console.log('  - rmas after mapping:', rmas.length, 'items');
+    console.log('  - dataLoading:', dataLoading);
+    
+    if (rmaItems && rmaItems.length > 0) {
+      console.log('  - Raw rmaItems[0]:', rmaItems[0]);
+      console.log('  - Raw rmaItems[0] keys:', Object.keys(rmaItems[0]));
+      console.log('  - Raw rmaItems[0] _id:', rmaItems[0]._id);
+    }
+    
+    if (rmas.length > 0) {
+      console.log('  - Mapped rmas[0]:', rmas[0]);
+      console.log('  - Mapped rmas[0] keys:', Object.keys(rmas[0]));
+      console.log('  - Mapped rmas[0] _id:', rmas[0]._id);
+      console.log('  - RMAs with tracking info:', rmas.filter(hasTrackingInfo).length);
+    }
+  }, [rmas, rmaItems, dataLoading]);
 
   const loadActiveShipments = async () => {
     try {
-      const response = await apiClient.get('/rma/tracking/active');
-      setActiveShipments(response.data.shipments || []);
+      console.log('🔍 Loading active shipments...');
+      console.log('🔍 API Client base URL:', apiClient.baseUrl || 'Not set');
+      
+      // Add cache-busting parameter to ensure fresh data
+      const response = await apiClient.get(`/rma/tracking/active?t=${Date.now()}&refresh=true`);
+      console.log('✅ Active shipments response received');
+      console.log('✅ Response type:', typeof response);
+      console.log('✅ Response keys:', Object.keys(response || {}));
+      console.log('✅ Response success:', response?.success);
+      console.log('✅ Response count:', response?.count);
+      console.log('✅ Response shipments length:', response?.shipments?.length);
+      
+      // The API client returns the response directly, not wrapped in a data property
+      if (response && response.shipments) {
+        // Direct response structure: { success: true, count: 1, shipments: [...] }
+        const shipments = response.shipments || [];
+        console.log('✅ Processing direct response structure');
+        console.log('✅ Shipments count:', shipments.length);
+        console.log('✅ First shipment sample:', shipments[0]);
+        setActiveShipments(shipments);
+        setError(null); // Clear any previous errors
+      } else if (response && response.data && response.data.shipments) {
+        // Nested response structure: { data: { success: true, count: 1, shipments: [...] } }
+        const shipments = response.data.shipments || [];
+        console.log('✅ Processing nested response structure');
+        console.log('✅ Shipments count:', shipments.length);
+        setActiveShipments(shipments);
+        setError(null); // Clear any previous errors
+      } else if (response && Array.isArray(response)) {
+        console.log('✅ Processing direct array response');
+        console.log('✅ Array length:', response.length);
+        setActiveShipments(response);
+        setError(null); // Clear any previous errors
+      } else {
+        console.warn('⚠️ Unexpected response structure for active shipments');
+        console.warn('Response structure:', response);
+        console.warn('Response keys:', Object.keys(response || {}));
+        setActiveShipments([]);
+        setError('Unexpected response structure from server');
+      }
     } catch (error) {
-      console.error('Error loading active shipments:', error);
+      console.error('❌ Error loading active shipments:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      setActiveShipments([]); // Set empty array on error
+      setError(`Failed to load active shipments: ${error.message}`);
     }
   };
 
   const loadDeliveryProviders = async () => {
     try {
+      console.log('🔍 Loading delivery providers...');
       const response = await apiClient.get('/rma/tracking/providers');
-      setDeliveryProviders(response.data.providers || []);
+      console.log('✅ Delivery providers response:', response);
+      console.log('✅ Delivery providers data:', response.data);
+      
+      // Handle different response structures
+      if (response && response.data) {
+        setDeliveryProviders(response.data.providers || []);
+      } else if (response && Array.isArray(response)) {
+        setDeliveryProviders(response);
+      } else {
+        console.warn('⚠️ Unexpected response structure for delivery providers');
+        setDeliveryProviders([]);
+      }
     } catch (error) {
-      console.error('Error loading delivery providers:', error);
+      console.error('❌ Error loading delivery providers:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      setDeliveryProviders([]); // Set empty array on error
     }
   };
 
   const fetchTrackingData = async (rmaId: string) => {
     try {
+      console.log('🔍 Fetching tracking data for RMA ID:', rmaId);
       setIsLoading(true);
-      const response = await apiClient.get(`/rma/${rmaId}/tracking`);
-      setTrackingData(response.data.tracking);
+      setError(null); // Clear any previous errors
+      
+      if (!rmaId) {
+        throw new Error('RMA ID is required');
+      }
+      
+      // Add cache-busting parameter to ensure fresh data
+      const response = await apiClient.get(`/rma/${rmaId}/tracking?t=${Date.now()}&refresh=true`);
+      console.log('✅ Tracking data response:', response);
+      console.log('✅ Tracking data response.data:', response.data);
+      
+      // Handle different response structures
+      if (response && response.data) {
+        console.log('✅ Tracking data from response.data.tracking:', response.data.tracking);
+        setTrackingData(response.data.tracking || null);
+      } else if (response && response.tracking) {
+        console.log('✅ Tracking data from response.tracking:', response.tracking);
+        setTrackingData(response.tracking);
+      } else {
+        console.warn('⚠️ Unexpected response structure for tracking data');
+        console.warn('Response structure:', response);
+        setTrackingData(null);
+      }
     } catch (error) {
-      console.error('Error fetching tracking data:', error);
-      setError('Failed to fetch tracking data');
+      console.error('❌ Error fetching tracking data:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      setError(`Failed to fetch tracking data: ${error.message}`);
+      setTrackingData(null); // Set null on error
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +270,8 @@ export function RMATrackingPage() {
       await apiClient.post('/rma/tracking/update-all');
       await fetchTrackingData(rmaId);
       await loadActiveShipments();
+      // Refresh RMA data from DataContext
+      await refreshRMA();
     } catch (error) {
       console.error('Error updating tracking:', error);
       setError('Failed to update tracking data');
@@ -131,19 +283,19 @@ export function RMATrackingPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'delivered':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-600 text-white border border-green-500';
       case 'in_transit':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-600 text-white border border-blue-500';
       case 'out_for_delivery':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-600 text-white border border-yellow-500';
       case 'picked_up':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-600 text-white border border-purple-500';
       case 'exception':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-600 text-white border border-red-500';
       case 'returned':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-600 text-white border border-orange-500';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-600 text-white border border-gray-500';
     }
   };
 
@@ -164,6 +316,14 @@ export function RMATrackingPage() {
     }
   };
 
+  // Open TracKCourier.io for tracking - auto-detects courier from tracking number
+  const openTrackCourier = (trackingNumber: string) => {
+    if (trackingNumber) {
+      // TracKCourier.io automatically detects the courier, no need to specify provider
+      window.open(`https://trackcourier.io/#${encodeURIComponent(trackingNumber)}`, '_blank');
+    }
+  };
+
   const filteredRMAs = (rmas || []).filter(rma => {
     const matchesSearch = rma.rmaNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          rma.siteName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,13 +341,18 @@ export function RMATrackingPage() {
   });
 
   // Show loading state while data is being fetched
-  if (isLoading && (!rmas || rmas.length === 0)) {
+  if ((isLoading || dataLoading) && (!rmas || rmas.length === 0)) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading RMA tracking data...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              DataContext loading: {dataLoading ? 'Yes' : 'No'} | 
+              RMA items: {rmaItems?.length || 0} | 
+              Mapped RMAs: {rmas.length}
+            </p>
           </div>
         </div>
       </div>
@@ -203,11 +368,18 @@ export function RMATrackingPage() {
         </div>
         <div className="flex space-x-3">
           <Button
-            onClick={() => updateTracking(selectedRMA?._id)}
-            disabled={isLoading}
+            onClick={async () => {
+              await refreshRMA();
+              if (selectedRMA?._id) {
+                await updateTracking(selectedRMA._id);
+              } else {
+                console.log('No RMA selected, skipping tracking update');
+              }
+            }}
+            disabled={isLoading || dataLoading}
             className="flex items-center space-x-2"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${(isLoading || dataLoading) ? 'animate-spin' : ''}`} />
             <span>Refresh All</span>
           </Button>
           <Button variant="outline" className="flex items-center space-x-2">
@@ -315,7 +487,13 @@ export function RMATrackingPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active Shipments</p>
-                    <p className="text-2xl font-bold text-gray-900">{activeShipments?.length || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {rmas.filter(rma => hasTrackingInfo(rma) && 
+                        (rma.shipping?.outbound?.status === 'in_transit' || 
+                         rma.shipping?.outbound?.status === 'out_for_delivery' ||
+                         rma.shipping?.return?.status === 'in_transit' || 
+                         rma.shipping?.return?.status === 'out_for_delivery')).length}
+                    </p>
                   </div>
                   <Truck className="w-8 h-8 text-green-600" />
                 </div>
@@ -325,9 +503,9 @@ export function RMATrackingPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Delivered Today</p>
+                    <p className="text-sm font-medium text-gray-600">Delivered</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {(rmas || []).filter(rma => 
+                      {rmas.filter(rma => 
                         rma.shipping?.outbound?.status === 'delivered' || 
                         rma.shipping?.return?.status === 'delivered'
                       ).length}
@@ -343,7 +521,7 @@ export function RMATrackingPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Exceptions</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {(rmas || []).filter(rma => 
+                      {rmas.filter(rma => 
                         rma.shipping?.outbound?.status === 'exception' || 
                         rma.shipping?.return?.status === 'exception'
                       ).length}
@@ -364,11 +542,26 @@ export function RMATrackingPage() {
               <div className="space-y-4">
                 {filteredRMAs.map((rma) => (
                   <div
-                    key={rma._id}
+                    key={rma._id || rma.id || rma.rmaNumber}
                     className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                     onClick={() => {
+                      const rmaId = rma._id || rma.id;
+                      console.log('🖱️ RMA clicked:', {
+                        rmaNumber: rma.rmaNumber,
+                        _id: rma._id,
+                        id: rma.id,
+                        selectedId: rmaId,
+                        allKeys: Object.keys(rma)
+                      });
                       setSelectedRMA(rma);
-                      fetchTrackingData(rma._id);
+                      if (rmaId) {
+                        fetchTrackingData(rmaId);
+                      } else {
+                        console.warn('⚠️ RMA has no valid ID field, cannot fetch tracking data');
+                        console.warn('Available fields:', Object.keys(rma));
+                        console.warn('RMA object:', rma);
+                        setError('RMA ID not found - check console for details');
+                      }
                     }}
                   >
                     <div className="flex justify-between items-start">
@@ -388,22 +581,57 @@ export function RMATrackingPage() {
                         </p>
                       </div>
                       <div className="text-right space-y-2">
-                        {rma.shipping?.outbound?.trackingNumber && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-500">Outbound:</span>
-                            <Badge className={getStatusColor(rma.shipping.outbound.status)}>
-                              {getStatusIcon(rma.shipping.outbound.status)}
-                              <span className="ml-1">{rma.shipping.outbound.status}</span>
-                            </Badge>
-                          </div>
-                        )}
-                        {rma.shipping?.return?.trackingNumber && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-500">Return:</span>
-                            <Badge className={getStatusColor(rma.shipping.return.status)}>
-                              {getStatusIcon(rma.shipping.return.status)}
-                              <span className="ml-1">{rma.shipping.return.status}</span>
-                            </Badge>
+                        {hasTrackingInfo(rma) ? (
+                          <>
+                            {/* New shipping structure tracking */}
+                            {rma.shipping?.outbound?.trackingNumber && rma.shipping.outbound.trackingNumber !== '' && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-500">Outbound:</span>
+                                <Badge className={getStatusColor(rma.shipping.outbound.status || 'pending')}>
+                                  {getStatusIcon(rma.shipping.outbound.status || 'pending')}
+                                  <span className="ml-1">{rma.shipping.outbound.status || 'pending'}</span>
+                                </Badge>
+                              </div>
+                            )}
+                            {rma.shipping?.return?.trackingNumber && rma.shipping.return.trackingNumber !== '' && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-500">Return:</span>
+                                <Badge className={getStatusColor(rma.shipping.return.status || 'pending')}>
+                                  {getStatusIcon(rma.shipping.return.status || 'pending')}
+                                  <span className="ml-1">{rma.shipping.return.status || 'pending'}</span>
+                                </Badge>
+                              </div>
+                            )}
+                            
+                            {/* Legacy tracking fields */}
+                            {rma.trackingNumber && rma.trackingNumber !== '' && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-500">Tracking:</span>
+                                <Badge className="bg-blue-100 text-blue-800">
+                                  <Package className="w-4 h-4" />
+                                  <span className="ml-1">{rma.trackingNumber}</span>
+                                </Badge>
+                                {rma.shippedThru && (
+                                  <span className="text-xs text-gray-500">via {rma.shippedThru}</span>
+                                )}
+                              </div>
+                            )}
+                            {rma.rmaReturnTrackingNumber && rma.rmaReturnTrackingNumber !== '' && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-500">Return:</span>
+                                <Badge className="bg-green-100 text-green-800">
+                                  <Package className="w-4 h-4" />
+                                  <span className="ml-1">{rma.rmaReturnTrackingNumber}</span>
+                                </Badge>
+                                {rma.rmaReturnShippedThru && (
+                                  <span className="text-xs text-gray-500">via {rma.rmaReturnShippedThru}</span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-500">
+                            No tracking info
                           </div>
                         )}
                       </div>
@@ -418,11 +646,27 @@ export function RMATrackingPage() {
         <TabsContent value="active" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Active Shipments</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Active Shipments</CardTitle>
+                <Button
+                  onClick={async () => {
+                    console.log('🔄 Force refreshing active shipments...');
+                    await loadActiveShipments();
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {(activeShipments || []).map((shipment) => (
+                {activeShipments && activeShipments.length > 0 ? (
+                  activeShipments.map((shipment) => (
                   <div key={shipment.rmaId} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -447,20 +691,34 @@ export function RMATrackingPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {shipment.outbound && (
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <h4 className="font-medium text-blue-900 mb-2">Outbound Shipment</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Tracking:</span>
-                              <span className="font-mono text-sm">{shipment.outbound.trackingNumber}</span>
+                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl border border-gray-600 shadow-lg">
+                          <h4 className="font-semibold text-white mb-4 text-lg flex items-center">
+                            <Truck className="w-5 h-5 mr-2 text-blue-400" />
+                            Outbound Shipment
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center py-2 border-b border-gray-600">
+                              <span className="text-sm font-medium text-gray-300">Tracking Number</span>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-mono text-sm font-semibold text-white bg-gray-700 px-3 py-1 rounded-md border border-gray-500">{shipment.outbound.trackingNumber}</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openTrackCourier(shipment.outbound.trackingNumber)}
+                                  className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
+                                  title="Track on TracKCourier.io"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Carrier:</span>
-                              <span className="text-sm">{shipment.outbound.carrier}</span>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-600">
+                              <span className="text-sm font-medium text-gray-300">Carrier</span>
+                              <span className="text-sm font-semibold text-blue-300 bg-blue-900 px-3 py-1 rounded-md border border-blue-600">{shipment.outbound.carrier}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Status:</span>
-                              <Badge className={getStatusColor(shipment.outbound.status)}>
+                            <div className="flex justify-between items-center py-2">
+                              <span className="text-sm font-medium text-gray-300">Status</span>
+                              <Badge className={`${getStatusColor(shipment.outbound.status)} text-sm font-medium px-3 py-1`}>
                                 {getStatusIcon(shipment.outbound.status)}
                                 <span className="ml-1">{shipment.outbound.status}</span>
                               </Badge>
@@ -470,20 +728,34 @@ export function RMATrackingPage() {
                       )}
                       
                       {shipment.return && (
-                        <div className="bg-green-50 p-4 rounded-lg">
-                          <h4 className="font-medium text-green-900 mb-2">Return Shipment</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Tracking:</span>
-                              <span className="font-mono text-sm">{shipment.return.trackingNumber}</span>
+                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl border border-gray-600 shadow-lg">
+                          <h4 className="font-semibold text-white mb-4 text-lg flex items-center">
+                            <Package className="w-5 h-5 mr-2 text-green-400" />
+                            Return Shipment
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center py-2 border-b border-gray-600">
+                              <span className="text-sm font-medium text-gray-300">Tracking Number</span>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-mono text-sm font-semibold text-white bg-gray-700 px-3 py-1 rounded-md border border-gray-500">{shipment.return.trackingNumber}</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openTrackCourier(shipment.return.trackingNumber)}
+                                  className="h-7 px-2 bg-green-600 hover:bg-green-700 text-white border-green-500"
+                                  title="Track on TracKCourier.io"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Carrier:</span>
-                              <span className="text-sm">{shipment.return.carrier}</span>
+                            <div className="flex justify-between items-center py-2 border-b border-gray-600">
+                              <span className="text-sm font-medium text-gray-300">Carrier</span>
+                              <span className="text-sm font-semibold text-blue-300 bg-blue-900 px-3 py-1 rounded-md border border-blue-600">{shipment.return.carrier}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Status:</span>
-                              <Badge className={getStatusColor(shipment.return.status)}>
+                            <div className="flex justify-between items-center py-2">
+                              <span className="text-sm font-medium text-gray-300">Status</span>
+                              <Badge className={`${getStatusColor(shipment.return.status)} text-sm font-medium px-3 py-1`}>
                                 {getStatusIcon(shipment.return.status)}
                                 <span className="ml-1">{shipment.return.status}</span>
                               </Badge>
@@ -493,7 +765,47 @@ export function RMATrackingPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="mx-auto w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                      <Truck className="w-12 h-12 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Shipments</h3>
+                    <p className="text-gray-600 mb-4">
+                      {activeShipments === null ? 'Loading active shipments...' : 'No shipments are currently in transit.'}
+                    </p>
+                    <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                      <h4 className="text-sm font-semibold text-yellow-400 mb-3">🔧 Debug Information</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Active shipments:</span>
+                          <span className="text-blue-400 font-mono">{activeShipments?.length || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Loading:</span>
+                          <span className={`font-mono ${isLoading ? 'text-yellow-400' : 'text-green-400'}`}>
+                            {isLoading ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-300">Error:</span>
+                          <span className={`font-mono ${error ? 'text-red-400' : 'text-green-400'}`}>
+                            {error || 'None'}
+                          </span>
+                        </div>
+                        {activeShipments && activeShipments.length > 0 && (
+                          <div className="mt-3">
+                            <span className="text-gray-300 block mb-2">Sample Data:</span>
+                            <pre className="bg-gray-900 p-3 rounded text-xs text-gray-300 overflow-x-auto border border-gray-600">
+                              {JSON.stringify(activeShipments.slice(0, 2), null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -505,7 +817,24 @@ export function RMATrackingPage() {
               {/* Tracking Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Tracking Details - {selectedRMA.rmaNumber}</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Tracking Details - {selectedRMA.rmaNumber}</CardTitle>
+                    <Button
+                      onClick={async () => {
+                        console.log('🔄 Force refreshing tracking data...');
+                        if (selectedRMA?._id) {
+                          await fetchTrackingData(selectedRMA._id);
+                        }
+                      }}
+                      disabled={isLoading}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                      <span>Refresh</span>
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Outbound Tracking */}
@@ -517,12 +846,23 @@ export function RMATrackingPage() {
                           <span className="font-medium">Tracking Number:</span>
                           <div className="flex items-center space-x-2">
                             <span className="font-mono">{trackingData.outbound.trackingNumber}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openTrackCourier(trackingData.outbound.trackingNumber)}
+                              className="h-7 px-2"
+                              title="Track on TracKCourier.io"
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              <span className="text-xs">Track</span>
+                            </Button>
                             {trackingData.outbound.trackingUrl && (
                               <a
                                 href={trackingData.outbound.trackingUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline"
+                                title="Carrier tracking page"
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </a>
@@ -571,12 +911,23 @@ export function RMATrackingPage() {
                           <span className="font-medium">Tracking Number:</span>
                           <div className="flex items-center space-x-2">
                             <span className="font-mono">{trackingData.return.trackingNumber}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openTrackCourier(trackingData.return.trackingNumber)}
+                              className="h-7 px-2"
+                              title="Track on TracKCourier.io"
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              <span className="text-xs">Track</span>
+                            </Button>
                             {trackingData.return.trackingUrl && (
                               <a
                                 href={trackingData.return.trackingUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-green-600 hover:underline"
+                                title="Carrier tracking page"
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </a>
@@ -594,7 +945,16 @@ export function RMATrackingPage() {
                           <span>Carrier:</span>
                           <span>{trackingData.return.carrier}</span>
                         </div>
-                        {trackingData.return.estimatedDelivery && (
+                        {trackingData.return.actualDelivery && (
+                          <div className="flex justify-between items-center">
+                            <span>Actual Delivery:</span>
+                            <span className="flex items-center space-x-1">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              <span>{new Date(trackingData.return.actualDelivery).toLocaleDateString()}</span>
+                            </span>
+                          </div>
+                        )}
+                        {trackingData.return.estimatedDelivery && !trackingData.return.actualDelivery && (
                           <div className="flex justify-between items-center">
                             <span>Estimated Delivery:</span>
                             <span className="flex items-center space-x-1">
@@ -603,13 +963,16 @@ export function RMATrackingPage() {
                             </span>
                           </div>
                         )}
-                        {trackingData.return.actualDelivery && (
+                        {trackingData.return.referenceNumber && (
                           <div className="flex justify-between items-center">
-                            <span>Actual Delivery:</span>
-                            <span className="flex items-center space-x-1">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              <span>{new Date(trackingData.return.actualDelivery).toLocaleDateString()}</span>
-                            </span>
+                            <span>Reference Number:</span>
+                            <span className="font-mono text-sm">{trackingData.return.referenceNumber}</span>
+                          </div>
+                        )}
+                        {trackingData.return.transitTime && (
+                          <div className="flex justify-between items-center">
+                            <span>Transit Time:</span>
+                            <span>{trackingData.return.transitTime} days</span>
                           </div>
                         )}
                       </div>
@@ -625,7 +988,39 @@ export function RMATrackingPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {trackingData.trackingHistory && trackingData.trackingHistory.length > 0 ? (
+                    {/* Check for timeline in return tracking data */}
+                    {trackingData.return?.timeline && trackingData.return.timeline.length > 0 ? (
+                      trackingData.return.timeline
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .map((event, index) => (
+                          <div key={index} className="flex items-start space-x-3">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <span className="font-medium">{event.description}</span>
+                                <span className="text-sm text-gray-500">
+                                  {new Date(event.timestamp).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">Status: {event.status}</p>
+                              {event.location && event.location !== 'Unknown' && (
+                                <p className="text-sm text-gray-500 flex items-center space-x-1">
+                                  <MapPin className="w-3 h-3" />
+                                  <span>{event.location}</span>
+                                </p>
+                              )}
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  Return
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {trackingData.return.carrier}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    ) : trackingData.trackingHistory && trackingData.trackingHistory.length > 0 ? (
                       trackingData.trackingHistory
                         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                         .map((event, index) => (
@@ -680,8 +1075,15 @@ export function RMATrackingPage() {
       </Tabs>
 
       {error && (
-        <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="fixed bottom-4 right-4 bg-red-900 border border-red-600 text-red-100 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 max-w-md">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <span className="text-sm">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="text-red-300 hover:text-red-100 font-bold text-lg leading-none ml-2"
+          >
+            ×
+          </button>
         </div>
       )}
     </div>

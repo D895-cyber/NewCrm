@@ -17,16 +17,21 @@ import {
   Package,
   X,
   Loader2,
-  Activity
+  Activity,
+  Truck,
+  AlertCircle,
+  Workflow
 } from "lucide-react";
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV, generateLabel, printLabel } from "../../utils/export";
 import { useData } from "../../contexts/DataContext";
+import { ImportOptions } from "../ImportOptions";
+import RMAImport from "../RMAImport";
 
 
 
 export function RMAPage() {
-  const { rma: rmaItems, refreshRMA, isLoading: dataLoading } = useData();
+  const { rma: rmaItems, refreshRMA, refreshData, isLoading: dataLoading } = useData();
   const [forceUpdate, setForceUpdate] = useState(0);
   const [localRMAItems, setLocalRMAItems] = useState<any[]>([]);
   
@@ -118,6 +123,7 @@ export function RMAPage() {
   const [selectedRMA, setSelectedRMA] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportComponent, setShowImportComponent] = useState(false);
   const [editingRMA, setEditingRMA] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +136,7 @@ export function RMAPage() {
     rmaNumber: "",
     callLogNumber: "",
     rmaOrderNumber: "",
+    sxNumber: "",
     ascompRaisedDate: "",
     customerErrorDate: "",
     siteName: "",
@@ -223,26 +230,42 @@ export function RMAPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "Open":
+        return "bg-blue-600 text-white border border-blue-500 shadow-sm";
       case "Under Review":
-        return "bg-yellow-50 text-yellow-700 border border-yellow-200";
-      case "Replacement Approved":
-        return "bg-green-50 text-green-700 border border-green-200";
-      case "Repair In Progress":
-        return "bg-blue-50 text-blue-700 border border-blue-200";
-      case "In Progress":
-        return "bg-blue-50 text-blue-700 border border-blue-200";
-      case "Completed":
-        return "bg-gray-50 text-gray-700 border border-gray-200";
-      case "Rejected":
-        return "bg-red-50 text-red-700 border border-red-200";
+        return "bg-yellow-500 text-yellow-900 border border-yellow-400 shadow-sm";
+      case "RMA Raised Yet to Deliver":
+        return "bg-orange-500 text-white border border-orange-400 shadow-sm";
       case "Sent to CDS":
-        return "bg-purple-50 text-purple-700 border border-purple-200";
+        return "bg-purple-600 text-white border border-purple-500 shadow-sm";
+      case "Faulty Transit to CDS":
+        return "bg-red-600 text-white border border-red-500 shadow-sm";
       case "CDS Approved":
-        return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+        return "bg-emerald-600 text-white border border-emerald-500 shadow-sm";
       case "Replacement Shipped":
-        return "bg-indigo-50 text-indigo-700 border border-indigo-200";
+        return "bg-indigo-600 text-white border border-indigo-500 shadow-sm";
+      case "Replacement Received":
+        return "bg-cyan-600 text-white border border-cyan-500 shadow-sm";
+      case "Installation Complete":
+        return "bg-teal-600 text-white border border-teal-500 shadow-sm";
+      case "Faulty Part Returned":
+        return "bg-rose-600 text-white border border-rose-500 shadow-sm";
+      case "CDS Confirmed Return":
+        return "bg-violet-600 text-white border border-violet-500 shadow-sm";
+      case "Completed":
+        return "bg-green-600 text-white border border-green-500 shadow-sm";
+      case "Closed":
+        return "bg-slate-600 text-white border border-slate-500 shadow-sm";
+      case "Rejected":
+        return "bg-red-700 text-white border border-red-600 shadow-sm";
+      case "Replacement Approved":
+        return "bg-green-600 text-white border border-green-500 shadow-sm";
+      case "Repair In Progress":
+        return "bg-blue-600 text-white border border-blue-500 shadow-sm";
+      case "In Progress":
+        return "bg-blue-600 text-white border border-blue-500 shadow-sm";
       default:
-        return "bg-gray-50 text-gray-700 border border-gray-200";
+        return "bg-gray-600 text-white border border-gray-500 shadow-sm";
     }
   };
 
@@ -278,16 +301,36 @@ export function RMAPage() {
     switch (status) {
       case "Under Review":
         return <Clock className="w-4 h-4" />;
+      case "RMA Raised Yet to Deliver":
+        return <Package className="w-4 h-4" />;
+      case "Sent to CDS":
+        return <Truck className="w-4 h-4" />;
+      case "Faulty Transit to CDS":
+        return <AlertCircle className="w-4 h-4" />;
+      case "CDS Approved":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Replacement Shipped":
+        return <Package className="w-4 h-4" />;
+      case "Replacement Received":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Installation Complete":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Faulty Part Returned":
+        return <AlertCircle className="w-4 h-4" />;
+      case "CDS Confirmed Return":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Completed":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Closed":
+        return <XCircle className="w-4 h-4" />;
+      case "Rejected":
+        return <XCircle className="w-4 h-4" />;
       case "Replacement Approved":
         return <CheckCircle className="w-4 h-4" />;
       case "Repair In Progress":
         return <AlertTriangle className="w-4 h-4" />;
       case "In Progress":
         return <AlertTriangle className="w-4 h-4" />;
-      case "Completed":
-        return <CheckCircle className="w-4 h-4" />;
-      case "Rejected":
-        return <XCircle className="w-4 h-4" />;
       default:
         return <RotateCcw className="w-4 h-4" />;
     }
@@ -338,6 +381,7 @@ export function RMAPage() {
         rmaNumber: newRMA.rmaNumber,
         callLogNumber: newRMA.callLogNumber,
         rmaOrderNumber: newRMA.rmaOrderNumber,
+        sxNumber: newRMA.sxNumber,
         ascompRaisedDate: newRMA.ascompRaisedDate,
         customerErrorDate: newRMA.customerErrorDate,
         siteName: newRMA.siteName,
@@ -381,6 +425,7 @@ export function RMAPage() {
         rmaNumber: "",
         callLogNumber: "",
         rmaOrderNumber: "",
+        sxNumber: "",
         ascompRaisedDate: "",
         customerErrorDate: "",
         siteName: "",
@@ -400,7 +445,7 @@ export function RMAPage() {
         shippedThru: "",
         remarks: "",
         createdBy: "",
-        caseStatus: "Under Review",
+        caseStatus: "",
         rmaReturnShippedDate: "",
         rmaReturnTrackingNumber: "",
         rmaReturnShippedThru: "",
@@ -584,13 +629,29 @@ export function RMAPage() {
             <button 
               onClick={async () => {
                 console.log('Manual refresh clicked');
+                console.log('Current RMA count before refresh:', rmaItems?.length || 0);
                 await refreshRMA();
+                console.log('Current RMA count after refresh:', rmaItems?.length || 0);
                 setForceUpdate(prev => prev + 1);
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-blue-400/30 hover:shadow-lg"
             >
               <RotateCcw className="w-4 h-4" />
               Refresh
+            </button>
+            <button 
+              onClick={async () => {
+                console.log('Force refresh clicked - clearing all caches');
+                console.log('Current RMA count before force refresh:', rmaItems?.length || 0);
+                // Clear all caches and force refresh
+                await refreshData();
+                console.log('Current RMA count after force refresh:', rmaItems?.length || 0);
+                setForceUpdate(prev => prev + 1);
+              }}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-orange-400/30 hover:shadow-lg"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Force Refresh
             </button>
             <button 
               onClick={handleExportRMA}
@@ -600,6 +661,7 @@ export function RMAPage() {
               <Download className="w-4 h-4" />
               Export
             </button>
+            <ImportOptions onImportComplete={refreshRMA} />
             <button 
               onClick={() => setShowAddModal(true)}
               className="bg-white text-blue-600 hover:bg-gray-100 px-6 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -658,6 +720,39 @@ export function RMAPage() {
                 <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'Completed').length}</p>
               </div>
             </div>
+
+            {/* Closed RMAs */}
+            <div className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-lg p-4 flex items-center">
+              <div className="bg-slate-500 p-3 rounded-full">
+                <XCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-blue-100 opacity-90">Closed</p>
+                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'Closed').length}</p>
+              </div>
+            </div>
+
+            {/* RMA Raised Yet to Deliver */}
+            <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-4 flex items-center">
+              <div className="bg-orange-500 p-3 rounded-full">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-blue-100 opacity-90">Yet to Deliver</p>
+                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'RMA Raised Yet to Deliver').length}</p>
+              </div>
+            </div>
+
+            {/* Faulty Transit to CDS */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-lg p-4 flex items-center">
+              <div className="bg-red-500 p-3 rounded-full">
+                <AlertCircle className="w-6 h-6 text-white" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-blue-100 opacity-90">Faulty Transit</p>
+                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'Faulty Transit to CDS').length}</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -683,12 +778,20 @@ export function RMAPage() {
                 className="px-4 py-2 bg-dark-bg border border-dark-color rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
               >
                 <option value="All">All Status</option>
+                <option value="Open">Open</option>
                 <option value="Under Review">Under Review</option>
-                <option value="Replacement Approved">Replacement Approved</option>
-                <option value="Repair In Progress">Repair In Progress</option>
+                <option value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</option>
+                <option value="Sent to CDS">Sent to CDS</option>
+                <option value="Faulty Transit to CDS">Faulty Transit to CDS</option>
+                <option value="CDS Approved">CDS Approved</option>
+                <option value="Replacement Shipped">Replacement Shipped</option>
+                <option value="Replacement Received">Replacement Received</option>
+                <option value="Installation Complete">Installation Complete</option>
+                <option value="Faulty Part Returned">Faulty Part Returned</option>
+                <option value="CDS Confirmed Return">CDS Confirmed Return</option>
                 <option value="Completed">Completed</option>
+                <option value="Closed">Closed</option>
                 <option value="Rejected">Rejected</option>
-                <option value="In Progress">In Progress</option>
               </select>
               
               <select 
@@ -714,6 +817,26 @@ export function RMAPage() {
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Clear Filters
+            </Button>
+            
+            <Button 
+              onClick={() => setShowImportComponent(true)}
+              className="bg-green-600 hover:bg-green-700 text-white h-11 px-6"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Import Data
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                // This will be handled by the parent Dashboard component
+                const event = new CustomEvent('navigateToPage', { detail: 'RMA Workflow' });
+                window.dispatchEvent(event);
+              }}
+              className="bg-orange-600 hover:bg-orange-700 text-white h-11 px-6"
+            >
+              <Workflow className="w-4 h-4 mr-2" />
+              Workflow
             </Button>
           </div>
           
@@ -745,8 +868,23 @@ export function RMAPage() {
               {/* RMA Table */}
       <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
         <div className="px-6 py-4 bg-gradient-to-r from-dark-bg to-dark-tag border-b border-dark-color">
-          <h2 className="text-xl font-semibold text-white">RMA Records</h2>
-          <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">RMA Records</h2>
+              <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
+            </div>
+            <Button 
+              onClick={() => {
+                // This will be handled by the parent Dashboard component
+                const event = new CustomEvent('navigateToPage', { detail: 'RMA Workflow' });
+                window.dispatchEvent(event);
+              }}
+              className="bg-orange-600 hover:bg-orange-700 text-white h-10 px-4"
+            >
+              <Workflow className="w-4 h-4 mr-2" />
+              Workflow Management
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           {filteredRMAs.length === 0 ? (
@@ -823,7 +961,7 @@ export function RMAPage() {
                           Serial: {rma.defectiveSerialNumber || 'N/A'}
                         </div>
                         {rma.symptoms && rma.symptoms !== 'N/A' && (
-                          <div className="text-xs text-gray-300 bg-gray-100 px-2 py-1 rounded" title={rma.symptoms}>
+                          <div className="text-xs text-gray-100 bg-gray-700 px-2 py-1 rounded border border-gray-600" title={rma.symptoms}>
                             {rma.symptoms}
                           </div>
                         )}
@@ -841,7 +979,7 @@ export function RMAPage() {
                           Serial: {rma.replacedPartSerialNumber || 'N/A'}
                         </div>
                         {rma.replacementNotes && rma.replacementNotes !== 'N/A' && (
-                          <div className="text-xs text-gray-300 bg-gray-100 px-2 py-1 rounded" title={rma.replacementNotes}>
+                          <div className="text-xs text-gray-100 bg-gray-700 px-2 py-1 rounded border border-gray-600" title={rma.replacementNotes}>
                             {rma.replacementNotes}
                           </div>
                         )}
@@ -849,9 +987,9 @@ export function RMAPage() {
                     </td>
                     <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rma.caseStatus || 'Under Review')}`}>
+                        <div className={`inline-block px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ${getStatusColor(rma.caseStatus || 'Under Review')}`}>
                           {rma.caseStatus || 'Under Review'}
-                        </span>
+                        </div>
                         <div className="text-xs text-gray-300">
                           Priority: <span className={`font-semibold ${getPriorityColor(rma.priority || 'Medium')}`}>
                             {rma.priority || 'Medium'}
@@ -1015,7 +1153,7 @@ export function RMAPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Estimated Cost</label>
-                      <p className="text-dark-primary font-semibold">₹{selectedRMA.estimatedCost.toLocaleString()}</p>
+                      <p className="text-dark-primary font-semibold">₹{(selectedRMA.estimatedCost || 0).toLocaleString()}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Warranty Status</label>
@@ -1110,6 +1248,39 @@ export function RMAPage() {
                   />
                 </div>
                 <div>
+                  <label className="text-sm font-medium text-dark-secondary">Call Log Number</label>
+                  <Input
+                    value={newRMA.callLogNumber}
+                    onChange={(e) => setNewRMA({...newRMA, callLogNumber: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter call log number"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">RMA Order Number</label>
+                  <Input
+                    value={newRMA.rmaOrderNumber}
+                    onChange={(e) => setNewRMA({...newRMA, rmaOrderNumber: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter RMA order number"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">SX Number</label>
+                  <Input
+                    value={newRMA.sxNumber}
+                    onChange={(e) => setNewRMA({...newRMA, sxNumber: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter SX number"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="text-sm font-medium text-dark-secondary">Part Number *</label>
                   <Input
                     value={newRMA.productPartNumber}
@@ -1122,9 +1293,6 @@ export function RMAPage() {
                     <p className="text-xs text-red-400 mt-1">Part Number is required</p>
                   )}
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Part Name *</label>
                   <Input
@@ -1138,31 +1306,9 @@ export function RMAPage() {
                     <p className="text-xs text-red-400 mt-1">Part Name is required</p>
                   )}
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Brand *</label>
-                  <Input
-                    value={newRMA.brand}
-                    onChange={(e) => setNewRMA({...newRMA, brand: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter brand"
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-dark-secondary">Projector Model *</label>
-                  <Input
-                    value={newRMA.productName}
-                    onChange={(e) => setNewRMA({...newRMA, productName: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="Enter projector model"
-                    required
-                  />
-                  {!newRMA.productName && (
-                    <p className="text-xs text-red-400 mt-1">Projector Model is required</p>
-                  )}
-                </div>
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Brand *</label>
                   <Input
@@ -1174,6 +1320,19 @@ export function RMAPage() {
                   />
                   {!newRMA.brand && (
                     <p className="text-xs text-red-400 mt-1">Brand is required</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Projector Model *</label>
+                  <Input
+                    value={newRMA.projectorModel}
+                    onChange={(e) => setNewRMA({...newRMA, projectorModel: e.target.value})}
+                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
+                    placeholder="Enter projector model"
+                    required
+                  />
+                  {!newRMA.projectorModel && (
+                    <p className="text-xs text-red-400 mt-1">Projector Model is required</p>
                   )}
                 </div>
               </div>
@@ -1336,6 +1495,50 @@ export function RMAPage() {
                   rows={3}
                   placeholder="Describe the issue with the part"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Case Status *</label>
+                  <select
+                    value={newRMA.caseStatus}
+                    onChange={(e) => setNewRMA({...newRMA, caseStatus: e.target.value})}
+                    className="mt-1 w-full px-3 py-2 bg-dark-card border border-dark-color rounded-lg text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
+                    required
+                  >
+                    <option value="">Select Status</option>
+                    <option value="Open">Open</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</option>
+                    <option value="Sent to CDS">Sent to CDS</option>
+                    <option value="Faulty Transit to CDS">Faulty Transit to CDS</option>
+                    <option value="CDS Approved">CDS Approved</option>
+                    <option value="Replacement Shipped">Replacement Shipped</option>
+                    <option value="Replacement Received">Replacement Received</option>
+                    <option value="Installation Complete">Installation Complete</option>
+                    <option value="Faulty Part Returned">Faulty Part Returned</option>
+                    <option value="CDS Confirmed Return">CDS Confirmed Return</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                  {!newRMA.caseStatus && (
+                    <p className="text-xs text-red-400 mt-1">Case Status is required</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-dark-secondary">Priority</label>
+                  <select
+                    value={newRMA.priority}
+                    onChange={(e) => setNewRMA({...newRMA, priority: e.target.value})}
+                    className="mt-1 w-full px-3 py-2 bg-dark-card border border-dark-color rounded-lg text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -1800,8 +2003,11 @@ export function RMAPage() {
                       onFocus={() => console.log('Status dropdown focused, current value:', editingRMA.caseStatus)}
                       onMouseEnter={() => console.log('Status dropdown hovered, current value:', editingRMA.caseStatus)}
                     >
+                      <option value="Open">Open</option>
                       <option value="Under Review">Under Review</option>
+                      <option value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</option>
                       <option value="Sent to CDS">Sent to CDS</option>
+                      <option value="Faulty Transit to CDS">Faulty Transit to CDS</option>
                       <option value="CDS Approved">CDS Approved</option>
                       <option value="Replacement Shipped">Replacement Shipped</option>
                       <option value="Replacement Received">Replacement Received</option>
@@ -1809,6 +2015,7 @@ export function RMAPage() {
                       <option value="Faulty Part Returned">Faulty Part Returned</option>
                       <option value="CDS Confirmed Return">CDS Confirmed Return</option>
                       <option value="Completed">Completed</option>
+                      <option value="Closed">Closed</option>
                       <option value="Rejected">Rejected</option>
                     </select>
                   </div>
@@ -2137,6 +2344,29 @@ export function RMAPage() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Component Modal */}
+      {showImportComponent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-semibold">RMA Data Import</h2>
+              <Button 
+                onClick={() => {
+                  setShowImportComponent(false);
+                  refreshRMA(); // Refresh RMA data after import
+                }}
+                variant="outline"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <RMAImport />
             </div>
           </div>
         </div>

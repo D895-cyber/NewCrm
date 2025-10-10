@@ -7,6 +7,10 @@ const rmaSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  originalRmaNumber: {
+    type: String,
+    trim: true
+  },
   callLogNumber: {
     type: String,
     trim: true
@@ -14,6 +18,53 @@ const rmaSchema = new mongoose.Schema({
   rmaOrderNumber: {
     type: String,
     trim: true
+  },
+  sxNumber: {
+    type: String,
+    trim: true
+  },
+  
+  // DTR Integration
+  originatedFromDTR: {
+    dtrId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DTR'
+    },
+    dtrCaseId: {
+      type: String,
+      trim: true
+    },
+    conversionDate: {
+      type: Date
+    },
+    conversionReason: {
+      type: String,
+      trim: true
+    },
+    technician: {
+      name: String,
+      userId: String
+    }
+  },
+  
+  // RMA Manager Assignment
+  rmaManager: {
+    userId: {
+      type: String,
+      ref: 'User'
+    },
+    name: {
+      type: String,
+      trim: true
+    },
+    email: {
+      type: String,
+      trim: true
+    },
+    assignedDate: {
+      type: Date,
+      default: Date.now
+    }
   },
   
   // Date Fields
@@ -43,7 +94,7 @@ const rmaSchema = new mongoose.Schema({
   },
   serialNumber: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
     ref: 'Projector'
   },
@@ -227,8 +278,11 @@ const rmaSchema = new mongoose.Schema({
   caseStatus: {
     type: String,
     enum: [
+      'Open',
       'Under Review',
+      'RMA Raised Yet to Deliver',
       'Sent to CDS',
+      'Faulty Transit to CDS',
       'CDS Approved', 
       'Replacement Shipped',
       'Replacement Received',
@@ -236,6 +290,7 @@ const rmaSchema = new mongoose.Schema({
       'Faulty Part Returned',
       'CDS Confirmed Return',
       'Completed',
+      'Closed',
       'Rejected'
     ],
     default: 'Under Review'
@@ -301,7 +356,8 @@ const rmaSchema = new mongoose.Schema({
     cdsApproval: {
       date: Date,
       approvedBy: String,
-      approvalNotes: String
+      approvalNotes: String,
+      caseId: String
     },
     replacementTracking: {
       trackingNumber: String,
@@ -310,6 +366,82 @@ const rmaSchema = new mongoose.Schema({
       estimatedDelivery: Date,
       actualDelivery: Date
     }
+  },
+
+  // Email workflow tracking
+  emailThread: {
+    messageId: String,
+    threadId: String,
+    originalEmail: {
+      from: String,
+      subject: String,
+      receivedAt: Date
+    }
+  },
+
+  // Return workflow tracking
+  returnWorkflow: {
+    initiatedBy: String,
+    initiatedDate: Date,
+    returnPath: {
+      type: String,
+      enum: ['direct', 'via_ascomp'],
+      default: 'via_ascomp'
+    },
+    returnInstructions: {
+      recipient: String,
+      address: String,
+      instructions: [String],
+      contact: String
+    },
+    trackingNumber: String,
+    carrier: String,
+    expectedDelivery: Date,
+    deliveryConfirmed: {
+      date: Date,
+      confirmedBy: String,
+      notes: String
+    },
+    labelData: {
+      rmaNumber: String,
+      trackingNumber: String,
+      carrier: String,
+      fromAddress: {
+        name: String,
+        address: String,
+        city: String,
+        state: String,
+        zipCode: String,
+        country: String
+      },
+      toAddress: {
+        name: String,
+        address: String,
+        city: String,
+        state: String,
+        zipCode: String,
+        country: String
+      },
+      packageInfo: {
+        weight: Number,
+        dimensions: {
+          length: Number,
+          width: Number,
+          height: Number
+        },
+        description: String
+      },
+      serviceType: String,
+      labelUrl: String
+    }
+  },
+
+  // Completion tracking
+  completionData: {
+    completedBy: String,
+    completedDate: Date,
+    completionNotes: String,
+    totalDays: Number
   },
   
   priority: {

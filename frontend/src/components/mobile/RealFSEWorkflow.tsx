@@ -1006,7 +1006,7 @@ const RealFSEWorkflow: React.FC = () => {
                   <p>Parts Used: {workflowData.partsUsed.length}</p>
                   <p>Photos Taken: {workflowData.photos.length}</p>
                   <p>Issues Found: {workflowData.issuesFound.length}</p>
-                  <p>Total Cost: ${workflowData.partsUsed.reduce((sum, part) => sum + (part.cost * part.quantity), 0).toFixed(2)}</p>
+                  <p>Total Cost: ${workflowData.partsUsed.reduce((sum, part) => sum + ((part.cost || 0) * (part.quantity || 0)), 0).toFixed(2)}</p>
                 </div>
                 <button
                   onClick={handleSubmit}

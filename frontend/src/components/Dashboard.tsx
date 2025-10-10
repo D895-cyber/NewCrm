@@ -20,7 +20,8 @@ import {
   Menu,
   X,
   Download,
-  Truck
+  Truck,
+  LayoutDashboard
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { NotificationBar } from "./ui/notification-bar";
@@ -56,10 +57,15 @@ import { ReportTemplatesPage } from "./pages/ReportTemplatesPage";
 import { UploadOriginalPDF } from "./pages/UploadOriginalPDF";
 import { ProjectorTrackingPage } from "./pages/ProjectorTrackingPage";
 import { RMATrackingPage } from "./pages/RMATrackingPage";
+import { AnalyticsDashboard } from "./pages/AnalyticsDashboard";
+import { SiteAnalyticsDashboard } from "./pages/SiteAnalyticsDashboard";
+import { WorkflowManagement } from "./pages/WorkflowManagement";
+import RMAWorkflowManagement from "./pages/RMAWorkflowManagement";
 
 
 const mainNavItems = [
   { icon: BarChart3, label: "Dashboard", active: true },
+  { icon: LayoutDashboard, label: "RMA Portal Dashboard", href: "#rma-dashboard" },
   { icon: MapPin, label: "Sites" },
   { icon: Monitor, label: "Projectors" },
   { icon: FileText, label: "Purchase Orders" },
@@ -74,6 +80,7 @@ const operationsItems = [
   { icon: Package, label: "Spare Parts" },
   { icon: RotateCcw, label: "RMA Management" },
   { icon: Truck, label: "RMA Tracking" },
+  { icon: Settings, label: "RMA Workflow" },
   { icon: AlertTriangle, label: "Daily Trouble Reports" },
   { icon: ClipboardList, label: "Work Orders" },
   { icon: FileText, label: "AMC Contracts" },
@@ -81,7 +88,9 @@ const operationsItems = [
 ];
 
 const analyticsItems = [
-  { icon: TrendingUp, label: "Analytics" },
+  { icon: TrendingUp, label: "RMA Analytics" },
+  { icon: MapPin, label: "Site Analytics" },
+  { icon: Settings, label: "Workflow Management" },
   { icon: AlertTriangle, label: "Warranty Alerts" },
   { icon: FileText, label: "Reports" },
   { icon: FileText, label: "Service Reports Analysis" },
@@ -112,7 +121,7 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
   // Use shared data context
   const { dashboardData } = useData();
   const { user, token, logout, isImpersonating, stopImpersonation } = useAuth();
-  const notifications = dashboardData.warrantyAlerts;
+  const notifications = dashboardData?.warrantyAlerts || [];
 
   // Set authentication token in API client when component mounts or token changes
   useEffect(() => {
@@ -137,6 +146,33 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
     return () => window.removeEventListener('hashchange', apply);
   }, []);
 
+  // Hash routing for analytics pages
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      console.log('🔍 Analytics hash routing check:', { currentHash: hash });
+      
+      if (hash === '#site-analytics') {
+        setActivePage('Site Analytics');
+      } else if (hash === '#analytics') {
+        setActivePage('RMA Analytics');
+      }
+    };
+    
+    const handleNavigateToPage = (event: CustomEvent) => {
+      setActivePage(event.detail);
+    };
+    
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('navigateToPage', handleNavigateToPage as EventListener);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('navigateToPage', handleNavigateToPage as EventListener);
+    };
+  }, []);
+
   // Filter navigation items based on user role
   const filteredOtherItems = otherItems.filter(item => {
     if (item.label === "User Management" && user?.role !== 'admin') {
@@ -159,15 +195,26 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
 
   const renderNavItem = (item: any, isActive: boolean) => {
     const Icon = item.icon;
+    
+    // If item has href (hash URL), navigate to it instead of setting active page
+    const handleClick = () => {
+      if (item.href) {
+        // Navigate to the hash route
+        window.location.hash = item.href;
+        // Dispatch a custom event to trigger re-render
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      } else {
+        setActivePage(item.label);
+      }
+      if (isMobile) {
+        setSidebarOpen(false);
+      }
+    };
+    
     return (
       <button
         key={item.label}
-        onClick={() => {
-          setActivePage(item.label);
-          if (isMobile) {
-            setSidebarOpen(false);
-          }
-        }}
+        onClick={handleClick}
         className={`dark-nav-item w-full text-left ${
           isActive ? "dark-nav-item-active" : ""
         }`}
@@ -207,12 +254,20 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <RMAPage />;
       case "RMA Tracking":
         return <RMATrackingPage />;
+      case "RMA Workflow":
+        return <RMAWorkflowManagement />;
       case "Daily Trouble Reports":
         return <DTRPage />;
       case "AMC Contracts":
         return <AMCContractsPage />;
       case "Projector Tracking":
         return <ProjectorTrackingPage />;
+      case "RMA Analytics":
+        return <AnalyticsDashboard />;
+      case "Site Analytics":
+        return <SiteAnalyticsDashboard />;
+      case "Workflow Management":
+        return <WorkflowManagement />;
       case "Analytics":
         return <AnalyticsPage />;
       case "Reports":

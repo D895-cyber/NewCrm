@@ -21,12 +21,15 @@ import {
   MoreVertical,
   Wifi,
   WifiOff,
-  Server
+  Server,
+  FileText,
+  Download
 } from "lucide-react";
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV } from "../../utils/export";
 import AuditoriumManager from "../AuditoriumManager";
 import { useAuth } from "../../contexts/AuthContext";
+import SiteReportGenerator from "../SiteReportGenerator";
 
 interface Site {
   _id: string;
@@ -93,8 +96,13 @@ export function SitesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [siteStats, setSiteStats] = useState<any>(null);
+  const [showReportGenerator, setShowReportGenerator] = useState(false);
+  const [reportSiteId, setReportSiteId] = useState<string | null>(null);
+  const [reportSiteData, setReportSiteData] = useState<any>(null);
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [showAllSites, setShowAllSites] = useState(false); // New: Control visibility
+  const [isSearching, setIsSearching] = useState(false); // New: Search loading state
 
   // Form state for adding/editing sites
   const [formData, setFormData] = useState({
@@ -164,6 +172,62 @@ export function SitesPage() {
   useEffect(() => {
     filterSites();
   }, [sites, searchTerm, filterType, filterStatus]);
+
+  // Dynamic search effect - triggers when user types (min 2 characters)
+  useEffect(() => {
+    const performSearch = async () => {
+      // Don't search if less than 2 characters
+      if (searchTerm.trim().length < 2) {
+        if (searchTerm.trim().length === 0 && !showAllSites) {
+          setFilteredSites([]);
+        }
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setError(null);
+
+      try {
+        // Filter sites that match the search term
+        const filtered = sites.filter(site =>
+          site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (site.siteCode && site.siteCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (site.region && site.region.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (site.state && site.state.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          site.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          site.address.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          site.contactPerson.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          site.siteType.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        // Apply additional filters
+        let finalFiltered = filtered;
+        
+        if (filterType !== "All") {
+          finalFiltered = finalFiltered.filter(site => site.siteType === filterType);
+        }
+
+        if (filterStatus !== "All") {
+          finalFiltered = finalFiltered.filter(site => site.status === filterStatus);
+        }
+        
+        setFilteredSites(finalFiltered);
+      } catch (err: any) {
+        console.error('Error filtering sites:', err);
+        setError('Search failed: ' + err.message);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    // Debounce the search - wait 300ms after user stops typing
+    const debounceTimer = setTimeout(() => {
+      performSearch();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm, sites, filterType, filterStatus, showAllSites]);
 
   const checkBackendConnection = async () => {
     try {
@@ -273,9 +337,15 @@ export function SitesPage() {
   };
 
   const filterSites = () => {
+    // Only filter when showing all sites
+    if (!showAllSites && searchTerm.trim().length < 2) {
+      setFilteredSites([]);
+      return;
+    }
+
     let filtered = sites;
 
-    if (searchTerm) {
+    if (searchTerm && searchTerm.trim().length >= 2) {
       filtered = filtered.filter(site =>
         site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (site.siteCode && site.siteCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -598,6 +668,9 @@ export function SitesPage() {
             </div>
             <button 
               onClick={() => {
+                setShowAllSites(false);
+                setSearchTerm("");
+                setFilteredSites([]);
                 loadSites();
                 loadSiteStats();
               }}
@@ -606,6 +679,18 @@ export function SitesPage() {
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
+            </button>
+            <button 
+              onClick={() => {
+                setReportSiteId(null);
+                setReportSiteData(null);
+                setShowReportGenerator(true);
+              }}
+              className="dark-button-secondary gap-2 flex items-center"
+              disabled={!isBackendConnected}
+            >
+              <Download className="w-4 h-4" />
+              Regional Report
             </button>
             <button 
               onClick={() => setShowAddSite(true)}
@@ -679,37 +764,78 @@ export function SitesPage() {
           </div>
         )}
 
-        {/* Search and Filters */}
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-secondary w-4 h-4" />
-            <Input
-              placeholder="Search sites, cities, or contacts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-dark-card border-dark-color text-dark-primary"
-            />
+        {/* Advanced Search and Filters */}
+        <div className="dark-card mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-dark-primary mb-2">Advanced Site Search</h2>
+              <p className="text-dark-secondary">Start typing (min 2 characters) to search by name, code, region, city, or contact</p>
+            </div>
           </div>
-          <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 bg-dark-card border border-dark-color rounded-xl text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
-          >
-            <option value="All">All Types</option>
-            {siteTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-          <select 
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 bg-dark-card border border-dark-color rounded-xl text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
-          >
-            <option value="All">All Status</option>
-            {siteStatuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
+
+          <div className="flex items-center space-x-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-secondary w-5 h-5" />
+              <Input
+                placeholder="Type to search: site name, code, region, city, contact..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowAllSites(false);
+                }}
+                className="pl-12 h-12 bg-dark-card border-dark-color text-dark-primary text-base"
+                disabled={isLoading}
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 animate-spin text-blue-400" />
+              )}
+            </div>
+            <select 
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-4 py-3 h-12 bg-dark-card border border-dark-color rounded-xl text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
+            >
+              <option value="All">All Types</option>
+              {siteTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <select 
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-3 h-12 bg-dark-card border border-dark-color rounded-xl text-dark-primary focus:outline-none focus:ring-2 focus:ring-dark-cta"
+            >
+              <option value="All">All Status</option>
+              {siteStatuses.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Status Messages */}
+          {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 && (
+            <div className="mt-4 p-3 bg-yellow-900 bg-opacity-20 border border-yellow-600 rounded-lg">
+              <p className="text-sm text-yellow-300">
+                Please enter at least 2 characters to search
+              </p>
+            </div>
+          )}
+          
+          {searchTerm.trim().length >= 2 && filteredSites.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-900 bg-opacity-20 border border-blue-600 rounded-lg">
+              <p className="text-sm text-blue-300">
+                Found {filteredSites.length} site{filteredSites.length !== 1 ? 's' : ''} matching "{searchTerm}"
+              </p>
+            </div>
+          )}
+          
+          {searchTerm.trim().length >= 2 && filteredSites.length === 0 && !isSearching && (
+            <div className="mt-4 p-3 bg-red-900 bg-opacity-20 border border-red-600 rounded-lg">
+              <p className="text-sm text-red-300">
+                No sites found matching "{searchTerm}"
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Sites Grid */}
@@ -718,8 +844,50 @@ export function SitesPage() {
             <Loader2 className="w-12 h-12 text-dark-secondary mx-auto mb-4 animate-spin" />
             <p className="text-dark-secondary">Loading sites...</p>
           </div>
+        ) : !showAllSites && searchTerm.trim().length === 0 ? (
+          /* Empty state - show search prompt */
+          <div className="text-center py-16">
+            <Search className="w-20 h-20 text-dark-secondary mx-auto mb-6 opacity-50" />
+            <h3 className="text-2xl font-medium text-dark-primary mb-3">Search for Sites</h3>
+            <p className="text-dark-secondary mb-6 max-w-md mx-auto">
+              Enter at least 2 characters in the search box above to find sites by name, code, region, city, or contact information.
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <button 
+                onClick={() => {
+                  setShowAllSites(true);
+                  setSearchTerm("");
+                  setFilteredSites(sites);
+                }}
+                className="dark-button-primary gap-2 flex items-center"
+              >
+                <Building2 className="w-4 h-4" />
+                View All Sites
+              </button>
+            </div>
+          </div>
         ) : filteredSites.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          /* Show search results or all sites */
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-dark-primary">
+                {searchTerm.trim().length >= 2 ? 'Search Results' : 'All Sites'} 
+                <span className="text-dark-secondary ml-2">({filteredSites.length})</span>
+              </h3>
+              {(showAllSites || searchTerm.trim().length >= 2) && (
+                <button 
+                  onClick={() => {
+                    setShowAllSites(false);
+                    setSearchTerm("");
+                    setFilteredSites([]);
+                  }}
+                  className="dark-button-secondary text-sm px-4 py-2"
+                >
+                  Clear & Reset
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredSites.map((site) => (
               <div key={site._id} className="dark-card">
                 <div className="flex items-start justify-between mb-4">
@@ -797,6 +965,17 @@ export function SitesPage() {
                     <Eye className="w-4 h-4" />
                     View Details
                   </button>
+                  <button 
+                    onClick={() => {
+                      setReportSiteId(site._id);
+                      setReportSiteData(site);
+                      setShowReportGenerator(true);
+                    }}
+                    className="dark-button-secondary p-2 text-blue-400 hover:text-blue-300"
+                    title="Generate Site Report"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
                   <button className="dark-button-secondary p-2">
                     <Edit className="w-4 h-4" />
                   </button>
@@ -809,27 +988,30 @@ export function SitesPage() {
                 </div>
               </div>
             ))}
-          </div>
-        ) : (
+            </div>
+          </>
+        ) : searchTerm.trim().length >= 2 ? (
+          /* No search results found */
           <div className="text-center py-12">
             <Building2 className="w-16 h-16 text-dark-secondary mx-auto mb-4" />
             <h3 className="text-xl font-medium text-dark-primary mb-2">No Sites Found</h3>
             <p className="text-dark-secondary mb-4">
-              {searchTerm || filterType !== "All" || filterStatus !== "All" 
-                ? "No sites match your current filters." 
-                : "No sites have been added to the system yet."}
+              No sites match your search "{searchTerm}" 
+              {(filterType !== "All" || filterStatus !== "All") && " and selected filters"}.
             </p>
-            {isBackendConnected && (
-              <button 
-                onClick={() => setShowAddSite(true)}
-                className="dark-button-primary gap-2 flex items-center mx-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Add First Site
-              </button>
-            )}
+            <button 
+              onClick={() => {
+                setSearchTerm("");
+                setFilterType("All");
+                setFilterStatus("All");
+              }}
+              className="dark-button-secondary gap-2 flex items-center mx-auto"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Clear Filters
+            </button>
           </div>
-        )}
+        ) : null}
 
         {/* Add Site Modal */}
         {showAddSite && (
@@ -1333,6 +1515,17 @@ export function SitesPage() {
               <div className="flex space-x-3 pt-6 mt-6 border-t border-dark-color">
                 <button className="flex-1 dark-button-secondary">Edit Site</button>
                 <button 
+                  onClick={() => {
+                    setReportSiteId(selectedSite._id);
+                    setReportSiteData(selectedSite);
+                    setShowReportGenerator(true);
+                  }}
+                  className="dark-button-secondary px-6 flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Generate Report
+                </button>
+                <button 
                   onClick={() => handleExportDetails(selectedSite._id)}
                   className="dark-button-secondary px-6"
                 >
@@ -1341,6 +1534,19 @@ export function SitesPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Site Report Generator Modal */}
+        {showReportGenerator && (
+          <SiteReportGenerator
+            siteId={reportSiteId}
+            siteData={reportSiteData}
+            onClose={() => {
+              setShowReportGenerator(false);
+              setReportSiteId(null);
+              setReportSiteData(null);
+            }}
+          />
         )}
       </main>
     </>

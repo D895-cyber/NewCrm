@@ -163,21 +163,76 @@ router.delete('/:serial', async (req, res) => {
   }
 });
 
-// Search projectors
+// Advanced search projectors with partial matching
 router.get('/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
+    
+    // Return empty if query is too short (less than 2 characters)
+    if (query.trim().length < 2) {
+      return res.json([]);
+    }
+
     const projectors = await Projector.find({
       $or: [
         { serialNumber: { $regex: query, $options: 'i' } },
+        { projectorNumber: { $regex: query, $options: 'i' } },
         { model: { $regex: query, $options: 'i' } },
         { brand: { $regex: query, $options: 'i' } },
-        { site: { $regex: query, $options: 'i' } },
+        { siteName: { $regex: query, $options: 'i' } },
+        { siteCode: { $regex: query, $options: 'i' } },
+        { auditoriumName: { $regex: query, $options: 'i' } },
         { customer: { $regex: query, $options: 'i' } }
       ]
-    }).sort({ createdAt: -1 });
+    }).sort({ 
+      // Prioritize exact matches and recent updates
+      updatedAt: -1 
+    }).limit(50); // Limit results to prevent overwhelming the frontend
     
-    res.json(projectors);
+    // Enhance each projector with service report data
+    const ServiceReport = require('../models/ServiceReport');
+    const enhancedProjectors = await Promise.all(projectors.map(async (projector) => {
+      try {
+        const projectorReports = await ServiceReport.find({ 
+          projectorSerial: projector.serialNumber 
+        }).sort({ date: -1 });
+
+        let totalHours = 0;
+        let totalServices = 0;
+        let lastServiceDate = null;
+        
+        if (projectorReports.length > 0) {
+          totalServices = projectorReports.length;
+          lastServiceDate = new Date(Math.max(...projectorReports.map(r => new Date(r.date).getTime())));
+          
+          projectorReports.forEach(report => {
+            if (report.projectorRunningHours && !isNaN(Number(report.projectorRunningHours))) {
+              totalHours += Number(report.projectorRunningHours);
+            }
+          });
+        }
+
+        const lifePercentage = projector.expectedLife ? Math.round((totalHours / projector.expectedLife) * 100) : 0;
+        const nextServiceDate = lastServiceDate 
+          ? new Date(lastServiceDate.getTime() + (90 * 24 * 60 * 60 * 1000))
+          : null;
+
+        return {
+          ...projector.toObject(),
+          totalServices,
+          hoursUsed: totalHours,
+          lifePercentage,
+          lastService: lastServiceDate,
+          nextService: nextServiceDate,
+          serviceHistory: projectorReports
+        };
+      } catch (err) {
+        console.error('Error enhancing projector:', err);
+        return projector.toObject();
+      }
+    }));
+    
+    res.json(enhancedProjectors);
   } catch (error) {
     console.error('Error searching projectors:', error);
     res.status(500).json({ error: 'Failed to search projectors', details: error.message });

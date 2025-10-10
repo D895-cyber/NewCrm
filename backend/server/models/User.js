@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'fse'],
+    enum: ['admin', 'fse', 'technician', 'rma_manager', 'engineer'],
     default: 'fse'
   },
   fseId: {
@@ -61,7 +61,11 @@ const userSchema = new mongoose.Schema({
       'upload_photos',
       'update_service_status',
       'view_analytics',
-      'export_data'
+      'export_data',
+      'manage_dtr',
+      'troubleshoot_dtr',
+      'convert_dtr_to_rma',
+      'assign_rma'
     ]
   }],
   createdAt: {
@@ -101,7 +105,37 @@ userSchema.methods.getPermissions = function() {
       'manage_rma',
       'manage_spare_parts',
       'view_analytics',
+      'export_data',
+      'create_dtr',
+      'manage_dtr',
+      'troubleshoot_dtr',
+      'convert_dtr_to_rma',
+      'assign_dtr',
+      'assign_rma'
+    ],
+    technician: [
+      'view_dashboard',
+      'troubleshoot_dtr',
+      'convert_dtr_to_rma',
+      'view_analytics'
+    ],
+    rma_manager: [
+      'view_dashboard',
+      'create_dtr',
+      'manage_dtr',
+      'assign_dtr',
+      'manage_rma',
+      'manage_spare_parts',
+      'assign_rma',
+      'view_analytics',
       'export_data'
+    ],
+    engineer: [
+      'view_dashboard',
+      'troubleshoot_dtr',
+      'convert_dtr_to_rma',
+      'manage_service_visits',
+      'view_analytics'
     ],
     fse: [
       'view_dashboard',

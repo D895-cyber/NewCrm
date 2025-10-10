@@ -5,6 +5,39 @@ const Projector = require('../models/Projector');
 const AMCContract = require('../models/AMCContract');
 const { authenticateToken } = require('../middleware/auth');
 
+// Debug endpoint to check projector-site linkage
+router.get('/debug/projector-counts', authenticateToken, async (req, res) => {
+  try {
+    const Projector = require('../models/Projector');
+    
+    // Get total projectors
+    const totalProjectors = await Projector.countDocuments();
+    
+    // Get projectors by siteId
+    const projectorsBySite = await Projector.aggregate([
+      {
+        $group: {
+          _id: '$siteId',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Get sample projectors
+    const sampleProjectors = await Projector.find().limit(5).select('serialNumber siteId siteName');
+    
+    res.json({
+      totalProjectors,
+      sitesWithProjectors: projectorsBySite.length,
+      projectorsBySite: projectorsBySite.slice(0, 10),
+      sampleProjectors
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get site statistics overview
 router.get('/stats/overview', authenticateToken, async (req, res) => {
   try {
@@ -46,12 +79,96 @@ router.get('/stats/overview', authenticateToken, async (req, res) => {
   }
 });
 
+// Advanced search sites with partial matching (MUST BE BEFORE /:id route!)
+router.get('/search/:query', authenticateToken, async (req, res) => {
+  try {
+    const { query } = req.params;
+    
+    // Return empty if query is too short (less than 2 characters)
+    if (query.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const sites = await Site.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { siteCode: { $regex: query, $options: 'i' } },
+        { region: { $regex: query, $options: 'i' } },
+        { state: { $regex: query, $options: 'i' } },
+        { 'address.city': { $regex: query, $options: 'i' } },
+        { 'address.state': { $regex: query, $options: 'i' } },
+        { 'address.pincode': { $regex: query, $options: 'i' } },
+        { 'contactPerson.name': { $regex: query, $options: 'i' } },
+        { 'contactPerson.email': { $regex: query, $options: 'i' } },
+        { siteType: { $regex: query, $options: 'i' } }
+      ]
+    }).sort({ 
+      updatedAt: -1 
+    }).limit(50); // Limit results to prevent overwhelming the frontend
+
+    // Get projector counts for each site
+    const siteIds = sites.map(site => site._id);
+    const projectorCounts = await Projector.aggregate([
+      {
+        $match: { siteId: { $in: siteIds } }
+      },
+      {
+        $group: {
+          _id: {
+            siteId: '$siteId',
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Create lookup map for fast access
+    const siteProjectorCounts = new Map();
+    
+    projectorCounts.forEach(item => {
+      const siteId = item._id.siteId?.toString();
+      const status = item._id.status;
+      const count = item.count;
+      
+      if (siteId) {
+        if (!siteProjectorCounts.has(siteId)) {
+          siteProjectorCounts.set(siteId, { total: 0, active: 0 });
+        }
+        const siteCounts = siteProjectorCounts.get(siteId);
+        siteCounts.total += count;
+        if (status === 'Active') {
+          siteCounts.active += count;
+        }
+      }
+    });
+    
+    // Apply counts to sites
+    const enhancedSites = sites.map(site => {
+      const siteObj = site.toObject();
+      const siteId = site._id.toString();
+      const siteCounts = siteProjectorCounts.get(siteId) || { total: 0, active: 0 };
+      siteObj.totalProjectors = siteCounts.total;
+      siteObj.activeProjectors = siteCounts.active;
+      return siteObj;
+    });
+    
+    res.json(enhancedSites);
+  } catch (error) {
+    console.error('Error searching sites:', error);
+    res.status(500).json({ message: 'Error searching sites', error: error.message });
+  }
+});
+
 // Get all sites with auditoriums and projector counts
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    console.log('📍 Fetching all sites...');
     const sites = await Site.find({})
       .populate('auditoriums')
       .lean();
+    
+    console.log(`📊 Found ${sites.length} sites`);
     
     // Get all projector counts in a single aggregation query
     const projectorCounts = await Projector.aggregate([
@@ -66,6 +183,8 @@ router.get('/', authenticateToken, async (req, res) => {
         }
       }
     ]);
+    
+    console.log(`🔢 Found ${projectorCounts.length} projector count groups`);
     
     // Create lookup maps for fast access
     const siteProjectorCounts = new Map();
@@ -99,6 +218,8 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     });
     
+    console.log(`✅ Calculated counts for ${siteProjectorCounts.size} sites`);
+    
     // Apply counts to sites
     sites.forEach(site => {
       // Initialize auditoriums array if it doesn't exist
@@ -118,9 +239,13 @@ router.get('/', authenticateToken, async (req, res) => {
       });
     });
     
+    // Calculate total projectors for logging
+    const totalProjectors = sites.reduce((sum, site) => sum + (site.totalProjectors || 0), 0);
+    console.log(`📊 Total projectors across all sites: ${totalProjectors}`);
+    
     res.json(sites);
   } catch (error) {
-    console.error('Error fetching sites:', error);
+    console.error('❌ Error fetching sites:', error);
     res.status(500).json({ message: 'Error fetching sites', error: error.message });
   }
 });
@@ -416,6 +541,153 @@ router.get('/:id/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching site stats:', error);
     res.status(500).json({ message: 'Error fetching site stats', error: error.message });
+  }
+});
+
+// Generate site report data for PDF export
+router.get('/:id/report-data', authenticateToken, async (req, res) => {
+  try {
+    const site = await Site.findById(req.params.id);
+    if (!site) {
+      return res.status(404).json({ message: 'Site not found' });
+    }
+
+    // Get comprehensive site data
+    const projectors = await Projector.find({ siteId: req.params.id });
+    const amcContracts = await AMCContract.find({ siteId: req.params.id });
+    
+    // Get RMA data for this site
+    const RMA = require('../models/RMA');
+    const rmaCases = await RMA.find({ siteId: req.params.id });
+    
+    // Get service reports for this site
+    const ServiceReport = require('../models/ServiceReport');
+    const serviceReports = await ServiceReport.find({ siteName: site.name });
+
+    // Calculate analytics
+    const rmaAnalysis = {
+      totalCases: rmaCases.length,
+      avgResolutionTime: rmaCases.length > 0 ? 
+        rmaCases.reduce((sum, rma) => {
+          if (rma.resolvedAt && rma.createdAt) {
+            const days = Math.ceil((new Date(rma.resolvedAt) - new Date(rma.createdAt)) / (1000 * 60 * 60 * 24));
+            return sum + days;
+          }
+          return sum;
+        }, 0) / rmaCases.length : 0,
+      totalCost: rmaCases.reduce((sum, rma) => sum + (rma.cost || 0), 0)
+    };
+
+    const serviceAnalysis = {
+      totalVisits: serviceReports.length,
+      lastVisit: serviceReports.length > 0 ? 
+        serviceReports.sort((a, b) => new Date(b.date) - new Date(a.date))[0].date : null
+    };
+
+    const projectorAnalysis = {
+      total: projectors.length,
+      active: projectors.filter(p => p.status === 'Active').length,
+      underService: projectors.filter(p => p.status === 'Under Service').length,
+      needsRepair: projectors.filter(p => p.status === 'Needs Repair').length,
+      inactive: projectors.filter(p => p.status === 'Inactive').length,
+      byBrand: projectors.reduce((acc, p) => {
+        const brand = p.brand || 'Unknown';
+        acc[brand] = (acc[brand] || 0) + 1;
+        return acc;
+      }, {}),
+      byModel: projectors.reduce((acc, p) => {
+        const model = p.model || 'Unknown';
+        acc[model] = (acc[model] || 0) + 1;
+        return acc;
+      }, {})
+    };
+
+    // Prepare site data with analytics
+    const siteData = {
+      ...site.toObject(),
+      totalProjectors: projectors.length,
+      activeProjectors: projectors.filter(p => p.status === 'Active').length,
+      rmaAnalysis,
+      serviceAnalysis,
+      projectorAnalysis,
+      amcContracts: amcContracts.length,
+      lastUpdated: new Date()
+    };
+
+    res.json({
+      success: true,
+      data: siteData
+    });
+
+  } catch (error) {
+    console.error('Error generating site report data:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error generating site report data', 
+      error: error.message 
+    });
+  }
+});
+
+// Generate regional report data
+router.get('/reports/regional', authenticateToken, async (req, res) => {
+  try {
+    const { region } = req.query;
+    
+    // Get sites in the region
+    const sites = await Site.find(region ? { region } : {});
+    
+    // Get comprehensive data for all sites
+    const siteIds = sites.map(site => site._id);
+    const projectors = await Projector.find({ siteId: { $in: siteIds } });
+    const amcContracts = await AMCContract.find({ siteId: { $in: siteIds } });
+    
+    // Get RMA data
+    const RMA = require('../models/RMA');
+    const rmaCases = await RMA.find({ siteId: { $in: siteIds } });
+    
+    // Get service reports
+    const ServiceReport = require('../models/ServiceReport');
+    const serviceReports = await ServiceReport.find({ 
+      siteName: { $in: sites.map(s => s.name) } 
+    });
+
+    // Calculate regional analytics
+    const regionalAnalytics = {
+      totalSites: sites.length,
+      totalProjectors: projectors.length,
+      activeProjectors: projectors.filter(p => p.status === 'Active').length,
+      totalRmaCases: rmaCases.length,
+      totalServiceVisits: serviceReports.length,
+      sitesByStatus: sites.reduce((acc, site) => {
+        acc[site.status] = (acc[site.status] || 0) + 1;
+        return acc;
+      }, {}),
+      projectorsByStatus: projectors.reduce((acc, projector) => {
+        acc[projector.status] = (acc[projector.status] || 0) + 1;
+        return acc;
+      }, {}),
+      sites: sites.map(site => ({
+        ...site.toObject(),
+        projectorCount: projectors.filter(p => p.siteId.toString() === site._id.toString()).length,
+        activeProjectorCount: projectors.filter(p => p.siteId.toString() === site._id.toString() && p.status === 'Active').length,
+        rmaCount: rmaCases.filter(rma => rma.siteId.toString() === site._id.toString()).length,
+        serviceVisitCount: serviceReports.filter(sr => sr.siteName === site.name).length
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: regionalAnalytics
+    });
+
+  } catch (error) {
+    console.error('Error generating regional report data:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error generating regional report data', 
+      error: error.message 
+    });
   }
 });
 

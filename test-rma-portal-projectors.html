@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Portal Projector Data Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .projector-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .projector-model {
+            font-weight: bold;
+            color: #333;
+        }
+        .projector-serial {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .projector-site {
+            color: #888;
+            font-size: 0.8em;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-repair {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-service {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>RMA Portal Projector Data Test</h1>
+    
+    <div class="test-section">
+        <h2>API Tests</h2>
+        <p>Test the projector API endpoints:</p>
+        
+        <button class="test-button" onclick="testProjectorAPI()">Test Projector API</button>
+        <button class="test-button" onclick="testRMAProjectorStats()">Test RMA Projector Stats</button>
+        <button class="test-button" onclick="openRMAPortal()">Open RMA Portal</button>
+        
+        <div id="api-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Projector Data</h2>
+        <div id="projector-data"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Make sure both frontend and backend servers are running</li>
+            <li>Click "Test Projector API" to verify the API is working</li>
+            <li>Click "Open RMA Portal" to test the RMA Portal with real data</li>
+            <li>Navigate to "Projector Management" in the RMA Portal</li>
+            <li>Verify that the full ProjectorsPage component is now integrated (same as main admin panel)</li>
+            <li>Test all features: search, view all projectors, add projector, etc.</li>
+        </ol>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function displayProjectors(projectors) {
+            const dataDiv = document.getElementById('projector-data');
+            
+            if (!projectors || projectors.length === 0) {
+                dataDiv.innerHTML = '<p>No projector data available</p>';
+                return;
+            }
+            
+            let html = `<h3>Found ${projectors.length} projectors:</h3>`;
+            
+            // Show first 10 projectors
+            projectors.slice(0, 10).forEach(projector => {
+                const statusClass = projector.status === 'Active' ? 'status-active' : 
+                                  projector.status === 'Needs Repair' ? 'status-repair' : 
+                                  'status-service';
+                
+                html += `
+                    <div class="projector-card">
+                        <div class="projector-model">${projector.model}</div>
+                        <div class="projector-serial">Serial: ${projector.serialNumber}</div>
+                        <div class="projector-site">Site: ${projector.siteName}</div>
+                        <span class="status-badge ${statusClass}">${projector.status}</span>
+                    </div>
+                `;
+            });
+            
+            if (projectors.length > 10) {
+                html += `<p>... and ${projectors.length - 10} more projectors</p>`;
+            }
+            
+            dataDiv.innerHTML = html;
+        }
+        
+        async function testProjectorAPI() {
+            try {
+                updateStatus('Testing projector API...', 'info');
+                
+                const response = await fetch('http://localhost:4000/api/projectors');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const projectors = await response.json();
+                
+                updateStatus(`✅ API working! Found ${projectors.length} projectors`, 'success');
+                displayProjectors(projectors);
+                
+            } catch (error) {
+                updateStatus(`❌ API Error: ${error.message}`, 'error');
+                console.error('API Error:', error);
+            }
+        }
+        
+        async function testRMAProjectorStats() {
+            try {
+                updateStatus('Testing RMA projector stats...', 'info');
+                
+                const response = await fetch('http://localhost:4000/api/dashboard/public-projector-stats');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const stats = await response.json();
+                
+                updateStatus(`✅ RMA Stats working! Total: ${stats.totalProjectors}, Active: ${stats.totalProjectors - stats.withActiveRMA - stats.underMaintenance}`, 'success');
+                
+            } catch (error) {
+                updateStatus(`❌ RMA Stats Error: ${error.message}`, 'error');
+                console.error('RMA Stats Error:', error);
+            }
+        }
+        
+        function openRMAPortal() {
+            window.open('http://localhost:3000/#rma-dashboard', '_blank');
+            updateStatus('✅ RMA Portal opened in new tab', 'success');
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            updateStatus('Page loaded. Click "Test Projector API" to verify data.', 'info');
+        });
+    </script>
+</body>
+</html>

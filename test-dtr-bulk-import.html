@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DTR Bulk Import Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .feature-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.1);
+        }
+        .feature-card h3 {
+            color: #1e293b;
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .feature-card p {
+            color: #64748b;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .template-section {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .template-section h2 {
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        .headers-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .header-item {
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #475569;
+            text-align: center;
+        }
+        .sample-data {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .sample-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sample-table th {
+            background: #4f46e5;
+            color: white;
+            padding: 12px 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: left;
+        }
+        .sample-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .sample-table tr:hover {
+            background: #f8fafc;
+        }
+        .instructions {
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .instructions h3 {
+            color: #065f46;
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            color: #047857;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .test-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        .test-btn.secondary {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+        .test-btn.secondary:hover {
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+        .status {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .status h3 {
+            color: #1e40af;
+            margin: 0 0 10px 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .status p {
+            color: #1e40af;
+            margin: 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 DTR Bulk Import System</h1>
+            <p>Import multiple DTRs using Excel with exact header matching</p>
+        </div>
+        
+        <div class="content">
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>📊 Excel Template</h3>
+                    <p>Download a pre-formatted Excel template with all required headers and sample data to ensure perfect compatibility.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>✅ Header Validation</h3>
+                    <p>Automatic validation ensures your Excel headers match exactly with the system requirements for seamless import.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔍 Data Preview</h3>
+                    <p>Preview your data before importing to catch any issues early and ensure everything looks correct.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ Batch Processing</h3>
+                    <p>Import up to 1000 DTRs at once with intelligent batch processing and comprehensive error reporting.</p>
+                </div>
+            </div>
+
+            <div class="template-section">
+                <h2>📋 Required Excel Headers</h2>
+                <p style="color: #64748b; margin-bottom: 20px;">Your Excel file must contain these exact headers (case-sensitive):</p>
+                
+                <div class="headers-list">
+                    <div class="header-item">Error Date</div>
+                    <div class="header-item">Case # (YYMMxx)</div>
+                    <div class="header-item">SITE</div>
+                    <div class="header-item">Unit</div>
+                    <div class="header-item">Model#</div>
+                    <div class="header-item">Unit Serial#</div>
+                    <div class="header-item">Nature of Problem/Request</div>
+                    <div class="header-item">Action Taken</div>
+                    <div class="header-item">Remarks</div>
+                    <div class="header-item">Call Status</div>
+                    <div class="header-item">Case Severity</div>
+                    <div class="header-item">Created By</div>
+                    <div class="header-item">Date</div>
+                    <div class="header-item">Closed By</div>
+                </div>
+
+                <h3 style="color: #1e293b; margin: 30px 0 15px 0;">📄 Sample Data Format</h3>
+                <div class="sample-data">
+                    <table class="sample-table">
+                        <thead>
+                            <tr>
+                                <th>Error Date</th>
+                                <th>Case #</th>
+                                <th>SITE</th>
+                                <th>Unit</th>
+                                <th>Model#</th>
+                                <th>Unit Serial#</th>
+                                <th>Nature of Problem/Request</th>
+                                <th>Remarks</th>
+                                <th>Call Status</th>
+                                <th>Case Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>45352</td>
+                                <td>616606</td>
+                                <td>TN01-Palazo Audi#1</td>
+                                <td>CP2220</td>
+                                <td>CP2220</td>
+                                <td>479021012</td>
+                                <td>Lamp fail to strike. IMCB version error</td>
+                                <td>Raised the RMA and sent replacement light engine</td>
+                                <td>Observation</td>
+                                <td>Major</td>
+                            </tr>
+                            <tr>
+                                <td>45353</td>
+                                <td>616685</td>
+                                <td>MH02-Sangam Cinemas Audi#2</td>
+                                <td>CP4230</td>
+                                <td>CP4230</td>
+                                <td>475184008</td>
+                                <td>Green DMD (category [Temps]) is in Critical Alarm state</td>
+                                <td>Requested customer with photograph</td>
+                                <td>Closed</td>
+                                <td>Major</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h3>📝 Import Instructions</h3>
+                <ul>
+                    <li><strong>Download Template:</strong> Use the "Download Template" button to get the exact format</li>
+                    <li><strong>Fill Data:</strong> Replace sample data with your actual DTR information</li>
+                    <li><strong>Required Fields:</strong> Unit Serial#, Nature of Problem/Request, and SITE are mandatory</li>
+                    <li><strong>Date Format:</strong> Use YYYY-MM-DD format for all date fields</li>
+                    <li><strong>Status Values:</strong> Call Status must be: Open, Observation, Closed, closed, Waiting_Cust_Responses, or RMA Part return to CDS</li>
+                    <li><strong>Severity Values:</strong> Case Severity must be: High, Major, Minor, Information, or Critical</li>
+                    <li><strong>Upload File:</strong> Select your completed Excel file and preview before importing</li>
+                </ul>
+            </div>
+
+            <div class="test-buttons">
+                <a href="http://localhost:3000/#dtr" class="test-btn">
+                    🎯 Test DTR Page
+                </a>
+                <a href="DTR_Import_Template.csv" class="test-btn secondary" download>
+                    📥 Download CSV Template
+                </a>
+                <a href="DTR_Import_Template.xlsx" class="test-btn secondary" download>
+                    📊 Download Excel Template
+                </a>
+            </div>
+
+            <div class="status">
+                <h3>✅ Bulk Import Features</h3>
+                <p>
+                    <strong>Perfect Header Matching:</strong> Your Excel headers match exactly with the system requirements<br>
+                    <strong>Data Validation:</strong> Comprehensive validation ensures data integrity<br>
+                    <strong>Error Reporting:</strong> Detailed error messages for any issues found<br>
+                    <strong>Batch Processing:</strong> Handle large datasets efficiently<br>
+                    <strong>Preview Mode:</strong> Review data before final import
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive features
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers for test buttons
+            const testButtons = document.querySelectorAll('.test-btn');
+            testButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    if (this.href && this.href.includes('localhost')) {
+                        e.preventDefault();
+                        window.open(this.href, '_blank');
+                    }
+                });
+            });
+
+            // Add hover effects to header items
+            const headerItems = document.querySelectorAll('.header-item');
+            headerItems.forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    this.style.background = '#4f46e5';
+                    this.style.color = 'white';
+                });
+                item.addEventListener('mouseleave', function() {
+                    this.style.background = 'white';
+                    this.style.color = '#475569';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

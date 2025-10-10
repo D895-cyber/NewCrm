@@ -31,8 +31,10 @@ export function ProjectorsPage() {
   const [searchSerial, setSearchSerial] = useState("");
   const [selectedProjector, setSelectedProjector] = useState<any>(null);
   const [, setSearchResult] = useState<any>(null);
-  const [showAllProjectors, setShowAllProjectors] = useState(true);
+  const [showAllProjectors, setShowAllProjectors] = useState(false); // Changed to false - don't show all by default
   const [allProjectors, setAllProjectors] = useState<any[]>([]);
+  const [filteredProjectors, setFilteredProjectors] = useState<any[]>([]); // New state for search results
+  const [isSearching, setIsSearching] = useState(false); // New state for search loading
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,57 @@ export function ProjectorsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Dynamic search effect - triggers when user types
+  useEffect(() => {
+    const performSearch = async () => {
+      // Don't search if less than 2 characters
+      if (searchSerial.trim().length < 2) {
+        setFilteredProjectors([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setError(null);
+
+      try {
+        // Filter projectors that match the search term
+        const filtered = allProjectors.filter(projector => 
+          projector.serialNumber.toLowerCase().includes(searchSerial.toLowerCase()) ||
+          projector.model.toLowerCase().includes(searchSerial.toLowerCase()) ||
+          projector.brand.toLowerCase().includes(searchSerial.toLowerCase()) ||
+          (projector.siteName && projector.siteName.toLowerCase().includes(searchSerial.toLowerCase()))
+        );
+        
+        setFilteredProjectors(filtered);
+        
+        // If exact match found, you could auto-select it
+        const exactMatch = filtered.find(p => 
+          p.serialNumber.toLowerCase() === searchSerial.toLowerCase()
+        );
+        
+        if (exactMatch && filtered.length === 1) {
+          // Auto-select if only one exact match
+          console.log('Exact match found:', exactMatch);
+        }
+      } catch (err: any) {
+        console.error('Error filtering projectors:', err);
+        setError('Search failed: ' + err.message);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    // Debounce the search - wait 300ms after user stops typing
+    const debounceTimer = setTimeout(() => {
+      if (searchSerial.trim().length >= 2) {
+        performSearch();
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchSerial, allProjectors]);
 
   const loadData = async () => {
     try {
@@ -452,10 +505,11 @@ export function ProjectorsPage() {
             </div>
             <button 
               onClick={() => {
-                setShowAllProjectors(true);
+                setShowAllProjectors(false);
                 setSearchResult(null);
                 setSelectedProjector(null);
                 setSearchSerial("");
+                setFilteredProjectors([]);
                 setError(null);
                 loadAllProjectors();
               }}
@@ -496,6 +550,7 @@ export function ProjectorsPage() {
                 setSearchResult(null);
                 setSelectedProjector(null);
                 setSearchSerial("");
+                setFilteredProjectors([]);
                 setError(null);
               }}
               className="dark-button-secondary"
@@ -573,8 +628,8 @@ export function ProjectorsPage() {
         <div className="dark-card mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl font-bold text-dark-primary mb-2">Projector Serial Number Lookup</h2>
-              <p className="text-dark-secondary">Enter a projector serial number to view complete details, service history, and RMA information</p>
+              <h2 className="text-xl font-bold text-dark-primary mb-2">Advanced Projector Search</h2>
+              <p className="text-dark-secondary">Start typing (min 2 characters) to search by serial number, model, brand, or site</p>
             </div>
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -583,16 +638,23 @@ export function ProjectorsPage() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-dark-secondary w-5 h-5" />
               <Input
-                placeholder="Enter projector serial number..."
+                placeholder="Type to search: serial number, model, brand, or site..."
                 value={searchSerial}
-                onChange={(e) => setSearchSerial(e.target.value)}
+                onChange={(e) => {
+                  setSearchSerial(e.target.value);
+                  setShowAllProjectors(false);
+                  setSelectedProjector(null);
+                }}
                 onKeyPress={handleKeyPress}
                 className="pl-12 h-12 bg-dark-card border-dark-color text-dark-primary text-base"
                 disabled={isLoading || connectionStatus === 'disconnected'}
               />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 animate-spin text-blue-400" />
+              )}
             </div>
             <button 
               onClick={handleSearch}
@@ -604,9 +666,34 @@ export function ProjectorsPage() {
               ) : (
                 <Search className="w-5 h-5" />
               )}
-              Search
+              View Details
             </button>
           </div>
+
+          {/* Search Status */}
+          {searchSerial.trim().length > 0 && searchSerial.trim().length < 2 && (
+            <div className="mt-4 p-3 bg-yellow-900 bg-opacity-20 border border-yellow-600 rounded-lg">
+              <p className="text-sm text-yellow-300">
+                Please enter at least 2 characters to search
+              </p>
+            </div>
+          )}
+          
+          {searchSerial.trim().length >= 2 && filteredProjectors.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-900 bg-opacity-20 border border-blue-600 rounded-lg">
+              <p className="text-sm text-blue-300">
+                Found {filteredProjectors.length} projector{filteredProjectors.length !== 1 ? 's' : ''} matching "{searchSerial}"
+              </p>
+            </div>
+          )}
+          
+          {searchSerial.trim().length >= 2 && filteredProjectors.length === 0 && !isSearching && (
+            <div className="mt-4 p-3 bg-red-900 bg-opacity-20 border border-red-600 rounded-lg">
+              <p className="text-sm text-red-300">
+                No projectors found matching "{searchSerial}"
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Rest of the component remains the same */}
@@ -1053,22 +1140,130 @@ export function ProjectorsPage() {
           </div>
         )}
 
-        {/* All Projectors Grid */}
-        {showAllProjectors && !selectedProjector && (
+        {/* Search Results / All Projectors Grid */}
+        {!selectedProjector && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-dark-primary">All Projectors</h2>
-              <p className="text-dark-secondary">{allProjectors.length} projectors in system</p>
-            </div>
-            
-            {isLoading ? (
-              <div className="text-center py-12">
-                <Loader2 className="w-12 h-12 text-dark-secondary mx-auto mb-4 animate-spin" />
-                <p className="text-dark-secondary">Loading projectors...</p>
-              </div>
-            ) : allProjectors.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {allProjectors.map((projector, _index) => (
+            {/* Show filtered results when searching */}
+            {searchSerial.trim().length >= 2 && filteredProjectors.length > 0 && (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-dark-primary">Search Results</h2>
+                  <p className="text-dark-secondary">{filteredProjectors.length} projector{filteredProjectors.length !== 1 ? 's' : ''} found</p>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredProjectors.map((projector, _index) => (
+                    <div key={projector.serialNumber} className="dark-card hover:dark-shadow-lg transition-all duration-300 border-2 border-blue-500">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-dark-primary mb-1">{projector.model}</h3>
+                          <p className="text-sm text-dark-secondary">{projector.serialNumber}</p>
+                        </div>
+                        <div className={`dark-tag ${getStatusColor(projector.status)}`}>
+                          {projector.status}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center space-x-2 text-sm">
+                          <MapPin className="w-4 h-4 text-dark-secondary" />
+                          <span className="text-dark-primary">{projector.siteName || 'Site not linked'}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm">
+                          <Monitor className="w-4 h-4 text-dark-secondary" />
+                          <span className="text-dark-primary">{projector.auditoriumName || projector.location || 'Location not specified'}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm">
+                          <Clock className="w-4 h-4 text-dark-secondary" />
+                          <span className="text-dark-primary">Last Service: {formatDate(projector.lastService)}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                        <div>
+                          <div className="text-lg font-bold text-dark-primary">{projector.totalServices || 0}</div>
+                          <div className="text-xs text-dark-secondary">Services</div>
+                          <div className="text-xs text-green-400">From Reports</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-dark-primary">{projector.hoursUsed || 0}</div>
+                          <div className="text-xs text-dark-secondary">Hours</div>
+                          <div className="text-xs text-green-400">From Reports</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-dark-primary">{projector.lifePercentage || 0}%</div>
+                          <div className="text-xs text-dark-secondary">Life Used</div>
+                          <div className="text-xs text-green-400">Calculated</div>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          setSelectedProjector(projector);
+                          setShowAllProjectors(false);
+                          setSearchSerial(projector.serialNumber);
+                          setError(null);
+                          // Load full details for the selected projector
+                          try {
+                            const fullData = await apiClient.getProjector(projector.serialNumber);
+                            if (fullData && !fullData.error) {
+                              // Enhance with service report data
+                              const reports = await apiClient.getServiceReportsByProjector(projector.serialNumber);
+                              if (reports && reports.length > 0) {
+                                const totalServices = reports.length;
+                                const totalHours = reports.reduce((sum: number, report: any) => {
+                                  const hours = parseInt(report.projectorRunningHours) || 0;
+                                  return sum + hours;
+                                }, 0);
+                                
+                                const latestServiceDate = new Date(Math.max(...reports.map((r: any) => new Date(r.date).getTime())));
+                                const nextServiceDate = new Date(latestServiceDate.getTime() + (90 * 24 * 60 * 60 * 1000));
+                                const lifePercentage = fullData.expectedLife ? Math.round((totalHours / fullData.expectedLife) * 100) : 0;
+                                
+                                setSelectedProjector({
+                                  ...fullData,
+                                  totalServices,
+                                  hoursUsed: totalHours,
+                                  lastService: latestServiceDate,
+                                  nextService: nextServiceDate,
+                                  lifePercentage,
+                                  serviceHistory: reports
+                                });
+                              } else {
+                                setSelectedProjector(fullData);
+                              }
+                            }
+                          } catch (err) {
+                            console.error('Error loading projector details:', err);
+                          }
+                        }}
+                        className="w-full dark-button-primary text-sm py-2"
+                        disabled={connectionStatus === 'disconnected'}
+                      >
+                        View Full Details
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Show all projectors when user clicks "View All" */}
+            {showAllProjectors && searchSerial.trim().length === 0 && (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-dark-primary">All Projectors</h2>
+                  <p className="text-dark-secondary">{allProjectors.length} projectors in system</p>
+                </div>
+                
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="w-12 h-12 text-dark-secondary mx-auto mb-4 animate-spin" />
+                    <p className="text-dark-secondary">Loading projectors...</p>
+                  </div>
+                ) : allProjectors.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {allProjectors.map((projector, _index) => (
                   <div key={projector.serialNumber} className="dark-card hover:dark-shadow-lg transition-all duration-300">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -1159,17 +1354,43 @@ export function ProjectorsPage() {
                       View Details
                     </button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Monitor className="w-16 h-16 text-dark-secondary mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-dark-primary mb-2">No Projectors Found</h3>
-                <p className="text-dark-secondary">
-                  {connectionStatus === 'disconnected' 
-                    ? 'Connect to the backend server to view projectors.'
-                    : 'No projectors have been added to the system yet.'}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Monitor className="w-16 h-16 text-dark-secondary mx-auto mb-4" />
+                    <h3 className="text-xl font-medium text-dark-primary mb-2">No Projectors Found</h3>
+                    <p className="text-dark-secondary">
+                      {connectionStatus === 'disconnected' 
+                        ? 'Connect to the backend server to view projectors.'
+                        : 'No projectors have been added to the system yet.'}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Empty state - no search, not showing all */}
+            {!showAllProjectors && searchSerial.trim().length === 0 && (
+              <div className="text-center py-16">
+                <Search className="w-20 h-20 text-dark-secondary mx-auto mb-6 opacity-50" />
+                <h3 className="text-2xl font-medium text-dark-primary mb-3">Search for Projectors</h3>
+                <p className="text-dark-secondary mb-6 max-w-md mx-auto">
+                  Enter at least 2 characters in the search box above to find projectors by serial number, model, brand, or site name.
                 </p>
+                <div className="flex items-center justify-center gap-4">
+                  <button 
+                    onClick={() => {
+                      setShowAllProjectors(true);
+                      setSearchSerial("");
+                      setFilteredProjectors([]);
+                    }}
+                    className="dark-button-primary gap-2 flex items-center"
+                  >
+                    <Monitor className="w-4 h-4" />
+                    View All Projectors
+                  </button>
+                </div>
               </div>
             )}
           </div>

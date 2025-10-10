@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .links {
+            margin: 20px 0;
+        }
+        .links a {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            text-decoration: none;
+            color: #495057;
+            border-radius: 4px;
+        }
+        .links a:hover { background-color: #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RMA Dashboard Test</h1>
+        
+        <div id="backend-status" class="status info">
+            Testing backend connection...
+        </div>
+        
+        <div id="frontend-status" class="status info">
+            Testing frontend connection...
+        </div>
+        
+        <div class="links">
+            <h3>Test Links:</h3>
+            <a href="http://localhost:3000/#rma-dashboard" target="_blank">RMA Dashboard (Port 3000)</a>
+            <a href="http://localhost:3001/#rma-dashboard" target="_blank">RMA Dashboard (Port 3001)</a>
+            <a href="http://localhost:4173/#rma-dashboard" target="_blank">RMA Dashboard (Port 4173)</a>
+            <a href="http://localhost:4000/api/dashboard/test-kpis" target="_blank">Backend API Test</a>
+        </div>
+        
+        <button onclick="testBackend()">Test Backend</button>
+        <button onclick="testFrontend()">Test Frontend</button>
+        <button onclick="openRMA()">Open RMA Dashboard</button>
+    </div>
+
+    <script>
+        async function testBackend() {
+            const statusDiv = document.getElementById('backend-status');
+            try {
+                const response = await fetch('http://localhost:4000/api/dashboard/test-kpis');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `✅ Backend is working! Total RMAs: ${data.data.totalRMAs}`;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ Backend error: ${response.status}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Backend connection failed: ${error.message}`;
+            }
+        }
+
+        async function testFrontend() {
+            const statusDiv = document.getElementById('frontend-status');
+            const ports = [3000, 3001, 4173];
+            
+            for (const port of ports) {
+                try {
+                    const response = await fetch(`http://localhost:${port}`);
+                    if (response.ok) {
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = `✅ Frontend is working on port ${port}!`;
+                        return;
+                    }
+                } catch (error) {
+                    continue;
+                }
+            }
+            
+            statusDiv.className = 'status error';
+            statusDiv.innerHTML = '❌ Frontend not accessible on any port (3000, 3001, 4173)';
+        }
+
+        function openRMA() {
+            const ports = [3000, 3001, 4173];
+            for (const port of ports) {
+                const url = `http://localhost:${port}/#rma-dashboard`;
+                window.open(url, '_blank');
+            }
+        }
+
+        // Auto-test on load
+        window.onload = function() {
+            testBackend();
+            testFrontend();
+        };
+    </script>
+</body>
+</html>

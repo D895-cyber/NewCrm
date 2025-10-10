@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preventive Maintenance Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 850px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border: 1px solid #ddd;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        header p {
+            margin: 2px 0;
+            font-size: 14px;
+        }
+        .report-section {
+            margin-bottom: 25px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .grid-item {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .value {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background: #f9f9f9;
+            min-height: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .section-title {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 50px;
+        }
+        .signature-box {
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .signature-img {
+            max-width: 200px;
+            max-height: 80px;
+            margin-top: 10px;
+        }
+        .status-ok { color: green; font-weight: bold; }
+        .status-fail { color: red; font-weight: bold; }
+        .status-replace { color: orange; font-weight: bold; }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>ASCOMP INC.</h1>
+        <h2>EW - Preventive Maintenance Report</h2>
+        <p>Address: 9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, Delhi 110064</p>
+        <p>Landline: 011-45501226 | Mobile - 8882475207 | Email - helpdesk@ascompinc.in</p>
+    </header>
+
+    <div class="report-section">
+        <div class="grid-container">
+            <div class="grid-item">
+                <label for="cinema-name">CINEMA NAME:</label>
+                <div class="value">{{default cinemaName 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="location">LOCATION:</label>
+                <div class="value">{{default location 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="address">Address:</label>
+                <div class="value">{{default address 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="contact-details">Contact Details:</label>
+                <div class="value">{{default contactDetails 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="screen-no">SCREEN No:</label>
+                <div class="value">{{default screenNumber 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="date">DATE:</label>
+                <div class="value">{{formatDate date}}</div>
+            </div>
+            <div class="grid-item" style="grid-column: 1 / -1;">
+                <label for="projector-model">Projector Model, Serial No. and Running Hours:</label>
+                <div class="value">{{default projectorModelSerialAndHours 'N/A'}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>SECTIONS</th>
+                    <th>DESCRIPTION</th>
+                    <th>STATUS (OK/Not OK/Yes)</th>
+                    <th>REPLACEMENT REQUIRED</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td rowspan="6" class="section-title">OPTICALS</td>
+                    <td>Reflector</td>
+                    <td class="{{#ifEquals opticals.reflector.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.reflector.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default opticals.reflector.status 'N/A'}}
+                    </td>
+                    <td>{{default opticals.reflector.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>UV filter</td>
+                    <td class="{{#ifEquals opticals.uvFilter.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.uvFilter.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default opticals.uvFilter.status 'N/A'}}
+                    </td>
+                    <td>{{default opticals.uvFilter.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Integrator Rod</td>
+                    <td class="{{#ifEquals opticals.integratorRod.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.integratorRod.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default opticals.integratorRod.status 'N/A'}}
+                    </td>
+                    <td>{{default opticals.integratorRod.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Cold Mirror</td>
+                    <td class="{{#ifEquals opticals.coldMirror.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.coldMirror.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default opticals.coldMirror.status 'N/A'}}
+                    </td>
+                    <td>{{default opticals.coldMirror.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Fold Mirror</td>
+                    <td class="{{#ifEquals opticals.foldMirror.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.foldMirror.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default opticals.foldMirror.status 'N/A'}}
+                    </td>
+                    <td>{{default opticals.foldMirror.replacement 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Light Engine Test Pattern (White, Red, Green, Blue, Black)</td>
+                    <td class="{{#ifEquals lightEngineTestPattern.overall.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals lightEngineTestPattern.overall.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default lightEngineTestPattern.overall.status 'N/A'}}
+                    </td>
+                    <td>{{default lightEngineTestPattern.overall.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td rowspan="4" class="section-title">ELECTRONICS</td>
+                    <td>Touch Panel</td>
+                    <td class="{{#ifEquals electronics.touchPanel.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.touchPanel.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default electronics.touchPanel.status 'N/A'}}
+                    </td>
+                    <td>{{default electronics.touchPanel.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>EVB and IMCB Board / PIB and ICP Board</td>
+                    <td class="{{#ifEquals electronics.evbImcbBoard.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.evbImcbBoard.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default electronics.evbImcbBoard.status 'N/A'}}
+                    </td>
+                    <td>{{default electronics.evbImcbBoard.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>IMB/S Board</td>
+                    <td class="{{#ifEquals electronics.imbSBoard.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.imbSBoard.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default electronics.imbSBoard.status 'N/A'}}
+                    </td>
+                    <td>{{default electronics.imbSBoard.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Chassis label vs Touch Panel Serial Number verified</td>
+                    <td class="{{#ifEquals serialNumberVerified.chassisLabel.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals serialNumberVerified.chassisLabel.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default serialNumberVerified.chassisLabel.status 'N/A'}}
+                    </td>
+                    <td>{{default serialNumberVerified.chassisLabel.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" class="section-title">Disposable Consumables</td>
+                    <td>Air Intake, LAD and RAD</td>
+                    <td class="{{#ifEquals disposableConsumables.airIntake.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals disposableConsumables.airIntake.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default disposableConsumables.airIntake.status 'N/A'}}
+                    </td>
+                    <td>{{default disposableConsumables.airIntake.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Coolant Level and Color</td>
+                    <td class="{{#ifEquals coolant.level.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals coolant.level.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default coolant.level.status 'N/A'}}
+                    </td>
+                    <td>{{default coolant.level.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td rowspan="8" class="section-title">MECHANICAL</td>
+                    <td>AC blower and Vane Switch</td>
+                    <td class="{{#ifEquals mechanical.acBlowerVaneSwitch.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.acBlowerVaneSwitch.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.acBlowerVaneSwitch.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.acBlowerVaneSwitch.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Extractor Vane Switch</td>
+                    <td class="{{#ifEquals mechanical.extractorVaneSwitch.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.extractorVaneSwitch.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.extractorVaneSwitch.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.extractorVaneSwitch.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Exhaust CFM - Value</td>
+                    <td>{{default mechanical.exhaustCFM.value 'N/A'}}</td>
+                    <td>{{default mechanical.exhaustCFM.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Light Engine 4 fans with LAD fan</td>
+                    <td class="{{#ifEquals mechanical.lightEngine4Fans.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.lightEngine4Fans.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.lightEngine4Fans.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.lightEngine4Fans.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Card Cage Top and Bottom fans</td>
+                    <td class="{{#ifEquals mechanical.cardCageFans.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.cardCageFans.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.cardCageFans.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.cardCageFans.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Radiator fan and Pump</td>
+                    <td class="{{#ifEquals mechanical.radiatorFanPump.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.radiatorFanPump.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.radiatorFanPump.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.radiatorFanPump.replacement 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Connector and hose for the Pump</td>
+                    <td class="{{#ifEquals mechanical.connectorHosePump.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals mechanical.connectorHosePump.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default mechanical.connectorHosePump.status 'N/A'}}
+                    </td>
+                    <td>{{default mechanical.connectorHosePump.replacement 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Lamp LOC Mechanism X, Y and Z movement</td>
+                    <td class="{{#ifEquals lampLOCMechanism.xMovement.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals lampLOCMechanism.xMovement.status 'FAIL'}}status-fail{{/ifEquals}}">
+                        {{default lampLOCMechanism.xMovement.status 'N/A'}}
+                    </td>
+                    <td>{{default lampLOCMechanism.xMovement.replacement 'N/A'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="report-section">
+        <div class="grid-container">
+            <div class="grid-item">
+                <label for="lamp-make">Lamp Make and Model:</label>
+                <div class="value">{{default lampInfo.makeAndModel 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="lamp-hours">Current lamp running hours:</label>
+                <div class="value">{{default lampInfo.currentRunningHours 'N/A'}}</div>
+            </div>
+             <div class="grid-item">
+                <label for="fl-measurements">fL measurements:</label>
+                <div class="value">{{default fLMeasurements.value 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="content-player">Content Player Model:</label>
+                <div class="value">{{default contentPlayerModel 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="ac-status">AC Status:</label>
+                <div class="value">{{default acStatus 'N/A'}}</div>
+            </div>
+            <div class="grid-item">
+                <label for="le-status">LE Status during PM:</label>
+                <div class="value">{{default leStatusDuringPM 'N/A'}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-section">
+        <label for="remarks">Remarks:</label>
+        <div class="value" style="min-height: 80px;">{{default remarks 'N/A'}}</div>
+    </div>
+
+    <div class="report-section">
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="4">CIE XYZ Color Accuracy Test</th>
+                </tr>
+                <tr>
+                    <th>MCGD</th>
+                    <th>fL</th>
+                    <th>X</th>
+                    <th>y</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>W2K/4K</td>
+                    <td>{{default cieXYZColorAccuracy.white.fL 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.white.x 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.white.y 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>R2K/4K</td>
+                    <td>{{default cieXYZColorAccuracy.red.fL 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.red.x 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.red.y 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>G2K/4K</td>
+                    <td>{{default cieXYZColorAccuracy.green.fL 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.green.x 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.green.y 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>B2K/4K</td>
+                    <td>{{default cieXYZColorAccuracy.blue.fL 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.blue.x 'N/A'}}</td>
+                    <td>{{default cieXYZColorAccuracy.blue.y 'N/A'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="report-section">
+        <table>
+             <thead>
+                <tr>
+                    <th colspan="3">Screen Information in metres</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th>Height</th>
+                    <th>Width</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>SCOPE</td>
+                    <td>{{default screenInformation.scope.height 'N/A'}}</td>
+                    <td>{{default screenInformation.scope.width 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>FLAT</td>
+                    <td>{{default screenInformation.flat.height 'N/A'}}</td>
+                    <td>{{default screenInformation.flat.width 'N/A'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+     <div class="report-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>Image Evaluation</th>
+                    <th>OK - Yes/No</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Focus/boresite</td>
+                    <td>{{default imageEvaluation.focusBoresite 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Integrator Position</td>
+                    <td>{{default imageEvaluation.integratorPosition 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Any Spot on the Screen after PPM</td>
+                    <td>{{default imageEvaluation.spotOnScreen 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Check Screen Cropping - FLAT and SCOPE</td>
+                    <td>{{default imageEvaluation.screenCropping 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Convergence Checked</td>
+                    <td>{{default imageEvaluation.convergenceChecked 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Channels Checked - Scope, Flat, Alternative</td>
+                    <td>{{default imageEvaluation.channelsChecked 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Pixel defects</td>
+                    <td>{{default imageEvaluation.pixelDefects 'N/A'}}</td>
+                </tr>
+                 <tr>
+                    <td>Excessive image vibration</td>
+                    <td>{{default imageEvaluation.imageVibration 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>LiteLOC</td>
+                    <td>{{default imageEvaluation.liteLOC 'N/A'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            Client's Signature & Stamp
+            {{#if clientSignature}}
+            <br><img src="{{clientSignature}}" alt="Client Signature" class="signature-img">
+            {{/if}}
+        </div>
+        <div class="signature-box">
+            Engineer's Signature
+            {{#if engineerSignature}}
+            <br><img src="{{engineerSignature}}" alt="Engineer Signature" class="signature-img">
+            {{/if}}
+            <br><br>
+            <strong>{{default engineer.name 'N/A'}}</strong><br>
+            {{default engineer.phone 'N/A'}}
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
+
+
+
+
+
+
+

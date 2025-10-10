@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCOMP EW - Preventive Maintenance Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 10mm;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            border: 2px solid #000;
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .header-info {
+            font-size: 10px;
+            margin-top: 5px;
+        }
+
+        /* Info Table */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .info-table td {
+            border: 1px solid #000;
+            padding: 5px;
+        }
+
+        .info-table .label {
+            font-weight: bold;
+            background-color: #e0e0e0;
+            width: 30%;
+        }
+
+        /* Checklist Table */
+        .checklist-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .checklist-table th {
+            background-color: #333;
+            color: white;
+            padding: 8px;
+            border: 1px solid #000;
+            font-size: 11px;
+        }
+
+        .checklist-table td {
+            border: 1px solid #000;
+            padding: 6px;
+        }
+
+        .checklist-table .section-header {
+            background-color: #666;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Status Colors */
+        .status-ok {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-fail {
+            color: red;
+            font-weight: bold;
+        }
+
+        .status-replace {
+            color: orange;
+            font-weight: bold;
+        }
+
+        /* Signatures */
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .signature-box {
+            width: 45%;
+            border: 1px solid #000;
+            padding: 10px;
+            min-height: 80px;
+        }
+
+        .signature-box h4 {
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .signature-img {
+            max-width: 150px;
+            max-height: 50px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        /* Page Break */
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>EW - Preventive Maintenance Report</h1>
+            <div class="header-info">
+                <strong>ASCOMP INC.</strong><br>
+                Address: 9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, Delhi 110064<br>
+                Landline: 011-45501226 | Mobile: 8882475207<br>
+                Email: helpdesk@ascompinc.in | www.ascompinc.in
+            </div>
+        </div>
+
+        <!-- BASIC INFORMATION -->
+        <table class="info-table">
+            <tr>
+                <td class="label">CINEMA NAME:</td>
+                <td>{{cinemaName}}</td>
+                <td class="label">DATE:</td>
+                <td>{{formattedDate}}</td>
+            </tr>
+            <tr>
+                <td class="label">Address:</td>
+                <td colspan="3">{{address}}</td>
+            </tr>
+            <tr>
+                <td class="label">Contact Details:</td>
+                <td>{{contactDetails}}</td>
+                <td class="label">LOCATION:</td>
+                <td>{{location}}</td>
+            </tr>
+            <tr>
+                <td class="label">SCREEN No:</td>
+                <td>{{screenNumber}}</td>
+                <td class="label">Engg and EW Service visit:</td>
+                <td>{{equipAndEWServiceVisit}}</td>
+            </tr>
+            <tr>
+                <td class="label">Projector Model, Serial No. and Running Hours:</td>
+                <td colspan="3">{{projectorModelSerialAndHours}}</td>
+            </tr>
+            <tr>
+                <td class="label">Replacement Required:</td>
+                <td colspan="3">{{replacementRequired}}</td>
+            </tr>
+        </table>
+
+        <!-- CHECKLIST TABLE -->
+        <table class="checklist-table">
+            <thead>
+                <tr>
+                    <th width="20%">SECTIONS</th>
+                    <th width="50%">DESCRIPTION</th>
+                    <th width="15%">STATUS</th>
+                    <th width="15%">YES/NO - OK</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- OPTICALS -->
+                <tr>
+                    <td rowspan="5" class="section-header">OPTICALS</td>
+                    <td>Reflector</td>
+                    <td class="{{#ifEquals opticals.reflector.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.reflector.status 'FAIL'}}status-fail{{/ifEquals}}">{{default opticals.reflector.status 'N/A'}}</td>
+                    <td>{{default opticals.reflector.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>UV filter</td>
+                    <td class="{{#ifEquals opticals.uvFilter.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.uvFilter.status 'FAIL'}}status-fail{{/ifEquals}}">{{default opticals.uvFilter.status 'N/A'}}</td>
+                    <td>{{default opticals.uvFilter.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Integrator Rod</td>
+                    <td class="{{#ifEquals opticals.integratorRod.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.integratorRod.status 'FAIL'}}status-fail{{/ifEquals}}">{{default opticals.integratorRod.status 'N/A'}}</td>
+                    <td>{{default opticals.integratorRod.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Cold Mirror</td>
+                    <td class="{{#ifEquals opticals.coldMirror.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.coldMirror.status 'FAIL'}}status-fail{{/ifEquals}}">{{default opticals.coldMirror.status 'N/A'}}</td>
+                    <td>{{default opticals.coldMirror.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Fold Mirror</td>
+                    <td class="{{#ifEquals opticals.foldMirror.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals opticals.foldMirror.status 'FAIL'}}status-fail{{/ifEquals}}">{{default opticals.foldMirror.status 'N/A'}}</td>
+                    <td>{{default opticals.foldMirror.result 'N/A'}}</td>
+                </tr>
+
+                <!-- ELECTRONICS -->
+                <tr>
+                    <td rowspan="4" class="section-header">ELECTRONICS</td>
+                    <td>Touch Panel</td>
+                    <td class="{{#ifEquals electronics.touchPanel.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.touchPanel.status 'FAIL'}}status-fail{{/ifEquals}}">{{default electronics.touchPanel.status 'N/A'}}</td>
+                    <td>{{default electronics.touchPanel.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>EVB and IMCB Board</td>
+                    <td class="{{#ifEquals electronics.evbImcbBoard.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.evbImcbBoard.status 'FAIL'}}status-fail{{/ifEquals}}">{{default electronics.evbImcbBoard.status 'N/A'}}</td>
+                    <td>{{default electronics.evbImcbBoard.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>PIB and ICP Board</td>
+                    <td class="{{#ifEquals electronics.pibIcpBoard.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.pibIcpBoard.status 'FAIL'}}status-fail{{/ifEquals}}">{{default electronics.pibIcpBoard.status 'N/A'}}</td>
+                    <td>{{default electronics.pibIcpBoard.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>IMB/S Board</td>
+                    <td class="{{#ifEquals electronics.imbSBoard.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals electronics.imbSBoard.status 'FAIL'}}status-fail{{/ifEquals}}">{{default electronics.imbSBoard.status 'N/A'}}</td>
+                    <td>{{default electronics.imbSBoard.result 'N/A'}}</td>
+                </tr>
+
+                <!-- SERIAL NUMBER VERIFIED -->
+                <tr>
+                    <td rowspan="2" class="section-header">SERIAL NUMBER VERIFIED</td>
+                    <td>Chassis label vs Touch Panel</td>
+                    <td class="{{#ifEquals serialNumberVerified.chassisLabel.status 'OK'}}status-ok{{/ifEquals}}{{#ifEquals serialNumberVerified.chassisLabel.status 'FAIL'}}status-fail{{/ifEquals}}">{{default serialNumberVerified.chassisLabel.status 'N/A'}}</td>
+                    <td>{{default serialNumberVerified.chassisLabel.result 'N/A'}}</td>
+                </tr>
+                <tr>
+                    <td>Disposable Consumables</td>
+                    <td colspan="2">{{default disposableConsumables 'N/A'}}</td>
+                </tr>
+
+                <!-- Add more sections as needed... -->
+            </tbody>
+        </table>
+
+        <!-- ENVIRONMENTAL CONDITIONS -->
+        <h3 style="margin-top: 20px; margin-bottom: 10px;">Air Pollution Level</h3>
+        <table class="info-table">
+            <tr>
+                <td class="label">HCHO:</td>
+                <td>{{default airPollutionLevel.hcho 'N/A'}}</td>
+                <td class="label">TVOC:</td>
+                <td>{{default airPollutionLevel.tvoc 'N/A'}}</td>
+            </tr>
+            <tr>
+                <td class="label">PM1.0:</td>
+                <td>{{default airPollutionLevel.pm10 'N/A'}}</td>
+                <td class="label">PM2.5:</td>
+                <td>{{default airPollutionLevel.pm25 'N/A'}}</td>
+            </tr>
+            <tr>
+                <td class="label">PM10:</td>
+                <td>{{default airPollutionLevel.pm100 'N/A'}}</td>
+                <td class="label">Temperature °C:</td>
+                <td>{{default airPollutionLevel.temperature 'N/A'}}</td>
+            </tr>
+            <tr>
+                <td class="label">Humidity %:</td>
+                <td colspan="3">{{default airPollutionLevel.humidity 'N/A'}}</td>
+            </tr>
+        </table>
+
+        <!-- SIGNATURES -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <h4>Client's Signature & Stamp</h4>
+                {{#if clientSignature}}
+                <img src="{{clientSignature}}" alt="Client Signature" class="signature-img">
+                {{else}}
+                <p style="color: #999;">Not signed</p>
+                {{/if}}
+            </div>
+            <div class="signature-box">
+                <h4>Engineer's Signature</h4>
+                {{#if engineerSignature}}
+                <img src="{{engineerSignature}}" alt="Engineer Signature" class="signature-img">
+                {{else}}
+                <p style="color: #999;">Not signed</p>
+                {{/if}}
+                <p style="margin-top: 10px;"><strong>{{engineer.name}}</strong></p>
+                <p>{{engineer.phone}}</p>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            PM Report Version 6.3.5
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+

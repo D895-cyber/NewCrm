@@ -40,41 +40,31 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
-import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
+import { ASCOMPExactFormatForm } from '../ASCOMPExactFormatForm';
 import { apiClient } from '../../utils/api/client';
-import { exportServiceReportToPDF } from '../../utils/export';
+import { exportASCOMPReportToPDF } from '../../utils/ascomp-pdf-export';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface ServiceReport {
   _id: string;
   reportNumber: string;
-  reportTitle: string;
-  reportType: string;
+  reportType?: string;
   date: string;
-  siteName: string;
-  projectorModel: string;
-  projectorSerial: string;
+  cinemaName: string;
+  address?: string;
+  location?: string;
+  projectorModelSerialAndHours?: string;
   engineer: {
     name: string;
     phone: string;
     email: string;
   };
-  sections: {
-    opticals: Array<{ description: string; status: string; result: string }>;
-    electronics: Array<{ description: string; status: string; result: string }>;
-    mechanical: Array<{ description: string; status: string; result: string }>;
-  };
-  imageEvaluation: {
-    focusBoresight: string;
-    integratorPosition: string;
-    spotOnScreen: string;
-    screenCropping: string;
-    convergenceChecked: string;
-    channelsChecked: string;
-    pixelDefects: string;
-    imageVibration: string;
-    liteLoc: string;
-  };
+  status?: 'Draft' | 'Submitted' | 'Reviewed' | 'Approved';
+  opticals?: any;
+  electronics?: any;
+  mechanical?: any;
+  lampInfo?: any;
+  imageEvaluation?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,8 +108,9 @@ export function FSEASCOMPReportsPage() {
   const loadReports = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getAllServiceReports();
-      setReports(response.data || []);
+      // Use new ASCOMP reports API
+      const response = await apiClient.getAllASCOMPReports();
+      setReports(response || []);
     } catch (error) {
       console.error('Error loading reports:', error);
     } finally {
@@ -129,8 +120,8 @@ export function FSEASCOMPReportsPage() {
 
   const loadStats = async () => {
     try {
-      const response = await apiClient.getServiceReportDashboardStats();
-      setStats(response.data || {});
+      const response = await apiClient.getASCOMPReportStats();
+      setStats(response.data || response || {});
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -138,26 +129,27 @@ export function FSEASCOMPReportsPage() {
 
   const handleCreateReport = async (reportData: any) => {
     try {
-      await apiClient.createServiceReport(reportData);
+      // Use new ASCOMP reports API
+      await apiClient.createASCOMPReport(reportData);
       setShowForm(false);
       loadReports();
       loadStats();
       
       // Show success message
-      if (window.showToast) {
-        window.showToast({
+      if ((window as any).showToast) {
+        (window as any).showToast({
           type: 'success',
           title: 'Report Created',
-          message: `Service report ${reportData.reportNumber} created successfully!`
+          message: `ASCOMP report created successfully!`
         });
       }
     } catch (error) {
       console.error('Error creating report:', error);
-      if (window.showToast) {
-        window.showToast({
+      if ((window as any).showToast) {
+        (window as any).showToast({
           type: 'error',
           title: 'Error',
-          message: 'Failed to create service report. Please try again.'
+          message: 'Failed to create ASCOMP report. Please try again.'
         });
       }
     }
@@ -166,24 +158,25 @@ export function FSEASCOMPReportsPage() {
   const handleDeleteReport = async (reportId: string) => {
     if (window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
       try {
-        await apiClient.deleteServiceReport(reportId);
+        // Use new ASCOMP reports API
+        await apiClient.deleteASCOMPReport(reportId);
         loadReports();
         loadStats();
         
-        if (window.showToast) {
-          window.showToast({
+        if ((window as any).showToast) {
+          (window as any).showToast({
             type: 'success',
             title: 'Report Deleted',
-            message: 'Service report deleted successfully!'
+            message: 'ASCOMP report deleted successfully!'
           });
         }
       } catch (error) {
         console.error('Error deleting report:', error);
-        if (window.showToast) {
-          window.showToast({
+        if ((window as any).showToast) {
+          (window as any).showToast({
             type: 'error',
             title: 'Error',
-            message: 'Failed to delete service report. Please try again.'
+            message: 'Failed to delete ASCOMP report. Please try again.'
           });
         }
       }
@@ -193,12 +186,12 @@ export function FSEASCOMPReportsPage() {
   const filteredReports = reports.filter(report => {
     const matchesSearch = 
       report.reportNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.siteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.projectorSerial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.engineer.name.toLowerCase().includes(searchTerm.toLowerCase());
+      (report.cinemaName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (report.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (report.engineer?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = filterType === 'all' || report.reportType === filterType;
-    const matchesSite = filterSite === 'all' || report.siteName === filterSite;
+    const matchesSite = filterSite === 'all' || report.cinemaName === filterSite;
     
     return matchesSearch && matchesType && matchesSite;
   });
@@ -262,10 +255,9 @@ export function FSEASCOMPReportsPage() {
               {report.reportType}
             </Badge>
           </TableCell>
-          <TableCell>{report.siteName}</TableCell>
-          <TableCell>{report.projectorModel}</TableCell>
-          <TableCell>{report.projectorSerial}</TableCell>
-          <TableCell>{report.engineer.name}</TableCell>
+          <TableCell>{report.cinemaName}</TableCell>
+          <TableCell colSpan={2}>{report.projectorModelSerialAndHours || 'N/A'}</TableCell>
+          <TableCell>{report.engineer?.name || 'N/A'}</TableCell>
           <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
           <TableCell>
             <div className="flex gap-1">
@@ -288,12 +280,13 @@ export function FSEASCOMPReportsPage() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const full = await apiClient.getServiceReport(report._id);
-                    exportServiceReportToPDF(full);
+                    // Use new ASCOMP reports API and PDF export
+                    const full = await apiClient.getASCOMPReport(report._id);
+                    await exportASCOMPReportToPDF(full);
                     (window as any).showToast?.({
                       type: 'success',
                       title: 'Report Downloaded',
-                      message: 'Service report has been downloaded as PDF.'
+                      message: 'ASCOMP report has been downloaded as PDF in exact format.'
                     });
                   } catch (e) {
                     console.error('Export failed', e);
@@ -461,7 +454,7 @@ export function FSEASCOMPReportsPage() {
 
   if (showForm) {
     return (
-      <ASCOMPServiceReportForm
+      <ASCOMPExactFormatForm
         onSubmit={handleCreateReport}
         onClose={() => setShowForm(false)}
       />
@@ -561,7 +554,7 @@ export function FSEASCOMPReportsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sites</SelectItem>
-                  {Array.from(new Set(reports.map(r => r.siteName))).map(site => (
+                  {Array.from(new Set(reports.map(r => r.cinemaName))).map(site => (
                     <SelectItem key={site} value={site}>{site}</SelectItem>
                   ))}
                 </SelectContent>
@@ -664,12 +657,12 @@ export function FSEASCOMPReportsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">{report.siteName}</span>
+                          <span className="text-sm text-gray-600">{report.cinemaName}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Monitor className="h-4 w-4 text-gray-500" />
                           <span className="text-sm text-gray-600">
-                            {report.projectorModel} - {report.projectorSerial}
+                            {report.projectorModelSerialAndHours || 'N/A'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -739,29 +732,31 @@ export function FSEASCOMPReportsPage() {
                         size="sm"
                         onClick={async () => {
                           try {
-                            console.log('🔄 Fetching complete report data for comprehensive PDF generation...');
-                            const full = await apiClient.getServiceReport(report._id);
-                            console.log('📊 Full report data received:', {
-                              hasSections: !!full.sections,
-                              sectionsKeys: full.sections ? Object.keys(full.sections) : 'No sections',
-                              hasImageEvaluation: !!full.imageEvaluation,
-                              hasObservations: !!full.observations,
-                              hasPhotos: !!full.photos,
+                            console.log('🔄 Fetching complete ASCOMP report data for exact format PDF generation...');
+                            // Use new ASCOMP reports API
+                            const full = await apiClient.getASCOMPReport(report._id);
+                            console.log('📊 Full ASCOMP report data received:', {
+                              hasOpticals: !!full.opticals,
+                              hasElectronics: !!full.electronics,
+                              hasMechanical: !!full.mechanical,
+                              hasLampInfo: !!full.lampInfo,
+                              hasSoftwareVersion: !!full.softwareVersion,
                               reportKeys: Object.keys(full)
                             });
                             
-                            await exportServiceReportToPDF(full);
+                            // Use new ASCOMP PDF export with exact format
+                            await exportASCOMPReportToPDF(full);
                             (window as any).showToast?.({
                               type: 'success',
-                              title: 'Comprehensive Report Downloaded',
-                              message: 'Complete ASCOMP service report with all sections has been downloaded as PDF.'
+                              title: 'ASCOMP Report Downloaded',
+                              message: 'Complete ASCOMP report in exact format has been downloaded as PDF.'
                             });
                           } catch (e) {
                             console.error('Export failed', e);
                             (window as any).showToast?.({ 
                               type: 'error', 
                               title: 'Export Failed', 
-                              message: 'Could not download comprehensive report. Please try again.' 
+                              message: 'Could not download report. Please try again.' 
                             });
                           }
                         }}

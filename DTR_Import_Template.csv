@@ -1,0 +1,4 @@
+Error Date,Case # (YYMMxx),SITE,Unit,Model#,Unit Serial#,Nature of Problem/Request,Action Taken,Remarks,Call Status,Case Severity,Created By,Date,Closed By
+45352,616606,TN01-Palazo Audi#1,CP2220,CP2220,479021012,Lamp fail to strike. IMCB version error,Customer detached from site and installed spare projector. Advised troubleshooting to carryout IMCB shuffle and software upgrade,Raised the RMA and sent replacement light engine,Observation,Major,Khushwant,44986,Arunraj
+45353,616685,MH02-Sangam Cinemas Audi#2,CP4230,CP4230,475184008,Green DMD (category [Temps]) is in Critical Alarm state with a value of [N/A],while troubleshooting found the green dmd tem sensor connector on green CFB was damaged,Requested customer with photograph,Closed,Major,Pankaj,45354,Arjun
+45354,616912,HR02-Reliance Mall Audi#9,CP2320,CP2320,477076018,Ambient Temperature error open error,DTSM was found to be faulty,Advised to share more information,Waiting_Cust_Responses,Minor,Khushwant,45354,

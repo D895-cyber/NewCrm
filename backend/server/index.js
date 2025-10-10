@@ -21,9 +21,16 @@ const amcContractRoutes = require('./routes/amcContracts');
 const proformaInvoiceRoutes = require('./routes/proformaInvoices');
 const serviceTicketRoutes = require('./routes/serviceTickets');
 const analyticsRoutes = require('./routes/analytics');
+const workflowRoutes = require('./routes/workflow');
 const serviceAssignmentRoutes = require('./routes/serviceAssignments');
 const projectorTrackingRoutes = require('./routes/projectorTracking');
 const reportTemplateRoutes = require('./routes/reportTemplates');
+const importRoutes = require('./routes/import');
+const partCommentsRoutes = require('./routes/partComments');
+const ascompReportRoutes = require('./routes/ascompReports');
+const wordTemplateRoutes = require('./routes/wordTemplates');
+const htmlToPdfRoutes = require('./routes/htmlToPdf');
+const dashboardRoutes = require('./routes/dashboard');
 const { router: authRoutes } = require('./routes/auth');
 const { router: settingsRoutes } = require('./routes/settings');
 const webhookRoutes = require('./routes/webhooks');
@@ -40,6 +47,9 @@ console.log('📂 dist folder exists:', require('fs').existsSync(FRONTEND_DIST_P
 // Load environment variables
 dotenv.config({ path: __dirname + '/.env' });
 dotenv.config({ path: __dirname + '/../.env' });
+
+// Set global Mongoose options
+mongoose.set('bufferCommands', false);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -145,10 +155,12 @@ const connectDB = async () => {
     if (mongoURI) {
       console.log('Trying MongoDB connection with environment variable...');
       await mongoose.connect(mongoURI, {
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 10000,
-        socketTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
+        maxPoolSize: 50, // Increased for bulk operations
+        serverSelectionTimeoutMS: 120000, // Increased to 120 seconds
+        socketTimeoutMS: 120000, // Increased to 120 seconds
+        connectTimeoutMS: 120000, // Increased to 120 seconds
+        maxIdleTimeMS: 30000, // 30 seconds
+        bufferCommands: false, // Disable mongoose buffering
       });
       console.log('MongoDB connected successfully using environment variable');
       return;
@@ -166,10 +178,12 @@ const connectDB = async () => {
       try {
         console.log(`Trying MongoDB connection ${i + 1}/${mongoURIs.length}...`);
         await mongoose.connect(mongoURIs[i], {
-          maxPoolSize: 10,
-          serverSelectionTimeoutMS: 10000,
-          socketTimeoutMS: 10000,
-          connectTimeoutMS: 10000,
+          maxPoolSize: 50, // Increased for bulk operations
+          serverSelectionTimeoutMS: 120000, // Increased to 120 seconds
+          socketTimeoutMS: 120000, // Increased to 120 seconds
+          connectTimeoutMS: 120000, // Increased to 120 seconds
+          maxIdleTimeMS: 30000, // 30 seconds
+          bufferCommands: false, // Disable mongoose buffering
         });
         console.log('MongoDB Atlas connected successfully');
         connected = true;
@@ -223,10 +237,16 @@ const createMockDatabase = async () => {
   console.log('Mock database initialized');
 };
 
-// Connect to MongoDB
+// Connect to MongoDB and start server
 connectDB().then(() => {
+  console.log('✅ MongoDB connected, starting server...');
   // Start scheduler service after database connection
   schedulerService.start();
+  // Start server only after MongoDB is ready
+  startServerWithFallback();
+}).catch((error) => {
+  console.error('❌ Failed to connect to MongoDB:', error);
+  process.exit(1);
 });
 
 // Health check endpoint
@@ -259,8 +279,15 @@ app.use('/api/proforma-invoices', proformaInvoiceRoutes);
 app.use('/api/service-tickets', serviceTicketRoutes);
 app.use('/api/amc-contracts', amcContractRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/workflow', workflowRoutes);
 app.use('/api/service-assignments', serviceAssignmentRoutes);
 app.use('/api/projector-tracking', projectorTrackingRoutes);
+app.use('/api/import', importRoutes);
+app.use('/api/part-comments', partCommentsRoutes);
+app.use('/api/ascomp-reports', ascompReportRoutes);
+app.use('/api/word-templates', wordTemplateRoutes);
+app.use('/api/html-to-pdf', htmlToPdfRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // Serve uploaded files
@@ -324,7 +351,18 @@ app.post('/api/clear-all-data', async (req, res) => {
   }
 });
 
-// Serve frontend for all non-API routes (SPA fallback)
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error);
+  res.status(500).json({ error: 'Internal server error', details: error.message });
+});
+
+// 404 handler for API routes only
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
+});
+
+// Serve frontend for all non-API routes (SPA fallback) - MUST be last
 app.get('*', (req, res, next) => {
   console.log(`🔄 Request for: ${req.path}`);
   
@@ -346,17 +384,6 @@ app.get('*', (req, res, next) => {
       console.log('✅ Successfully served index.html for:', req.path);
     }
   });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server error:', error);
-  res.status(500).json({ error: 'Internal server error', details: error.message });
-});
-
-// 404 handler for API routes only
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'API route not found' });
 });
 
 // Start server with port conflict handling
@@ -409,7 +436,5 @@ const startServerWithFallback = async () => {
   console.error('Could not find an available port. Please check your system.');
   process.exit(1);
 };
-
-startServerWithFallback();
 
 module.exports = app;

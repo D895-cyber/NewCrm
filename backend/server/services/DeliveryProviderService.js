@@ -1,5 +1,6 @@
 const DeliveryProvider = require('../models/DeliveryProvider');
 const RMA = require('../models/RMA');
+const mongoose = require('mongoose');
 
 class DeliveryProviderService {
   constructor() {
@@ -9,9 +10,17 @@ class DeliveryProviderService {
 
   async initializeProviders() {
     try {
+      // Check if mongoose is connected
+      if (mongoose.connection.readyState !== 1) {
+        console.log('⚠️ MongoDB not connected, skipping provider initialization');
+        return;
+      }
+      
       const providers = await DeliveryProvider.getActiveProviders();
+      console.log(`🔧 Initializing ${providers.length} delivery providers:`, providers.map(p => p.code));
       providers.forEach(provider => {
         this.providers.set(provider.code, provider);
+        console.log(`   ✅ Loaded provider: ${provider.name} (${provider.code})`);
       });
     } catch (error) {
       console.error('Error initializing delivery providers:', error);
@@ -20,10 +29,16 @@ class DeliveryProviderService {
 
   async trackShipment(trackingNumber, providerCode) {
     try {
+      // Always reload providers to get latest configuration
+      await this.initializeProviders();
+      
       const provider = this.providers.get(providerCode.toUpperCase());
       if (!provider) {
+        console.log(`❌ Provider ${providerCode} not found. Available providers:`, Array.from(this.providers.keys()));
         throw new Error(`Provider ${providerCode} not found or not active`);
       }
+      
+      console.log(`✅ Found provider: ${provider.name} (${provider.code}) with API key: ${provider.apiKey ? 'Present' : 'Missing'}`);
 
       // Validate tracking number format
       if (!provider.validateTrackingNumber(trackingNumber)) {
@@ -112,24 +127,32 @@ class DeliveryProviderService {
 
   async trackDTDC(trackingNumber, provider) {
     try {
-      // DTDC API integration
-      const response = await fetch(`${provider.apiEndpoint}/track/${trackingNumber}`, {
+      console.log(`🔍 Calling TrackingMore API for DTDC tracking number: ${trackingNumber}`);
+      
+      // Use TrackingMore API for DTDC tracking
+      const response = await fetch(`https://api.trackingmore.com/v3/trackings/dtdc/${trackingNumber}`, {
         method: 'GET',
         headers: {
-          'X-API-Key': provider.apiKey,
+          'Tracking-Api-Key': provider.apiKey,
           'Content-Type': 'application/json'
         }
       });
 
+      console.log(`🔍 TrackingMore API Response Status: ${response.status}`);
+
       if (!response.ok) {
-        throw new Error(`DTDC API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.log(`🔍 TrackingMore API Error Response: ${errorText}`);
+        throw new Error(`TrackingMore API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(`🔍 TrackingMore API Response Data:`, data);
       
-      return this.parseDTDCResponse(data);
+      return this.parseTrackingMoreResponse(data, trackingNumber);
     } catch (error) {
-      console.error('DTDC tracking error:', error);
+      console.error('TrackingMore API error:', error);
+      console.log(`⚠️ Falling back to mock data for ${trackingNumber}`);
       return this.getMockTrackingData('DTDC', trackingNumber);
     }
   }
@@ -299,14 +322,103 @@ class DeliveryProviderService {
     };
   }
 
-  parseDTDCResponse(data) {
-    // Parse DTDC specific response format
+  parseTrackingMoreResponse(data, trackingNumber) {
+    console.log('🔍 Parsing TrackingMore API response:', data);
+    
+    // Find the specific tracking data for our tracking number
+    const trackingData = data.data.find(item => item.tracking_number === trackingNumber);
+    
+    if (!trackingData) {
+      console.log('❌ Tracking data not found for:', trackingNumber);
+      return {
+        status: 'not_found',
+        timeline: [],
+        estimatedDelivery: null,
+        actualDelivery: null,
+        location: 'Unknown'
+      };
+    }
+    
+    console.log('✅ Found tracking data:', trackingData);
+    
+    // Parse timeline from trackinfo
+    const timeline = (trackingData.origin_info?.trackinfo || []).map(event => ({
+      timestamp: new Date(event.checkpoint_date),
+      status: event.checkpoint_delivery_status,
+      location: event.location || 'Unknown',
+      description: event.tracking_detail
+    }));
+    
+    // Determine current status
+    let status = trackingData.delivery_status;
+    if (status === 'delivered') {
+      status = 'delivered';
+    } else if (status === 'transit') {
+      status = 'in_transit';
+    } else {
+      status = 'in_transit';
+    }
+    
+    // Get current location from latest event
+    const currentLocation = timeline.length > 0 ? timeline[timeline.length - 1].location : 'Unknown';
+    
+    // Calculate estimated delivery (if not delivered)
+    let estimatedDelivery = null;
+    if (status !== 'delivered' && trackingData.scheduled_delivery_date) {
+      estimatedDelivery = new Date(trackingData.scheduled_delivery_date);
+    }
+    
+    // Get actual delivery date
+    let actualDelivery = null;
+    if (status === 'delivered' && trackingData.lastest_checkpoint_time) {
+      actualDelivery = new Date(trackingData.lastest_checkpoint_time);
+    }
+
     return {
-      status: data.status || 'in_transit',
-      timeline: data.timeline || [],
+      status: status,
+      timeline: timeline,
+      estimatedDelivery: estimatedDelivery,
+      actualDelivery: actualDelivery,
+      location: currentLocation,
+      referenceNumber: trackingData.origin_info?.reference_number,
+      courierPhone: trackingData.origin_info?.courier_phone,
+      transitTime: trackingData.transit_time
+    };
+  }
+
+  parseDTDCResponse(data) {
+    console.log('🔍 Parsing DTDC API response:', data);
+    
+    // Parse DTDC specific response format
+    // DTDC API typically returns data in this format:
+    // {
+    //   "trackingNumber": "D30048484",
+    //   "status": "in_transit",
+    //   "events": [
+    //     {
+    //       "timestamp": "2025-10-02T10:00:00Z",
+    //       "status": "picked_up",
+    //       "location": "Mumbai Hub",
+    //       "description": "Package picked up"
+    //     }
+    //   ],
+    //   "estimatedDelivery": "2025-10-05T18:00:00Z",
+    //   "currentLocation": "Mumbai Hub"
+    // }
+    
+    const timeline = (data.events || data.timeline || []).map(event => ({
+      timestamp: new Date(event.timestamp || event.time || Date.now()),
+      status: event.status || event.eventType || 'unknown',
+      location: event.location || event.city || 'Unknown',
+      description: event.description || event.remarks || 'Status update'
+    }));
+
+    return {
+      status: data.status || data.currentStatus || 'in_transit',
+      timeline: timeline,
       estimatedDelivery: data.estimatedDelivery ? new Date(data.estimatedDelivery) : null,
       actualDelivery: data.actualDelivery ? new Date(data.actualDelivery) : null,
-      location: data.location || 'Unknown'
+      location: data.currentLocation || data.location || timeline[timeline.length - 1]?.location || 'Unknown'
     };
   }
 

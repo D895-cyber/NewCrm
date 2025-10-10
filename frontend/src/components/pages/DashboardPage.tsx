@@ -68,7 +68,7 @@ export function DashboardPage() {
       const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const monthName = date.toLocaleDateString('en-US', { month: 'short' });
       
-      const monthVisits = serviceVisits.filter((visit: any) => {
+      const monthVisits = (serviceVisits || []).filter((visit: any) => {
         const visitDate = new Date(visit.scheduledDate);
         return visitDate.getMonth() === date.getMonth() && 
                visitDate.getFullYear() === date.getFullYear();
@@ -147,7 +147,7 @@ export function DashboardPage() {
     const warrantyStatus = generateWarrantyStatus(projectors);
 
     // Get recent POs and services (only current/future dates)
-    const recentPOs = purchaseOrders
+    const recentPOs = (purchaseOrders || [])
       .filter((po: any) => {
         const poDate = new Date(po.createdAt);
         return poDate >= now;
@@ -165,7 +165,7 @@ export function DashboardPage() {
     // Use serviceVisits instead of services for recent services
     console.log('Computing recent services from', serviceVisits.length, 'service visits');
     
-    const recentServices = serviceVisits
+    const recentServices = (serviceVisits || [])
       .filter((visit: any) => {
         // Show all visits, but prioritize recent ones
         if (!visit.scheduledDate && !visit.actualDate) {
@@ -428,7 +428,7 @@ export function DashboardPage() {
                 <div className="flex items-center space-x-1">
                   <TrendingUp className={`w-4 h-4 text-dark-positive`} />
                   <span className={`text-sm font-bold text-dark-positive`}>
-                    ${(amcStats.revenue.totalValue / 1000).toFixed(1)}k
+                    ${((amcStats.revenue?.totalValue || 0) / 1000).toFixed(1)}k
                   </span>
                 </div>
               </div>

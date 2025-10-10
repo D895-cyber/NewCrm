@@ -122,8 +122,8 @@ const DTRSchema = new mongoose.Schema({
     default: 'Medium'
   },
   assignedTo: {
-    type: String,
-    trim: true
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   },
   estimatedResolutionTime: {
     type: String,
@@ -196,7 +196,87 @@ const DTRSchema = new mongoose.Schema({
     type: Number,
     min: 1,
     max: 5
-  }
+  },
+  
+  // Troubleshooting workflow
+  troubleshootingSteps: [{
+    step: {
+      type: Number
+    },
+    description: {
+      type: String,
+      trim: true
+    },
+    outcome: {
+      type: String,
+      trim: true
+    },
+    performedBy: {
+      type: String,
+      trim: true
+    },
+    performedAt: {
+      type: Date,
+      default: Date.now
+    },
+    attachments: [{
+      type: String
+    }]
+  }],
+  
+  // Conversion tracking
+  conversionToRMA: {
+    canConvert: {
+      type: Boolean,
+      default: false
+    },
+    conversionReason: {
+      type: String,
+      trim: true
+    },
+    convertedBy: {
+      type: String,
+      trim: true
+    },
+    convertedDate: {
+      type: Date
+    },
+    rmaManagerAssigned: {
+      userId: {
+        type: String,
+        ref: 'User'
+      },
+      name: {
+        type: String
+      },
+      email: {
+        type: String
+      }
+    }
+  },
+  
+  // DTR workflow history
+  workflowHistory: [{
+    action: {
+      type: String,
+      enum: ['created', 'assigned', 'status_changed', 'troubleshooting_added', 'escalated', 'converted_to_rma', 'closed'],
+      required: true
+    },
+    performedBy: {
+      name: String,
+      role: String
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    details: {
+      type: String,
+      trim: true
+    },
+    previousValue: String,
+    newValue: String
+  }]
 }, {
   timestamps: true
 });
@@ -230,6 +310,18 @@ DTRSchema.pre('save', async function(next) {
     });
     
     this.caseId = `DTR-${year}-${month}-${day}-${String(count + 1).padStart(3, '0')}`;
+  }
+  next();
+});
+
+// Handle assignedTo field - convert string to object if needed
+DTRSchema.pre('save', function(next) {
+  if (this.assignedTo && typeof this.assignedTo === 'string') {
+    this.assignedTo = {
+      name: this.assignedTo,
+      role: 'technician',
+      assignedDate: new Date()
+    };
   }
   next();
 });

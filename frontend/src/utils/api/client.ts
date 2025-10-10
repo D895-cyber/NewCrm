@@ -641,6 +641,42 @@ class ApiClient {
     return this.post(`/service-reports/${encodeURIComponent(id)}/generate-doc`, options);
   }
 
+  // ASCOMP Report methods (EW Preventive Maintenance Report)
+  async getAllASCOMPReports(filters?: { status?: string; cinemaName?: string; startDate?: string; endDate?: string }) {
+    const queryParams = new URLSearchParams();
+    if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.cinemaName) queryParams.append('cinemaName', filters.cinemaName);
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+    
+    const queryString = queryParams.toString();
+    return this.get(`/ascomp-reports${queryString ? '?' + queryString : ''}`);
+  }
+
+  async getASCOMPReport(id: string) {
+    return this.get(`/ascomp-reports/${encodeURIComponent(id)}`);
+  }
+
+  async createASCOMPReport(reportData: any) {
+    return this.post('/ascomp-reports', reportData);
+  }
+
+  async updateASCOMPReport(id: string, updates: any) {
+    return this.put(`/ascomp-reports/${encodeURIComponent(id)}`, updates);
+  }
+
+  async deleteASCOMPReport(id: string) {
+    return this.delete(`/ascomp-reports/${encodeURIComponent(id)}`);
+  }
+
+  async approveASCOMPReport(id: string) {
+    return this.post(`/ascomp-reports/${encodeURIComponent(id)}/approve`, {});
+  }
+
+  async getASCOMPReportStats() {
+    return this.get('/ascomp-reports/stats/dashboard');
+  }
+
   // AMC Contract methods
   async createAMCContract(contractData: any) {
     return this.post('/amc-contracts', contractData);

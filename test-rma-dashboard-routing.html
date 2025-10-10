@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Dashboard Routing Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>RMA Dashboard Routing Test</h1>
+    
+    <div class="test-section">
+        <h2>Navigation Tests</h2>
+        <p>Test the RMA Dashboard routing functionality:</p>
+        
+        <button class="test-button" onclick="testMainDashboard()">Go to Main Dashboard</button>
+        <button class="test-button" onclick="testRMADashboard()">Go to RMA Dashboard</button>
+        <button class="test-button" onclick="testHashChange()">Test Hash Change Event</button>
+        <button class="test-button" onclick="testRefresh()">Test Page Refresh</button>
+        
+        <div id="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Current Status</h2>
+        <div id="current-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Make sure both frontend and backend servers are running</li>
+            <li>Click "Go to RMA Dashboard" to test the routing</li>
+            <li>Verify that the RMA Dashboard loads properly</li>
+            <li>Test the back button functionality</li>
+            <li>Test page refresh while on RMA Dashboard</li>
+        </ol>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function updateCurrentStatus() {
+            const currentDiv = document.getElementById('current-status');
+            currentDiv.innerHTML = `
+                <p><strong>Current URL:</strong> ${window.location.href}</p>
+                <p><strong>Current Hash:</strong> ${window.location.hash || 'none'}</p>
+                <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+            `;
+        }
+        
+        function testMainDashboard() {
+            window.location.hash = '';
+            updateStatus('Navigated to main dashboard', 'success');
+            updateCurrentStatus();
+        }
+        
+        function testRMADashboard() {
+            window.location.hash = '#rma-dashboard';
+            updateStatus('Navigated to RMA Dashboard', 'success');
+            updateCurrentStatus();
+        }
+        
+        function testHashChange() {
+            window.dispatchEvent(new HashChangeEvent('hashchange'));
+            updateStatus('Dispatched hash change event', 'info');
+            updateCurrentStatus();
+        }
+        
+        function testRefresh() {
+            updateStatus('Refreshing page...', 'info');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+        
+        // Listen for hash changes
+        window.addEventListener('hashchange', function() {
+            updateCurrentStatus();
+            updateStatus('Hash changed to: ' + window.location.hash, 'info');
+        });
+        
+        // Initial status update
+        updateCurrentStatus();
+        
+        // Update status every 5 seconds
+        setInterval(updateCurrentStatus, 5000);
+    </script>
+</body>
+</html>

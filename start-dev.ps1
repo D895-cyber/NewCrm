@@ -20,3 +20,16 @@ Write-Host "🔗 Backend: http://localhost:4000" -ForegroundColor Cyan
 Write-Host "🎨 Frontend: http://localhost:5173 (or check frontend terminal)" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "💡 Tip: Check both terminal windows for startup status" -ForegroundColor Magenta
+
+
+
+
+
+
+
+
+
+
+
+
+
