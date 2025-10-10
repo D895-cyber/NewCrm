@@ -42,6 +42,7 @@ import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { apiClient } from "../../utils/api/client";
 import { useAuth } from "../../contexts/AuthContext";
+import DTRBulkImport from "../DTRBulkImport";
 
 interface DTR {
   _id: string;
@@ -75,7 +76,7 @@ interface DTR {
   closedReason?: string;
   rmaCaseNumber?: string;
   priority: string;
-  assignedTo?: string;
+  assignedTo?: string | { name: string; role?: string; assignedDate?: Date };
   estimatedResolutionTime?: string;
   actualResolutionTime?: string;
   notes?: string;
@@ -175,6 +176,7 @@ export function DTRPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   useEffect(() => {
     console.log('DTR Page useEffect triggered with:', {
@@ -541,14 +543,24 @@ export function DTRPage() {
           <h1 className="text-3xl font-bold text-gray-900">Daily Trouble Reports</h1>
           <p className="text-gray-600">Manage and track daily trouble reports from sites</p>
         </div>
-        <Button 
-          onClick={() => setShowCreateDialog(true)} 
-          className="bg-blue-600 hover:bg-blue-700"
-          disabled={!isAuthenticated}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New DTR
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setShowBulkImport(true)} 
+            className="bg-green-600 hover:bg-green-700"
+            disabled={!isAuthenticated}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Bulk Import
+          </Button>
+          <Button 
+            onClick={() => setShowCreateDialog(true)} 
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={!isAuthenticated}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New DTR
+          </Button>
+        </div>
       </div>
 
       {/* Authentication Check */}
@@ -903,7 +915,11 @@ export function DTRPage() {
                         {dtr.assignedTo && (
                           <div>
                             <span className="text-sm text-gray-500">Assigned To:</span>
-                            <div className="font-medium">{dtr.assignedTo}</div>
+                            <div className="font-medium">
+                              {typeof dtr.assignedTo === 'string' ? dtr.assignedTo : 
+                               typeof dtr.assignedTo === 'object' && dtr.assignedTo?.name ? dtr.assignedTo.name : 
+                               'N/A'}
+                            </div>
                           </div>
                         )}
                         {dtr.rmaCaseNumber && (
@@ -1693,7 +1709,11 @@ export function DTRPage() {
                   {selectedDTR.assignedTo && (
                     <div className="mt-4 pt-4 border-t">
                       <span className="text-sm text-gray-500">Assigned To:</span>
-                      <div className="font-medium">{selectedDTR.assignedTo}</div>
+                      <div className="font-medium">
+                        {typeof selectedDTR.assignedTo === 'string' ? selectedDTR.assignedTo : 
+                         typeof selectedDTR.assignedTo === 'object' && selectedDTR.assignedTo?.name ? selectedDTR.assignedTo.name : 
+                         'N/A'}
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -1764,6 +1784,19 @@ export function DTRPage() {
               Close
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader className="border-b border-gray-200 pb-4">
+            <DialogTitle className="text-2xl font-bold text-gray-900">Bulk Import DTRs</DialogTitle>
+            <DialogDescription className="text-gray-600 mt-2">
+              Import multiple DTRs from an Excel file using the exact template format
+            </DialogDescription>
+          </DialogHeader>
+          <DTRBulkImport />
         </DialogContent>
       </Dialog>
     </div>

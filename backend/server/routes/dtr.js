@@ -4,6 +4,7 @@ const DTR = require('../models/DTR');
 const Projector = require('../models/Projector');
 const Site = require('../models/Site');
 const RMA = require('../models/RMA');
+const User = require('../models/User');
 const { authenticateToken: auth } = require('../middleware/auth');
 
 // Get all DTRs with pagination and filters
@@ -64,6 +65,13 @@ router.get('/:id', auth, async (req, res) => {
 // Create new DTR
 router.post('/', auth, async (req, res) => {
   try {
+    // Check if user has permission to create DTR (only admin and rma_manager)
+    if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      return res.status(403).json({ 
+        message: 'Insufficient permissions. Only RMA Managers can create DTRs.' 
+      });
+    }
+
     const {
       serialNumber,
       complaintDescription,
@@ -104,7 +112,11 @@ router.post('/', auth, async (req, res) => {
       complaintDescription,
       openedBy,
       priority,
-      assignedTo,
+      assignedTo: assignedTo ? (typeof assignedTo === 'string' ? {
+        name: assignedTo,
+        role: 'technician',
+        assignedDate: new Date()
+      } : assignedTo) : null,
       estimatedResolutionTime,
       notes,
       // New fields
@@ -163,7 +175,13 @@ router.put('/:id', auth, async (req, res) => {
     }
     
     if (closedBy !== undefined) updateData.closedBy = closedBy;
-    if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
+    if (assignedTo !== undefined) {
+      updateData.assignedTo = typeof assignedTo === 'string' ? {
+        name: assignedTo,
+        role: 'technician',
+        assignedDate: new Date()
+      } : assignedTo;
+    }
     if (priority !== undefined) updateData.priority = priority;
     if (estimatedResolutionTime !== undefined) updateData.estimatedResolutionTime = estimatedResolutionTime;
     if (actualResolutionTime !== undefined) updateData.actualResolutionTime = actualResolutionTime;
@@ -424,6 +442,566 @@ router.get('/site/:siteName', auth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching DTRs by site', error: error.message });
+  }
+});
+
+// Add troubleshooting step to DTR
+router.post('/:id/troubleshooting', auth, async (req, res) => {
+  try {
+    const { description, outcome, attachments } = req.body;
+    
+    if (!description || !outcome) {
+      return res.status(400).json({ message: 'Description and outcome are required' });
+    }
+    
+    const dtr = await DTR.findById(req.params.id);
+    if (!dtr) {
+      return res.status(404).json({ message: 'DTR not found' });
+    }
+    
+    // Check if user has permission (technician, engineer, or admin)
+    // Technicians can only add troubleshooting to their assigned DTRs
+    if (req.user.role === 'technician' || req.user.role === 'engineer') {
+      if (dtr.assignedTo?.userId !== req.user.userId && dtr.assignedTo?.userId !== req.user._id) {
+        return res.status(403).json({ 
+          message: 'You can only add troubleshooting steps to DTRs assigned to you' 
+        });
+      }
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Insufficient permissions to add troubleshooting steps' });
+    }
+    
+    const step = {
+      step: (dtr.troubleshootingSteps?.length || 0) + 1,
+      description,
+      outcome,
+      performedBy: req.user.username || req.user.email,
+      performedAt: new Date(),
+      attachments: attachments || []
+    };
+    
+    if (!dtr.troubleshootingSteps) {
+      dtr.troubleshootingSteps = [];
+    }
+    dtr.troubleshootingSteps.push(step);
+    
+    // Add to workflow history
+    if (!dtr.workflowHistory) {
+      dtr.workflowHistory = [];
+    }
+    dtr.workflowHistory.push({
+      action: 'troubleshooting_added',
+      performedBy: {
+        name: req.user.username || req.user.email,
+        role: req.user.role
+      },
+      timestamp: new Date(),
+      details: `Added troubleshooting step ${step.step}`
+    });
+    
+    await dtr.save();
+    
+    res.json(dtr);
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding troubleshooting step', error: error.message });
+  }
+});
+
+// Mark DTR as ready for RMA conversion
+router.post('/:id/mark-for-conversion', auth, async (req, res) => {
+  try {
+    const { conversionReason } = req.body;
+    
+    if (!conversionReason) {
+      return res.status(400).json({ message: 'Conversion reason is required' });
+    }
+    
+    const dtr = await DTR.findById(req.params.id);
+    if (!dtr) {
+      return res.status(404).json({ message: 'DTR not found' });
+    }
+    
+    // Check if user has permission (technician/engineer can only mark their assigned DTRs)
+    if (req.user.role === 'technician' || req.user.role === 'engineer') {
+      if (dtr.assignedTo?.userId !== req.user.userId && dtr.assignedTo?.userId !== req.user._id) {
+        return res.status(403).json({ 
+          message: 'You can only mark DTRs assigned to you for conversion' 
+        });
+      }
+    } else if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      return res.status(403).json({ message: 'Insufficient permissions to mark for conversion' });
+    }
+    
+    // Update conversion tracking
+    dtr.conversionToRMA = {
+      canConvert: true,
+      conversionReason,
+      convertedBy: req.user.username || req.user.email,
+      convertedDate: null // Will be set when actually converted
+    };
+    
+    // Add to workflow history
+    if (!dtr.workflowHistory) {
+      dtr.workflowHistory = [];
+    }
+    dtr.workflowHistory.push({
+      action: 'escalated',
+      performedBy: {
+        name: req.user.username || req.user.email,
+        role: req.user.role
+      },
+      timestamp: new Date(),
+      details: `Marked for RMA conversion: ${conversionReason}`
+    });
+    
+    await dtr.save();
+    
+    res.json(dtr);
+  } catch (error) {
+    res.status(500).json({ message: 'Error marking DTR for conversion', error: error.message });
+  }
+});
+
+// Convert DTR to RMA (Enhanced version)
+router.post('/:id/convert-to-rma', auth, async (req, res) => {
+  try {
+    const { rmaManagerId, rmaManagerName, rmaManagerEmail, additionalNotes } = req.body;
+    
+    const dtr = await DTR.findById(req.params.id);
+    if (!dtr) {
+      return res.status(404).json({ message: 'DTR not found' });
+    }
+    
+    // Check if already converted
+    if (dtr.status === 'Shifted to RMA' && dtr.rmaCaseNumber) {
+      return res.status(400).json({ message: 'DTR already converted to RMA', rmaNumber: dtr.rmaCaseNumber });
+    }
+    
+    // Check if user has permission (technician/engineer can only convert their assigned DTRs)
+    if (req.user.role === 'technician' || req.user.role === 'engineer') {
+      if (dtr.assignedTo?.userId !== req.user.userId && dtr.assignedTo?.userId !== req.user._id) {
+        return res.status(403).json({ 
+          message: 'You can only convert DTRs assigned to you to RMA' 
+        });
+      }
+    } else if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      return res.status(403).json({ message: 'Insufficient permissions to convert DTR to RMA' });
+    }
+    
+    // Get projector details for RMA
+    const projector = await Projector.findOne({ serialNumber: dtr.serialNumber });
+    
+    // Compile troubleshooting history for RMA notes
+    let troubleshootingHistory = '';
+    if (dtr.troubleshootingSteps && dtr.troubleshootingSteps.length > 0) {
+      troubleshootingHistory = '\n\nTroubleshooting History:\n';
+      dtr.troubleshootingSteps.forEach(step => {
+        troubleshootingHistory += `\nStep ${step.step}: ${step.description}\nOutcome: ${step.outcome}\nPerformed by: ${step.performedBy} on ${new Date(step.performedAt).toLocaleDateString()}\n`;
+      });
+    }
+    
+    // Create RMA
+    const rma = new RMA({
+      // Core RMA Information
+      callLogNumber: `DTR-${dtr.caseId}`,
+      rmaOrderNumber: `ORDER-${dtr.caseId}`,
+      
+      // Date Fields
+      ascompRaisedDate: new Date(),
+      customerErrorDate: dtr.errorDate || dtr.complaintDate || new Date(),
+      
+      // Site and Product Information
+      siteName: dtr.siteName,
+      productName: dtr.unitModel || dtr.projectorDetails?.model || 'Unknown',
+      productPartNumber: projector?.partNumber || 'N/A',
+      serialNumber: dtr.serialNumber,
+      
+      // Defective Part Details
+      defectivePartNumber: projector?.partNumber || 'N/A',
+      defectivePartName: dtr.problemName || 'Projector Component',
+      defectiveSerialNumber: dtr.serialNumber,
+      symptoms: dtr.complaintDescription,
+      
+      // Legacy fields for backward compatibility
+      projectorSerial: dtr.serialNumber,
+      brand: projector?.brand || dtr.projectorDetails?.brand || 'Unknown',
+      projectorModel: dtr.unitModel || dtr.projectorDetails?.model || 'Unknown',
+      customerSite: dtr.siteName,
+      
+      // DTR Integration
+      originatedFromDTR: {
+        dtrId: dtr._id,
+        dtrCaseId: dtr.caseId,
+        conversionDate: new Date(),
+        conversionReason: dtr.conversionToRMA?.conversionReason || 'Issue unresolved after troubleshooting',
+        technician: {
+          name: req.user.username || req.user.email,
+          userId: req.user.userId || req.user._id
+        }
+      },
+      
+      // RMA Manager Assignment
+      rmaManager: rmaManagerId ? {
+        userId: rmaManagerId,
+        name: rmaManagerName,
+        email: rmaManagerEmail,
+        assignedDate: new Date()
+      } : undefined,
+      
+      // Status and Workflow
+      caseStatus: 'Under Review',
+      approvalStatus: 'Pending Review',
+      
+      // Additional Information
+      createdBy: req.user.username || req.user.email,
+      
+      priority: dtr.priority === 'Critical' ? 'High' : dtr.priority,
+      warrantyStatus: projector?.warrantyEnd && new Date(projector.warrantyEnd) > new Date() ? 'In Warranty' : 'Out of Warranty',
+      estimatedCost: 0,
+      notes: `Auto-generated from DTR: ${dtr.caseId}\n\nOriginal Complaint: ${dtr.complaintDescription}\n\nAction Taken: ${dtr.actionTaken || 'N/A'}\n\nRemarks: ${dtr.remarks || 'N/A'}${troubleshootingHistory}\n\n${additionalNotes || ''}`
+    });
+    
+    const savedRMA = await rma.save();
+    
+    // Update DTR
+    dtr.status = 'Shifted to RMA';
+    dtr.closedReason = 'Shifted to RMA';
+    dtr.rmaCaseNumber = savedRMA.rmaNumber;
+    
+    if (dtr.conversionToRMA) {
+      dtr.conversionToRMA.convertedDate = new Date();
+      if (rmaManagerId) {
+        dtr.conversionToRMA.rmaManagerAssigned = {
+          userId: rmaManagerId,
+          name: rmaManagerName,
+          email: rmaManagerEmail
+        };
+      }
+    }
+    
+    // Add to workflow history
+    if (!dtr.workflowHistory) {
+      dtr.workflowHistory = [];
+    }
+    dtr.workflowHistory.push({
+      action: 'converted_to_rma',
+      performedBy: {
+        name: req.user.username || req.user.email,
+        role: req.user.role
+      },
+      timestamp: new Date(),
+      details: `Converted to RMA ${savedRMA.rmaNumber}`,
+      newValue: savedRMA.rmaNumber
+    });
+    
+    await dtr.save();
+    
+    res.status(201).json({
+      message: 'DTR successfully converted to RMA',
+      dtr,
+      rma: savedRMA
+    });
+  } catch (error) {
+    console.error('Error converting DTR to RMA:', error);
+    res.status(500).json({ message: 'Error converting DTR to RMA', error: error.message });
+  }
+});
+
+// Assign technician to DTR
+router.post('/:id/assign-technician', auth, async (req, res) => {
+  try {
+    const { technicianId, technicianName, technicianEmail, role } = req.body;
+    
+    if (!technicianId || !technicianName) {
+      return res.status(400).json({ message: 'Technician ID and name are required' });
+    }
+    
+    const dtr = await DTR.findById(req.params.id);
+    if (!dtr) {
+      return res.status(404).json({ message: 'DTR not found' });
+    }
+    
+    // Check if user has permission
+    if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      return res.status(403).json({ message: 'Insufficient permissions to assign technician' });
+    }
+    
+    const previousAssignee = dtr.assignedTo?.name || 'Unassigned';
+    
+    dtr.assignedTo = {
+      userId: technicianId,
+      name: technicianName,
+      email: technicianEmail,
+      role: role || 'technician',
+      assignedDate: new Date()
+    };
+    
+    // Update status if it's Open
+    if (dtr.status === 'Open') {
+      dtr.status = 'In Progress';
+    }
+    
+    // Add to workflow history
+    if (!dtr.workflowHistory) {
+      dtr.workflowHistory = [];
+    }
+    dtr.workflowHistory.push({
+      action: 'assigned',
+      performedBy: {
+        name: req.user.username || req.user.email,
+        role: req.user.role
+      },
+      timestamp: new Date(),
+      details: `Assigned to ${technicianName}`,
+      previousValue: previousAssignee,
+      newValue: technicianName
+    });
+    
+    await dtr.save();
+    
+    res.json(dtr);
+  } catch (error) {
+    res.status(500).json({ message: 'Error assigning technician', error: error.message });
+  }
+});
+
+// Bulk import DTRs
+router.post('/bulk-import', auth, async (req, res) => {
+  const startTime = Date.now();
+  console.log(`🚀 Bulk import started at ${new Date().toISOString()}`);
+  
+  // Set a timeout to prevent hanging
+  const timeout = setTimeout(() => {
+    console.log('⏰ Bulk import timeout after 5 minutes');
+    if (!res.headersSent) {
+      res.status(408).json({ 
+        message: 'Import timeout - process took too long',
+        error: 'Request timeout after 5 minutes'
+      });
+    }
+  }, 5 * 60 * 1000); // 5 minutes timeout
+  
+  try {
+    // Check if user has permission
+    if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      console.log('❌ Insufficient permissions for bulk import');
+      return res.status(403).json({ message: 'Insufficient permissions for bulk import' });
+    }
+
+    const { dtrs } = req.body;
+    
+    if (!dtrs || !Array.isArray(dtrs)) {
+      console.log('❌ DTRs array is required');
+      return res.status(400).json({ message: 'DTRs array is required' });
+    }
+
+    if (dtrs.length === 0) {
+      console.log('❌ At least one DTR is required');
+      return res.status(400).json({ message: 'At least one DTR is required' });
+    }
+
+    if (dtrs.length > 1000) {
+      console.log('❌ Maximum 1000 DTRs can be imported at once');
+      return res.status(400).json({ message: 'Maximum 1000 DTRs can be imported at once' });
+    }
+
+    console.log(`📊 Processing ${dtrs.length} DTRs for import`);
+
+    const results = {
+      imported: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Process DTRs in batches to avoid overwhelming the database
+    const batchSize = 50;
+    console.log(`Processing in batches of ${batchSize}`);
+    
+    for (let i = 0; i < dtrs.length; i += batchSize) {
+      const batch = dtrs.slice(i, i + batchSize);
+      console.log(`📦 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(dtrs.length/batchSize)} (${batch.length} items)`);
+      
+      for (let j = 0; j < batch.length; j++) {
+        const dtrData = batch[j];
+        const rowIndex = i + j + 1;
+        console.log(`🔄 Processing row ${rowIndex}/${dtrs.length}: ${dtrData.serialNumber || 'No serial'}`);
+        
+        try {
+          // Handle missing serial number with placeholder
+          if (!dtrData.serialNumber || dtrData.serialNumber.toString().trim() === '') {
+            dtrData.serialNumber = `IMPORT-${Date.now()}-${i + 1}`; // Generate placeholder serial number
+          }
+
+          if (!dtrData.complaintDescription) {
+            results.errors.push(`Row ${i + 1}: Complaint description is required`);
+            results.failed++;
+            continue;
+          }
+
+          if (!dtrData.siteName) {
+            results.errors.push(`Row ${i + 1}: Site name is required`);
+            results.failed++;
+            continue;
+          }
+
+          // Check if projector exists (skip check for placeholder serial numbers)
+          const Projector = require('../models/Projector');
+          let projector = null;
+          
+          if (!dtrData.serialNumber.startsWith('IMPORT-')) {
+            projector = await Projector.findOne({ serialNumber: dtrData.serialNumber });
+            
+            if (!projector) {
+              results.errors.push(`Row ${i + 1}: Projector with serial number ${dtrData.serialNumber} not found`);
+              results.failed++;
+              continue;
+            }
+          }
+
+          // Check if site exists (skip check for placeholder serial numbers)
+          const Site = require('../models/Site');
+          let site = null;
+          
+          if (projector && projector.siteId) {
+            site = await Site.findById(projector.siteId);
+            
+            if (!site) {
+              results.errors.push(`Row ${i + 1}: Site not found for projector ${dtrData.serialNumber}`);
+              results.failed++;
+              continue;
+            }
+          }
+
+          // Check if case ID already exists (only if provided and not empty)
+          if (dtrData.caseId && dtrData.caseId.toString().trim() !== '') {
+            const existingDTR = await DTR.findOne({ caseId: dtrData.caseId });
+            if (existingDTR) {
+              results.errors.push(`Row ${i + 1}: Case ID ${dtrData.caseId} already exists`);
+              results.failed++;
+              continue;
+            }
+          }
+
+          // Create DTR
+          const dtr = new DTR({
+            caseId: (dtrData.caseId && dtrData.caseId.toString().trim() !== '') ? dtrData.caseId : undefined, // Let pre-save hook generate if not provided
+            serialNumber: dtrData.serialNumber,
+            complaintDescription: dtrData.complaintDescription,
+            openedBy: dtrData.openedBy || {
+              name: 'Bulk Import',
+              designation: 'System',
+              contact: 'system@import.com'
+            },
+            priority: dtrData.priority || 'Medium',
+            assignedTo: dtrData.assignedTo,
+            estimatedResolutionTime: dtrData.estimatedResolutionTime || '24 hours',
+            notes: dtrData.notes || '',
+            errorDate: dtrData.errorDate || new Date(),
+            unitModel: dtrData.unitModel || (projector ? projector.model : 'Unknown'),
+            problemName: dtrData.problemName || dtrData.complaintDescription,
+            actionTaken: dtrData.actionTaken || '',
+            remarks: dtrData.remarks || '',
+            callStatus: (() => {
+              const status = dtrData.callStatus || 'Open';
+              // Map Excel values to valid enum values
+              const statusMap = {
+                'Observation': 'Open',
+                'closed': 'Closed',
+                'Waiting_Cust_Responses': 'In Progress',
+                'RMA Part return to CDS': 'Escalated'
+              };
+              return statusMap[status] || status;
+            })(),
+            caseSeverity: (() => {
+              const severity = dtrData.caseSeverity || 'Medium';
+              // Map Excel values to valid enum values
+              const severityMap = {
+                'Major': 'High',
+                'Minor': 'Low',
+                'Information': 'Low'
+              };
+              return severityMap[severity] || severity;
+            })(),
+            siteName: dtrData.siteName,
+            siteCode: dtrData.siteCode || dtrData.siteName || 'UNKNOWN',
+            region: dtrData.region || (site ? site.address?.state : 'Unknown') || 'Unknown',
+            status: dtrData.status || 'Open',
+            closedBy: dtrData.closedBy,
+            closedDate: dtrData.closedBy ? (dtrData.closedBy.closedDate || new Date()) : null
+          });
+
+          await dtr.save();
+          results.imported++;
+          console.log(`✅ Successfully imported row ${rowIndex}: Case ID ${dtr.caseId}, Serial ${dtr.serialNumber}`);
+
+        } catch (error) {
+          console.error(`❌ Error processing row ${rowIndex}:`, error.message);
+          console.error(`   Data:`, JSON.stringify(dtrData, null, 2));
+          results.errors.push(`Row ${rowIndex}: ${error.message}`);
+          results.failed++;
+        }
+      }
+    }
+
+    const endTime = Date.now();
+    const duration = (endTime - startTime) / 1000;
+    console.log(`✅ Bulk import completed in ${duration}s. ${results.imported} DTRs imported, ${results.failed} failed.`);
+    console.log(`📊 Import Summary: ${results.imported}/${dtrs.length} successful (${Math.round((results.imported/dtrs.length)*100)}%)`);
+    
+    if (results.errors.length > 0) {
+      console.log(`❌ First 5 errors:`);
+      results.errors.slice(0, 5).forEach((error, index) => {
+        console.log(`   ${index + 1}. ${error}`);
+      });
+    }
+    
+    // Clear the timeout since we're done
+    clearTimeout(timeout);
+    
+    res.json({
+      message: `Bulk import completed. ${results.imported} DTRs imported, ${results.failed} failed.`,
+      imported: results.imported,
+      failed: results.failed,
+      errors: results.errors.slice(0, 50), // Limit error messages to first 50
+      duration: `${duration}s`
+    });
+
+  } catch (error) {
+    console.error('Bulk import error:', error);
+    clearTimeout(timeout);
+    res.status(500).json({ 
+      message: 'Bulk import failed', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Get all technicians (users with technician role)
+router.get('/users/technicians', auth, async (req, res) => {
+  try {
+    const technicians = await User.find({
+      role: { $in: ['technician', 'engineer'] },
+      isActive: true
+    }).select('userId username email profile role');
+    
+    res.json(technicians);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching technicians', error: error.message });
+  }
+});
+
+// Get all RMA managers
+router.get('/users/rma-managers', auth, async (req, res) => {
+  try {
+    const rmaManagers = await User.find({
+      role: 'rma_manager',
+      isActive: true
+    }).select('userId username email profile role');
+    
+    res.json(rmaManagers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching RMA managers', error: error.message });
   }
 });
 

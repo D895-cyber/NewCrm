@@ -16,6 +16,7 @@ import RealFSEDashboard from "./components/mobile/RealFSEDashboard";
 import RealFSEWorkflow from "./components/mobile/RealFSEWorkflow";
 import { AssignmentWorkflow } from "./components/mobile/AssignmentWorkflow";
 import { LoadingProgress } from "./components/ui/LoadingProgress";
+import { RMADashboardPage } from "./pages/RMADashboardPage";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -70,6 +71,7 @@ class ErrorBoundary extends React.Component<
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
 
   // Detect mobile device and screen size
   useEffect(() => {
@@ -82,6 +84,16 @@ function AppContent() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Handle hash changes for proper routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   if (isLoading) {
@@ -104,7 +116,7 @@ function AppContent() {
     console.log('FSE user detected, pathname:', window.location.pathname, 'hash:', window.location.hash);
     
     // Mobile-first: Show mobile interface for FSE users on mobile devices
-    if (isMobile || window.location.pathname === '/mobile-fse' || window.location.hash === '#mobile-fse') {
+    if (isMobile || window.location.pathname === '/mobile-fse' || currentHash === '#mobile-fse') {
       console.log('Showing mobile FSE app');
       return (
         <ErrorBoundary>
@@ -117,7 +129,7 @@ function AppContent() {
     }
     
     // Check if user wants working photo capture testing
-    if (window.location.hash === '#working-photo') {
+    if (currentHash === '#working-photo') {
       console.log('Showing working photo capture');
       return (
         <ErrorBoundary>
@@ -130,7 +142,7 @@ function AppContent() {
     }
     
     // Check if user wants simple photo testing
-    if (window.location.hash === '#simple-photo') {
+    if (currentHash === '#simple-photo') {
       console.log('Showing simple photo capture');
       return (
         <ErrorBoundary>
@@ -143,7 +155,7 @@ function AppContent() {
     }
 
     // Check if user wants mobile test page
-    if (window.location.hash === '#mobile-test') {
+    if (currentHash === '#mobile-test') {
       console.log('Showing mobile test page');
       return (
         <ErrorBoundary>
@@ -156,7 +168,7 @@ function AppContent() {
     }
 
     // Check if user wants FSE workflow
-    if (window.location.hash === '#fse-workflow') {
+    if (currentHash === '#fse-workflow') {
       console.log('Showing FSE workflow');
       return (
         <ErrorBoundary>
@@ -169,7 +181,7 @@ function AppContent() {
     }
 
     // Check if user wants FSE debug panel
-    if (window.location.hash === '#fse-debug') {
+    if (currentHash === '#fse-debug') {
       console.log('Showing FSE debug panel');
       return (
         <ErrorBoundary>
@@ -182,7 +194,7 @@ function AppContent() {
     }
 
     // Check if user wants simple FSE dashboard
-    if (window.location.hash === '#simple-fse') {
+    if (currentHash === '#simple-fse') {
       console.log('Showing simple FSE dashboard');
       return (
         <ErrorBoundary>
@@ -195,7 +207,7 @@ function AppContent() {
     }
 
     // Check if user wants real FSE dashboard
-    if (window.location.hash === '#real-fse') {
+    if (currentHash === '#real-fse') {
       console.log('Showing real FSE dashboard');
       return (
         <ErrorBoundary>
@@ -208,7 +220,7 @@ function AppContent() {
     }
 
     // Check if user wants real FSE workflow
-    if (window.location.hash === '#real-fse-workflow') {
+    if (currentHash === '#real-fse-workflow') {
       console.log('Showing real FSE workflow');
       return (
         <ErrorBoundary>
@@ -221,7 +233,7 @@ function AppContent() {
     }
 
     // Check if user wants assignment workflow
-    if (window.location.hash === '#assignment-workflow') {
+    if (currentHash === '#assignment-workflow') {
       console.log('Showing assignment workflow');
       return (
         <ErrorBoundary>
@@ -234,7 +246,7 @@ function AppContent() {
     }
 
     // Check if user wants desktop FSE dashboard
-    if (window.location.hash === '#fse-desktop') {
+    if (currentHash === '#fse-desktop') {
       console.log('Showing FSE desktop dashboard');
       return (
         <ErrorBoundary>
@@ -259,7 +271,7 @@ function AppContent() {
   }
 
   // Check if admin user wants mobile test page
-  if (window.location.hash === '#mobile-test') {
+  if (currentHash === '#mobile-test') {
     console.log('Showing mobile test page for admin');
     return (
       <ErrorBoundary>
@@ -272,7 +284,7 @@ function AppContent() {
   }
 
   // Check if admin user wants FSE workflow
-  if (window.location.hash === '#fse-workflow') {
+  if (currentHash === '#fse-workflow') {
     console.log('Showing FSE workflow for admin');
     return (
       <ErrorBoundary>
@@ -285,7 +297,7 @@ function AppContent() {
   }
 
   // Check if admin user wants FSE debug panel
-  if (window.location.hash === '#fse-debug') {
+  if (currentHash === '#fse-debug') {
     console.log('Showing FSE debug panel for admin');
     return (
       <ErrorBoundary>
@@ -298,7 +310,7 @@ function AppContent() {
   }
 
   // Check if admin user wants simple FSE dashboard
-  if (window.location.hash === '#simple-fse') {
+  if (currentHash === '#simple-fse') {
     console.log('Showing simple FSE dashboard for admin');
     return (
       <ErrorBoundary>
@@ -311,7 +323,7 @@ function AppContent() {
   }
 
   // Check if admin user wants FSE mobile app
-  if (window.location.hash === '#mobile-fse') {
+  if (currentHash === '#mobile-fse') {
     console.log('Showing FSE mobile app for admin');
     return (
       <ErrorBoundary>
@@ -324,7 +336,7 @@ function AppContent() {
   }
 
   // Check if admin user wants real FSE dashboard
-  if (window.location.hash === '#real-fse') {
+  if (currentHash === '#real-fse') {
     console.log('Showing real FSE dashboard for admin');
     return (
       <ErrorBoundary>
@@ -337,12 +349,25 @@ function AppContent() {
   }
 
   // Check if admin user wants real FSE workflow
-  if (window.location.hash === '#real-fse-workflow') {
+  if (currentHash === '#real-fse-workflow') {
     console.log('Showing real FSE workflow for admin');
     return (
       <ErrorBoundary>
         <DataProviderWithProgress>
           <RealFSEWorkflow />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Check if user wants RMA Dashboard
+  if (currentHash === '#rma-dashboard' || currentHash === '#dashboard') {
+    console.log('Showing RMA Dashboard, hash:', currentHash);
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <RMADashboardPage />
         </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>
