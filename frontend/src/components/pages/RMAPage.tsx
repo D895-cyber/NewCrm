@@ -50,7 +50,7 @@ export function RMAPage() {
   const mapBackendDataToFrontend = (backendRMA: any) => {
     return {
       _id: backendRMA._id,
-      rmaNumber: backendRMA.rmaNumber || backendRMA.rmaNumber || 'N/A',
+      rmaNumber: backendRMA.rmaNumber || backendRMA.rmaNumber || 'N/A', 
       callLogNumber: backendRMA.callLogNumber || backendRMA.callLogNumber || 'N/A',
       rmaOrderNumber: backendRMA.rmaOrderNumber || backendRMA.rmaOrderNumber || 'N/A',
       ascompRaisedDate: backendRMA.ascompRaisedDate ? new Date(backendRMA.ascompRaisedDate).toLocaleDateString() : 
