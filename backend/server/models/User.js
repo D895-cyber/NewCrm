@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'fse', 'technician', 'rma_manager', 'engineer'],
+    enum: ['admin', 'fse', 'rma_handler', 'technical_head'],
     default: 'fse'
   },
   fseId: {
@@ -65,7 +65,11 @@ const userSchema = new mongoose.Schema({
       'manage_dtr',
       'troubleshoot_dtr',
       'convert_dtr_to_rma',
-      'assign_rma'
+      'assign_rma',
+      'supervise_fse',
+      'view_fse_reports',
+      'manage_technical_team',
+      'assign_dtr'
     ]
   }],
   createdAt: {
@@ -106,36 +110,41 @@ userSchema.methods.getPermissions = function() {
       'manage_spare_parts',
       'view_analytics',
       'export_data',
-      'create_dtr',
       'manage_dtr',
       'troubleshoot_dtr',
       'convert_dtr_to_rma',
-      'assign_dtr',
-      'assign_rma'
+      'assign_rma',
+      'supervise_fse',
+      'view_fse_reports',
+      'manage_technical_team',
+      'assign_dtr'
     ],
-    technician: [
+    technical_head: [
       'view_dashboard',
-      'troubleshoot_dtr',
-      'convert_dtr_to_rma',
-      'view_analytics'
-    ],
-    rma_manager: [
-      'view_dashboard',
-      'create_dtr',
+      'manage_fse',
+      'manage_service_visits',
+      'view_analytics',
+      'export_data',
       'manage_dtr',
+      'troubleshoot_dtr',
       'assign_dtr',
+      'supervise_fse',
+      'view_fse_reports',
+      'manage_technical_team'
+    ],
+    rma_handler: [
+      'view_dashboard',
       'manage_rma',
-      'manage_spare_parts',
       'assign_rma',
       'view_analytics',
-      'export_data'
-    ],
-    engineer: [
-      'view_dashboard',
-      'troubleshoot_dtr',
-      'convert_dtr_to_rma',
+      'export_data',
+      'manage_sites',
+      'manage_projectors',
       'manage_service_visits',
-      'view_analytics'
+      'manage_spare_parts',
+      'manage_dtr',
+      'troubleshoot_dtr',
+      'convert_dtr_to_rma'
     ],
     fse: [
       'view_dashboard',

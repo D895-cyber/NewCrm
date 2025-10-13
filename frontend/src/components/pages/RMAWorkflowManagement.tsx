@@ -37,17 +37,6 @@ interface WorkflowStats {
   returnCompletionRate: string;
 }
 
-interface PendingSubmission {
-  id: string;
-  rmaNumber: string;
-  siteName: string;
-  productName: string;
-  serialNumber: string;
-  priority: string;
-  createdBy: string;
-  createdAt: string;
-  daysPending: number;
-}
 
 interface ActiveReturn {
   id: string;
@@ -64,12 +53,53 @@ interface ActiveReturn {
 
 const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
   const [stats, setStats] = useState<WorkflowStats | null>(null);
-  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
-  const [activeReturns, setActiveReturns] = useState<ActiveReturn[]>([]);
+  const [rmas, setRmas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [selectedRMA, setSelectedRMA] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Map backend data to frontend display format
+  const mapBackendDataToFrontend = (backendRMA: any) => {
+    return {
+      _id: backendRMA._id,
+      rmaNumber: backendRMA.rmaNumber || 'N/A',
+      callLogNumber: backendRMA.callLogNumber || 'N/A',
+      rmaOrderNumber: backendRMA.rmaOrderNumber || 'N/A',
+      ascompRaisedDate: backendRMA.ascompRaisedDate ? new Date(backendRMA.ascompRaisedDate).toLocaleDateString() : 
+                        backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
+      customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
+                         backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
+      siteName: backendRMA.siteName || backendRMA.customerSite || 'N/A',
+      productName: backendRMA.productPartNumber || backendRMA.productName || backendRMA.projectorModel || 'N/A',
+      productPartNumber: backendRMA.serialNumber || backendRMA.productPartNumber || backendRMA.defectivePartNumber || 'N/A',
+      serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
+      defectivePartNumber: backendRMA.defectivePartNumber || 'N/A',
+      defectivePartName: backendRMA.defectivePartName || 'Projector Component',
+      defectiveSerialNumber: backendRMA.defectiveSerialNumber || 'N/A',
+      symptoms: backendRMA.symptoms || backendRMA.failureDescription || backendRMA.reason || 'N/A',
+      replacedPartNumber: backendRMA.replacedPartNumber || 'N/A',
+      replacedPartName: backendRMA.replacedPartName || 'N/A',
+      replacedPartSerialNumber: backendRMA.replacedPartSerialNumber || 'N/A',
+      replacementNotes: backendRMA.replacementNotes || 'N/A',
+      shippedDate: backendRMA.shippedDate ? new Date(backendRMA.shippedDate).toLocaleDateString() : 'N/A',
+      trackingNumber: backendRMA.trackingNumber || 'N/A',
+      shippedThru: backendRMA.shippedThru || 'N/A',
+      caseStatus: backendRMA.caseStatus || backendRMA.status || 'Under Review',
+      approvalStatus: backendRMA.approvalStatus || 'Pending Review',
+      priority: backendRMA.priority || 'Medium',
+      warrantyStatus: backendRMA.warrantyStatus || 'In Warranty',
+      estimatedCost: backendRMA.estimatedCost || 0,
+      notes: backendRMA.notes || 'N/A',
+      brand: backendRMA.brand || 'N/A',
+      projectorModel: backendRMA.projectorModel || 'N/A',
+      customerSite: backendRMA.customerSite || 'N/A',
+      technician: backendRMA.technician || 'N/A',
+      createdBy: backendRMA.createdBy || 'System'
+    };
+  };
 
   useEffect(() => {
     fetchWorkflowData();
@@ -86,18 +116,22 @@ const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
         setStats(statsData.stats);
       }
 
-      // Fetch pending CDS submissions
-      const pendingResponse = await fetch('/api/rma/cds/pending');
-      const pendingData = await pendingResponse.json();
-      if (pendingData.success) {
-        setPendingSubmissions(pendingData.submissions);
-      }
 
-      // Fetch active returns
-      const returnsResponse = await fetch('/api/rma/returns/active');
-      const returnsData = await returnsResponse.json();
-      if (returnsData.success) {
-        setActiveReturns(returnsData.returns);
+      // Fetch RMA data
+      const rmaResponse = await fetch('/api/rma/');
+      const rmaData = await rmaResponse.json();
+      
+      if (Array.isArray(rmaData)) {
+        // Apply mapping function to transform backend data to frontend format
+        const mappedRmaData = rmaData.map(mapBackendDataToFrontend);
+        setRmas(mappedRmaData);
+      } else if (rmaData.success && Array.isArray(rmaData.data)) {
+        // Apply mapping function to transform backend data to frontend format
+        const mappedRmaData = rmaData.data.map(mapBackendDataToFrontend);
+        setRmas(mappedRmaData);
+      } else {
+        console.error('Unexpected RMA data format:', rmaData);
+        setRmas([]);
       }
     } catch (error) {
       console.error('Error fetching workflow data:', error);
@@ -152,6 +186,50 @@ const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
     setSelectedRMA(rmaId);
     setActiveTab('workflow');
   };
+
+  // Get unique statuses and priorities for filtering
+  const availableStatuses = React.useMemo(() => {
+    const statusCounts = (rmas || []).reduce((acc, rma) => {
+      const status = rma.caseStatus || 'Unknown';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(statusCounts)
+      .filter(([_, count]) => (count as number) > 0)
+      .map(([status, count]) => ({ status, count: count as number }))
+      .sort((a, b) => b.count - a.count);
+  }, [rmas]);
+
+  const availablePriorities = React.useMemo(() => {
+    const priorityCounts = (rmas || []).reduce((acc, rma) => {
+      const priority = rma.priority || 'Medium';
+      acc[priority] = (acc[priority] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(priorityCounts)
+      .filter(([_, count]) => (count as number) > 0)
+      .map(([priority, count]) => ({ priority, count: count as number }))
+      .sort((a, b) => b.count - a.count);
+  }, [rmas]);
+
+  // Filter RMAs based on search and filters
+  const filteredRMAs = React.useMemo(() => {
+    return (rmas || []).filter(rma => {
+      const matchesSearch = 
+        rma.rmaNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rma.siteName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rma.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rma.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rma.defectivePartName?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || rma.caseStatus === statusFilter;
+      const matchesPriority = priorityFilter === 'all' || rma.priority === priorityFilter;
+      
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [rmas, searchTerm, statusFilter, priorityFilter]);
 
   if (loading) {
     return (
@@ -261,9 +339,8 @@ const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="pending">Pending CDS</TabsTrigger>
           <TabsTrigger value="returns">Active Returns</TabsTrigger>
           <TabsTrigger value="workflow">Workflow Status</TabsTrigger>
         </TabsList>
@@ -278,9 +355,16 @@ const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {stats && Object.entries(stats).filter(([key, value]) => 
-                    typeof value === 'number' && key !== 'total'
-                  ).map(([status, count]) => (
+                  {stats && Object.entries(stats).filter(([key, value]) => {
+                    const allowedStatuses = [
+                      'Completed',
+                      'Faulty Transit to CDS', 
+                      'RMA Raised Yet to Deliver',
+                      'Open',
+                      'Under Review'
+                    ];
+                    return typeof value === 'number' && key !== 'total' && allowedStatuses.includes(key);
+                  }).map(([status, count]) => (
                     <div key={status} className="flex items-center justify-between">
                       <span className="text-sm font-medium capitalize">
                         {status.replace(/([A-Z])/g, ' $1').trim()}
@@ -306,199 +390,351 @@ const RMAWorkflowManagement: React.FC<RMAWorkflowManagementProps> = () => {
                 <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {pendingSubmissions.slice(0, 5).map((submission) => (
-                    <div key={submission.id} className="flex items-center justify-between p-2 border rounded">
-                      <div>
-                        <p className="text-sm font-medium">{submission.rmaNumber}</p>
-                        <p className="text-xs text-gray-600">{submission.siteName}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getPriorityColor(submission.priority)}>
-                          {submission.priority}
-                        </Badge>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleViewRMA(submission.id)}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No recent activity to display</p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Pending CDS Tab */}
-        <TabsContent value="pending" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search RMAs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            {pendingSubmissions
-              .filter(submission => 
-                submission.rmaNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                submission.siteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                submission.productName.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              .map((submission) => (
-                <Card key={submission.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-medium">{submission.rmaNumber}</h3>
-                          <Badge className={getPriorityColor(submission.priority)}>
-                            {submission.priority}
-                          </Badge>
-                          <Badge variant="outline">
-                            {submission.daysPending} days pending
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">Site:</span> {submission.siteName}
-                          </div>
-                          <div>
-                            <span className="font-medium">Product:</span> {submission.productName}
-                          </div>
-                          <div>
-                            <span className="font-medium">Serial:</span> {submission.serialNumber}
-                          </div>
-                          <div>
-                            <span className="font-medium">Created By:</span> {submission.createdBy}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          onClick={() => handleViewRMA(submission.id)}
-                          size="sm"
-                        >
-                          View Details
-                        </Button>
-                        <Button 
-                          onClick={() => handleViewRMA(submission.id)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Submit CDS Form
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </TabsContent>
 
         {/* Active Returns Tab */}
         <TabsContent value="returns" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search returns..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
+          {/* Enhanced Search and Filter Bar */}
+          <Card className="p-4">
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by RMA number, site, product, serial, or defective part..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                    setPriorityFilter('all');
+                  }}
+                  className="px-4 py-2"
+                >
+                  Clear All
+                </Button>
+              </div>
+
+              {/* Filter Row */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Status:</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="all">All Status ({rmas?.length || 0})</option>
+                    {availableStatuses.map(({ status, count }) => (
+                      <option key={status} value={status}>
+                        {status} ({count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Priority:</label>
+                  <select
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="all">All Priority ({rmas?.length || 0})</option>
+                    {availablePriorities.map(({ priority, count }) => (
+                      <option key={priority} value={priority}>
+                        {priority} ({count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span>Showing {filteredRMAs.length} of {rmas?.length || 0} RMAs</span>
+                </div>
+              </div>
+
+              {/* Active Filters Display */}
+              {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Active Filters:</span>
+                  {searchTerm && (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                      Search: "{searchTerm}"
+                    </span>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                      Status: {statusFilter}
+                    </span>
+                  )}
+                  {priorityFilter !== 'all' && (
+                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
+                      Priority: {priorityFilter}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </div>
+          </Card>
 
           <div className="grid gap-4">
-            {activeReturns
-              .filter(returnItem => 
-                returnItem.rmaNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                returnItem.siteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                returnItem.returnTracking.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              .map((returnItem) => (
-                <Card key={returnItem.id}>
+            {filteredRMAs.length > 0 ? (
+              filteredRMAs.map((rma) => (
+                <Card key={rma._id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-medium">{returnItem.rmaNumber}</h3>
-                          <Badge className={getReturnStatusColor(returnItem.status)}>
-                            {returnItem.status}
+                          <h3 className="font-medium text-lg">{rma.rmaNumber}</h3>
+                          <Badge className={getStatusColor(rma.caseStatus)}>
+                            {rma.caseStatus}
                           </Badge>
-                          <Badge variant="outline">
-                            {returnItem.returnPath === 'direct' ? 'Direct to CDS' : 'Via ASCOMP'}
+                          <Badge variant="outline" className={getPriorityColor(rma.priority)}>
+                            {rma.priority || 'Medium'}
                           </Badge>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                           <div>
-                            <span className="font-medium">Site:</span> {returnItem.siteName}
+                            <span className="font-medium">Site:</span> {rma.siteName}
                           </div>
                           <div>
-                            <span className="font-medium">Tracking:</span> {returnItem.returnTracking}
+                            <span className="font-medium">Product:</span> {rma.productName}
                           </div>
                           <div>
-                            <span className="font-medium">Carrier:</span> {returnItem.carrier}
+                            <span className="font-medium">Serial:</span> {rma.serialNumber}
                           </div>
                           <div>
-                            <span className="font-medium">Shipped:</span> {new Date(returnItem.shippedDate).toLocaleDateString()}
+                            <span className="font-medium">Created:</span> {rma.createdAt ? new Date(rma.createdAt).toLocaleDateString() : 'N/A'}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button 
-                          onClick={() => handleViewRMA(returnItem.id)}
+                          onClick={() => handleViewRMA(rma._id)}
                           size="sm"
+                          variant="outline"
                         >
                           View Details
                         </Button>
                         <Button 
-                          onClick={() => handleViewRMA(returnItem.id)}
+                          onClick={() => handleViewRMA(rma._id)}
                           size="sm"
-                          variant="outline"
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
-                          <Truck className="h-4 w-4 mr-2" />
-                          Track Return
+                          <FileText className="h-4 w-4 mr-2" />
+                          View Workflow
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No RMAs Found</h3>
+                <p className="text-gray-600">
+                  {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all' 
+                    ? 'Try adjusting your search criteria or filters.' 
+                    : 'No RMAs available at the moment.'}
+                </p>
+                {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setPriorityFilter('all');
+                    }}
+                    className="mt-4"
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
 
         {/* Workflow Status Tab */}
         <TabsContent value="workflow" className="space-y-4">
-          <div className="text-center py-8">
-            <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Select an RMA to View Workflow</h3>
-            <p className="text-gray-600">
-              Click on any RMA from the Pending CDS or Active Returns tabs to view its detailed workflow status.
-            </p>
+          {/* Enhanced Search and Filter Bar */}
+          <Card className="p-4">
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by RMA number, site, product, serial, or defective part..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                    setPriorityFilter('all');
+                  }}
+                  className="px-4 py-2"
+                >
+                  Clear All
+                </Button>
+              </div>
+
+              {/* Filter Row */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Status:</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="all">All Status ({rmas?.length || 0})</option>
+                    {availableStatuses.map(({ status, count }) => (
+                      <option key={status} value={status}>
+                        {status} ({count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Priority:</label>
+                  <select
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="all">All Priority ({rmas?.length || 0})</option>
+                    {availablePriorities.map(({ priority, count }) => (
+                      <option key={priority} value={priority}>
+                        {priority} ({count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span>Showing {filteredRMAs.length} of {rmas?.length || 0} RMAs</span>
+                </div>
+              </div>
+
+              {/* Active Filters Display */}
+              {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Active Filters:</span>
+                  {searchTerm && (
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                      Search: "{searchTerm}"
+                    </span>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                      Status: {statusFilter}
+                    </span>
+                  )}
+                  {priorityFilter !== 'all' && (
+                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
+                      Priority: {priorityFilter}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <div className="grid gap-4">
+            {filteredRMAs.length > 0 ? (
+              filteredRMAs.map((rma) => (
+                <Card key={rma._id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="font-medium text-lg">{rma.rmaNumber}</h3>
+                          <Badge className={getStatusColor(rma.caseStatus)}>
+                            {rma.caseStatus}
+                          </Badge>
+                          <Badge variant="outline" className={getPriorityColor(rma.priority)}>
+                            {rma.priority || 'Medium'}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                          <div>
+                            <span className="font-medium">Site:</span> {rma.siteName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Product:</span> {rma.productName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Serial:</span> {rma.serialNumber}
+                          </div>
+                          <div>
+                            <span className="font-medium">Created:</span> {rma.createdAt ? new Date(rma.createdAt).toLocaleDateString() : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          onClick={() => handleViewRMA(rma._id)}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          View Workflow
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No RMAs Found</h3>
+                <p className="text-gray-600">
+                  {searchTerm || statusFilter !== 'all' || priorityFilter !== 'all' 
+                    ? 'Try adjusting your search criteria or filters.' 
+                    : 'No RMAs available at the moment.'}
+                </p>
+                {(searchTerm || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setPriorityFilter('all');
+                    }}
+                    className="mt-4"
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

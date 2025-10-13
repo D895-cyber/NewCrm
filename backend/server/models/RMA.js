@@ -78,6 +78,11 @@ const rmaSchema = new mongoose.Schema({
   },
   
   // Site and Product Information
+  siteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    required: false // Made optional for backward compatibility
+  },
   siteName: {
     type: String,
     required: true,

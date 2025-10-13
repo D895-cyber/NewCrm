@@ -36,7 +36,7 @@ Integrator Rod                 [OPT_INTROD_STATUS]             [OPT_INTROD_OK]
 Cold Mirror                    [OPT_COLDMIRROR_STATUS]         [OPT_COLDMIRROR_OK]
 Fold Mirror                    [OPT_FOLDMIRROR_STATUS]         [OPT_FOLDMIRROR_OK]
 ```──────────
-Reflector                     
+Reflector                     image.png
 
 #### **ELECTRONICS Section**
 ```

@@ -17,6 +17,7 @@ import RealFSEWorkflow from "./components/mobile/RealFSEWorkflow";
 import { AssignmentWorkflow } from "./components/mobile/AssignmentWorkflow";
 import { LoadingProgress } from "./components/ui/LoadingProgress";
 import { RMADashboardPage } from "./pages/RMADashboardPage";
+import { TechnicalHeadDashboardPage } from "./pages/TechnicalHeadDashboardPage";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -270,6 +271,32 @@ function AppContent() {
     );
   }
 
+  // RMA Handler users get the RMA Dashboard
+  if (user?.role === 'rma_handler') {
+    console.log('RMA Handler user detected, showing RMA Dashboard');
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <RMADashboardPage />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Technical Head users get the Technical Head Dashboard
+  if (user?.role === 'technical_head') {
+    console.log('Technical Head user detected, showing Technical Head Dashboard');
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <TechnicalHeadDashboardPage />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
   // Check if admin user wants mobile test page
   if (currentHash === '#mobile-test') {
     console.log('Showing mobile test page for admin');
@@ -368,6 +395,32 @@ function AppContent() {
       <ErrorBoundary>
         <DataProviderWithProgress>
           <RMADashboardPage />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Check if user wants RMA Management page
+  if (currentHash === '#rma-management') {
+    console.log('Showing RMA Management page, hash:', currentHash);
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <Dashboard isMobile={isMobile} />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Check if user wants DTR Management page
+  if (currentHash === '#dtr-management') {
+    console.log('Showing DTR Management page, hash:', currentHash);
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <Dashboard isMobile={isMobile} />
         </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>

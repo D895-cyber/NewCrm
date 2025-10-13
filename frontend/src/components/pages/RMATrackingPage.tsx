@@ -70,8 +70,8 @@ export function RMATrackingPage() {
       _id: backendRMA._id,
       rmaNumber: backendRMA.rmaNumber || 'N/A',
       siteName: backendRMA.siteName || 'N/A',
-      productName: backendRMA.productName || 'N/A',
-      serialNumber: backendRMA.serialNumber || 'N/A',
+      productName: backendRMA.productPartNumber || backendRMA.productName || 'N/A',
+      serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
       caseStatus: backendRMA.caseStatus || 'Under Review',
       shipping: backendRMA.shipping || { outbound: {}, return: {} },
       // Include legacy tracking fields
@@ -577,7 +577,7 @@ export function RMATrackingPage() {
                           <strong>Product:</strong> {rma.productName}
                         </p>
                         <p className="text-gray-600">
-                          <strong>Serial:</strong> {rma.serialNumber}
+                          <strong>Serial:</strong> SN: {rma.serialNumber}
                         </p>
                       </div>
                       <div className="text-right space-y-2">

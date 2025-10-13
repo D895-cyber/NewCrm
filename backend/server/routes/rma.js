@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const RMA = require('../models/RMA');
+const Site = require('../models/Site');
+const Projector = require('../models/Projector');
 const DeliveryProviderService = require('../services/DeliveryProviderService');
 const EmailProcessingService = require('../services/EmailProcessingService');
 const CDSFormService = require('../services/CDSFormService');
@@ -44,15 +46,682 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ===== SITES API ENDPOINTS FOR RMA MANAGEMENT =====
+
+// Get all sites for RMA management
+router.get('/sites', async (req, res) => {
+  try {
+    console.log('📍 Fetching sites for RMA management...');
+    const sites = await Site.find({})
+      .populate('auditoriums')
+      .lean();
+    
+    console.log(`📊 Found ${sites.length} sites`);
+    
+    // Get projector counts for each site
+    const siteIds = sites.map(site => site._id);
+    const projectorCounts = await Projector.aggregate([
+      {
+        $match: { siteId: { $in: siteIds } }
+      },
+      {
+        $group: {
+          _id: {
+            siteId: '$siteId',
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Create lookup map for fast access
+    const siteProjectorCounts = new Map();
+    
+    projectorCounts.forEach(item => {
+      const siteId = item._id.siteId?.toString();
+      const status = item._id.status;
+      const count = item.count;
+      
+      if (siteId) {
+        if (!siteProjectorCounts.has(siteId)) {
+          siteProjectorCounts.set(siteId, { total: 0, active: 0 });
+        }
+        const siteCounts = siteProjectorCounts.get(siteId);
+        siteCounts.total += count;
+        if (status === 'Active') {
+          siteCounts.active += count;
+        }
+      }
+    });
+    
+    // Apply counts to sites
+    const enhancedSites = sites.map(site => {
+      const siteObj = { ...site }; // Since we used .lean(), site is already a plain object
+      const siteId = site._id.toString();
+      const siteCounts = siteProjectorCounts.get(siteId) || { total: 0, active: 0 };
+      siteObj.totalProjectors = siteCounts.total;
+      siteObj.activeProjectors = siteCounts.active;
+      return siteObj;
+    });
+    
+    res.json(enhancedSites);
+  } catch (error) {
+    console.error('❌ Error fetching sites:', error);
+    res.status(500).json({ message: 'Error fetching sites', error: error.message });
+  }
+});
+
+// Search sites for RMA management
+router.get('/sites/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+    
+    // Return empty if query is too short (less than 2 characters)
+    if (query.trim().length < 2) {
+      return res.json([]);
+    }
+
+    const sites = await Site.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { siteCode: { $regex: query, $options: 'i' } },
+        { region: { $regex: query, $options: 'i' } },
+        { state: { $regex: query, $options: 'i' } },
+        { 'address.city': { $regex: query, $options: 'i' } },
+        { 'address.state': { $regex: query, $options: 'i' } },
+        { 'address.pincode': { $regex: query, $options: 'i' } },
+        { 'contactPerson.name': { $regex: query, $options: 'i' } },
+        { 'contactPerson.email': { $regex: query, $options: 'i' } },
+        { siteType: { $regex: query, $options: 'i' } }
+      ]
+    }).sort({ 
+      updatedAt: -1 
+    }).limit(50); // Limit results to prevent overwhelming the frontend
+
+    // Get projector counts for each site
+    const siteIds = sites.map(site => site._id);
+    const projectorCounts = await Projector.aggregate([
+      {
+        $match: { siteId: { $in: siteIds } }
+      },
+      {
+        $group: {
+          _id: {
+            siteId: '$siteId',
+            status: '$status'
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Create lookup map for fast access
+    const siteProjectorCounts = new Map();
+    
+    projectorCounts.forEach(item => {
+      const siteId = item._id.siteId?.toString();
+      const status = item._id.status;
+      const count = item.count;
+      
+      if (siteId) {
+        if (!siteProjectorCounts.has(siteId)) {
+          siteProjectorCounts.set(siteId, { total: 0, active: 0 });
+        }
+        const siteCounts = siteProjectorCounts.get(siteId);
+        siteCounts.total += count;
+        if (status === 'Active') {
+          siteCounts.active += count;
+        }
+      }
+    });
+    
+    // Apply counts to sites
+    const enhancedSites = sites.map(site => {
+      const siteObj = { ...site }; // Since we used .lean(), site is already a plain object
+      const siteId = site._id.toString();
+      const siteCounts = siteProjectorCounts.get(siteId) || { total: 0, active: 0 };
+      siteObj.totalProjectors = siteCounts.total;
+      siteObj.activeProjectors = siteCounts.active;
+      return siteObj;
+    });
+    
+    res.json(enhancedSites);
+  } catch (error) {
+    console.error('Error searching sites:', error);
+    res.status(500).json({ message: 'Error searching sites', error: error.message });
+  }
+});
+
+// Get site by ID for RMA management
+router.get('/sites/:id', async (req, res) => {
+  try {
+    const site = await Site.findById(req.params.id);
+    if (!site) {
+      return res.status(404).json({ message: 'Site not found' });
+    }
+    
+    // Get total projectors for the site
+    const totalProjectorCount = await Projector.countDocuments({
+      siteId: site._id
+    });
+    site.totalProjectors = totalProjectorCount;
+    
+    // Get active projectors count
+    const activeProjectorCount = await Projector.countDocuments({
+      siteId: site._id,
+      status: 'Active'
+    });
+    site.activeProjectors = activeProjectorCount;
+    
+    // Get projectors for each auditorium
+    if (site.auditoriums && site.auditoriums.length > 0) {
+      for (const auditorium of site.auditoriums) {
+        const projectors = await Projector.find({
+          siteId: site._id,
+          auditoriumId: auditorium.audiNumber
+        }).select('projectorNumber serialNumber model brand status condition lastService nextService');
+        
+        auditorium.projectors = projectors;
+        
+        // Update auditorium projector count
+        auditorium.projectorCount = projectors.length;
+      }
+    } else {
+      // Initialize empty auditoriums array for existing sites
+      site.auditoriums = [];
+    }
+    
+    res.json(site);
+  } catch (error) {
+    console.error('Error fetching site:', error);
+    res.status(500).json({ message: 'Error fetching site', error: error.message });
+  }
+});
+
+// Get projectors for a specific site
+router.get('/sites/:id/projectors', async (req, res) => {
+  try {
+    const siteId = req.params.id;
+    
+    // Verify site exists
+    const site = await Site.findById(siteId);
+    if (!site) {
+      return res.status(404).json({ message: 'Site not found' });
+    }
+    
+    // Get all projectors for this site
+    const projectors = await Projector.find({ siteId: siteId })
+      .select('serialNumber model brand status condition lastService nextService warrantyStart warrantyEnd')
+      .sort({ serialNumber: 1 });
+    
+    res.json({
+      site: {
+        _id: site._id,
+        name: site.name,
+        siteCode: site.siteCode
+      },
+      projectors: projectors
+    });
+  } catch (error) {
+    console.error('Error fetching site projectors:', error);
+    res.status(500).json({ message: 'Error fetching site projectors', error: error.message });
+  }
+});
+
+        // Get site statistics for RMA management
+        router.get('/sites/:id/stats', async (req, res) => {
+          try {
+            const site = await Site.findById(req.params.id);
+            if (!site) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            // Get projector statistics
+            const projectors = await Projector.find({ siteId: req.params.id });
+            const projectorStats = {
+              total: projectors.length,
+              active: projectors.filter(p => p.status === 'Active').length,
+              underService: projectors.filter(p => p.status === 'Under Service').length,
+              needsRepair: projectors.filter(p => p.status === 'Needs Repair').length,
+              inactive: projectors.filter(p => p.status === 'Inactive').length
+            };
+            
+            // Get RMA statistics for this site
+            const rmaStats = {
+              total: await RMA.countDocuments({ siteName: site.name }),
+              pending: await RMA.countDocuments({ siteName: site.name, caseStatus: 'Pending' }),
+              inProgress: await RMA.countDocuments({ siteName: site.name, caseStatus: 'In Progress' }),
+              resolved: await RMA.countDocuments({ siteName: site.name, caseStatus: 'Resolved' }),
+              closed: await RMA.countDocuments({ siteName: site.name, caseStatus: 'Closed' })
+            };
+            
+            // Get auditorium statistics
+            const auditoriumStats = {
+              total: site.auditoriums.length,
+              active: site.auditoriums.filter(a => a.status === 'Active').length,
+              underMaintenance: site.auditoriums.filter(a => a.status === 'Under Maintenance').length
+            };
+            
+            res.json({
+              site: {
+                name: site.name,
+                siteCode: site.siteCode,
+                region: site.region,
+                state: site.state
+              },
+              projectors: projectorStats,
+              rma: rmaStats,
+              auditoriums: auditoriumStats
+            });
+          } catch (error) {
+            console.error('Error fetching site stats:', error);
+            res.status(500).json({ message: 'Error fetching site stats', error: error.message });
+          }
+        });
+
+        // ===== ADDITIONAL SITE MANAGEMENT ENDPOINTS FOR RMA PORTAL =====
+
+        // Get site statistics overview for RMA management
+        router.get('/sites/stats/overview', async (req, res) => {
+          try {
+            const totalSites = await Site.countDocuments();
+            const activeSites = await Site.countDocuments({ status: 'Active' });
+            const totalProjectors = await Projector.countDocuments();
+            const activeProjectors = await Projector.countDocuments({ status: 'Active' });
+            
+            // Get sites by region
+            const sitesByRegion = await Site.aggregate([
+              { $group: { _id: '$region', count: { $sum: 1 } } },
+              { $sort: { count: -1 } }
+            ]);
+            
+            // Get sites by type
+            const sitesByType = await Site.aggregate([
+              { $group: { _id: '$siteType', count: { $sum: 1 } } },
+              { $sort: { count: -1 } }
+            ]);
+            
+            // Get projectors by status
+            const projectorsByStatus = await Projector.aggregate([
+              { $group: { _id: '$status', count: { $sum: 1 } } },
+              { $sort: { count: -1 } }
+            ]);
+            
+            res.json({
+              totalSites,
+              activeSites,
+              totalProjectors,
+              activeProjectors,
+              sitesByRegion,
+              sitesByType,
+              projectorsByStatus
+            });
+          } catch (error) {
+            console.error('Error fetching site statistics:', error);
+            res.status(500).json({ message: 'Error fetching site statistics', error: error.message });
+          }
+        });
+
+        // Create new site for RMA management
+        router.post('/sites', async (req, res) => {
+          try {
+            const siteData = req.body;
+            
+            // Generate site code if not provided
+            if (!siteData.siteCode) {
+              const year = new Date().getFullYear();
+              const count = await Site.countDocuments({
+                siteCode: new RegExp(`^SITE-${year}-`)
+              });
+              siteData.siteCode = `SITE-${year}-${String(count + 1).padStart(4, '0')}`;
+            }
+            
+            // Create default auditorium if none provided
+            if (!siteData.auditoriums || siteData.auditoriums.length === 0) {
+              siteData.auditoriums = [{
+                audiNumber: 'AUDI-01',
+                name: 'Main Auditorium',
+                capacity: 100,
+                screenSize: 'Standard',
+                projectorCount: 0,
+                status: 'Active',
+                notes: 'Default auditorium'
+              }];
+            }
+            
+            const newSite = new Site(siteData);
+            const savedSite = await newSite.save();
+            
+            res.status(201).json({
+              message: 'Site created successfully',
+              site: savedSite
+            });
+          } catch (error) {
+            console.error('Error creating site:', error);
+            res.status(500).json({ message: 'Error creating site', error: error.message });
+          }
+        });
+
+        // Update site for RMA management
+        router.put('/sites/:id', async (req, res) => {
+          try {
+            const updatedSite = await Site.findByIdAndUpdate(
+              req.params.id,
+              req.body,
+              { new: true, runValidators: true }
+            );
+            
+            if (!updatedSite) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            res.json({
+              message: 'Site updated successfully',
+              site: updatedSite
+            });
+          } catch (error) {
+            console.error('Error updating site:', error);
+            res.status(500).json({ message: 'Error updating site', error: error.message });
+          }
+        });
+
+        // Delete site for RMA management
+        router.delete('/sites/:id', async (req, res) => {
+          try {
+            // Check if site has projectors
+            const projectorCount = await Projector.countDocuments({ siteId: req.params.id });
+            if (projectorCount > 0) {
+              return res.status(400).json({ 
+                message: 'Cannot delete site with existing projectors. Please remove all projectors first.' 
+              });
+            }
+            
+            // Check if site has RMAs
+            const rmaCount = await RMA.countDocuments({ siteId: req.params.id });
+            if (rmaCount > 0) {
+              return res.status(400).json({ 
+                message: 'Cannot delete site with existing RMAs. Please remove all RMAs first.' 
+              });
+            }
+            
+            const deletedSite = await Site.findByIdAndDelete(req.params.id);
+            if (!deletedSite) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            res.json({ message: 'Site deleted successfully' });
+          } catch (error) {
+            console.error('Error deleting site:', error);
+            res.status(500).json({ message: 'Error deleting site', error: error.message });
+          }
+        });
+
+        // Add auditorium to site for RMA management
+        router.post('/sites/:id/auditoriums', async (req, res) => {
+          try {
+            const site = await Site.findById(req.params.id);
+            if (!site) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            const auditoriumData = req.body;
+            
+            // Generate auditorium number if not provided
+            if (!auditoriumData.audiNumber) {
+              const audiNumber = `AUDI-${String(site.auditoriums.length + 1).padStart(2, '0')}`;
+              auditoriumData.audiNumber = audiNumber;
+            }
+            
+            // Check if auditorium number already exists
+            const existingAuditorium = site.auditoriums.find(audi => audi.audiNumber === auditoriumData.audiNumber);
+            if (existingAuditorium) {
+              return res.status(400).json({ message: 'Auditorium number already exists' });
+            }
+            
+            await site.addAuditorium(auditoriumData);
+            
+            res.status(201).json({
+              message: 'Auditorium added successfully',
+              auditorium: site.auditoriums[site.auditoriums.length - 1]
+            });
+          } catch (error) {
+            console.error('Error adding auditorium:', error);
+            res.status(500).json({ message: 'Error adding auditorium', error: error.message });
+          }
+        });
+
+        // Update auditorium for RMA management
+        router.put('/sites/:id/auditoriums/:audiNumber', async (req, res) => {
+          try {
+            const site = await Site.findById(req.params.id);
+            if (!site) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            const auditoriumIndex = site.auditoriums.findIndex(audi => audi.audiNumber === req.params.audiNumber);
+            if (auditoriumIndex === -1) {
+              return res.status(404).json({ message: 'Auditorium not found' });
+            }
+            
+            // Update auditorium
+            site.auditoriums[auditoriumIndex] = {
+              ...site.auditoriums[auditoriumIndex],
+              ...req.body
+            };
+            
+            await site.save();
+            
+            res.json({
+              message: 'Auditorium updated successfully',
+              auditorium: site.auditoriums[auditoriumIndex]
+            });
+          } catch (error) {
+            console.error('Error updating auditorium:', error);
+            res.status(500).json({ message: 'Error updating auditorium', error: error.message });
+          }
+        });
+
+        // Delete auditorium for RMA management
+        router.delete('/sites/:id/auditoriums/:audiNumber', async (req, res) => {
+          try {
+            const site = await Site.findById(req.params.id);
+            if (!site) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+            
+            // Check if auditorium has projectors
+            const projectorCount = await Projector.countDocuments({
+              siteId: req.params.id,
+              auditoriumId: req.params.audiNumber
+            });
+            
+            if (projectorCount > 0) {
+              return res.status(400).json({ 
+                message: 'Cannot delete auditorium with existing projectors. Please remove all projectors first.' 
+              });
+            }
+            
+            // Remove auditorium
+            site.auditoriums = site.auditoriums.filter(audi => audi.audiNumber !== req.params.audiNumber);
+            await site.save();
+            
+            res.json({ message: 'Auditorium deleted successfully' });
+          } catch (error) {
+            console.error('Error deleting auditorium:', error);
+            res.status(500).json({ message: 'Error deleting auditorium', error: error.message });
+          }
+        });
+
+        // Generate site report data for PDF export in RMA management
+        router.get('/sites/:id/report-data', async (req, res) => {
+          try {
+            const site = await Site.findById(req.params.id);
+            if (!site) {
+              return res.status(404).json({ message: 'Site not found' });
+            }
+
+            // Get comprehensive site data
+            const projectors = await Projector.find({ siteId: req.params.id });
+            
+            // Get RMA data for this site
+            const rmaCases = await RMA.find({ siteId: req.params.id });
+            
+            // Get service reports for this site
+            const ServiceReport = require('../models/ServiceReport');
+            const serviceReports = await ServiceReport.find({ siteName: site.name });
+
+            // Calculate analytics
+            const rmaAnalysis = {
+              totalCases: rmaCases.length,
+              avgResolutionTime: rmaCases.length > 0 ? 
+                rmaCases.reduce((sum, rma) => {
+                  if (rma.resolvedAt && rma.createdAt) {
+                    const days = Math.ceil((new Date(rma.resolvedAt) - new Date(rma.createdAt)) / (1000 * 60 * 60 * 24));
+                    return sum + days;
+                  }
+                  return sum;
+                }, 0) / rmaCases.length : 0,
+              totalCost: rmaCases.reduce((sum, rma) => sum + (rma.cost || 0), 0)
+            };
+
+            const serviceAnalysis = {
+              totalVisits: serviceReports.length,
+              lastVisit: serviceReports.length > 0 ? 
+                serviceReports.sort((a, b) => new Date(b.date) - new Date(a.date))[0].date : null
+            };
+
+            const projectorAnalysis = {
+              total: projectors.length,
+              active: projectors.filter(p => p.status === 'Active').length,
+              underService: projectors.filter(p => p.status === 'Under Service').length,
+              needsRepair: projectors.filter(p => p.status === 'Needs Repair').length,
+              inactive: projectors.filter(p => p.status === 'Inactive').length,
+              byBrand: projectors.reduce((acc, p) => {
+                const brand = p.brand || 'Unknown';
+                acc[brand] = (acc[brand] || 0) + 1;
+                return acc;
+              }, {}),
+              byModel: projectors.reduce((acc, p) => {
+                const model = p.model || 'Unknown';
+                acc[model] = (acc[model] || 0) + 1;
+                return acc;
+              }, {})
+            };
+
+            // Prepare site data with analytics
+            const siteData = {
+              ...site.toObject(),
+              totalProjectors: projectors.length,
+              activeProjectors: projectors.filter(p => p.status === 'Active').length,
+              rmaAnalysis,
+              serviceAnalysis,
+              projectorAnalysis,
+              lastUpdated: new Date()
+            };
+
+            res.json({
+              success: true,
+              data: siteData
+            });
+
+          } catch (error) {
+            console.error('Error generating site report data:', error);
+            res.status(500).json({ 
+              success: false,
+              message: 'Error generating site report data', 
+              error: error.message 
+            });
+          }
+        });
+
 // Get RMA records by projector serial
 router.get('/projector/:serial', async (req, res) => {
   try {
     const { serial } = req.params;
-    const rmaRecords = await RMA.find({ projectorSerial: serial }).sort({ issueDate: -1 });
+    // Search in multiple fields where the serial number might be stored (case-insensitive)
+    const rmaRecords = await RMA.find({ 
+      $or: [
+        { projectorSerial: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { defectiveSerialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { serialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } }
+      ]
+    }).sort({ issueDate: -1 });
     res.json(rmaRecords);
   } catch (error) {
     console.error('Error fetching RMA records for projector:', error);
     res.status(500).json({ error: 'Failed to fetch RMA records', details: error.message });
+  }
+});
+
+// Get projector details with RMA information
+router.get('/projector/:serial/details', async (req, res) => {
+  try {
+    const { serial } = req.params;
+    console.log(`🔍 Searching for RMA records for serial: ${serial}`);
+    
+    // Get projector details
+    const Projector = require('../models/Projector');
+    const projector = await Projector.findOne({ serialNumber: serial });
+    
+    if (!projector) {
+      console.log(`❌ Projector not found for serial: ${serial}`);
+      return res.status(404).json({ error: 'Projector not found' });
+    }
+    
+    console.log(`✅ Projector found: ${projector.serialNumber}`);
+    
+    // Get RMA records for this projector
+    // Search in multiple fields where the serial number might be stored (case-insensitive)
+    const rmaRecords = await RMA.find({ 
+      $or: [
+        { projectorSerial: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { defectiveSerialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { serialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .select('rmaNumber caseStatus priority warrantyStatus createdAt updatedAt siteName productName projectorSerial defectiveSerialNumber serialNumber');
+    
+    console.log(`📊 Found ${rmaRecords.length} RMA records for serial: ${serial}`);
+    if (rmaRecords.length > 0) {
+      console.log('RMA records:', rmaRecords.map(r => ({
+        rmaNumber: r.rmaNumber,
+        projectorSerial: r.projectorSerial,
+        defectiveSerialNumber: r.defectiveSerialNumber,
+        serialNumber: r.serialNumber
+      })));
+    }
+    
+    // Get site information if available
+    const Site = require('../models/Site');
+    let siteInfo = null;
+    if (projector.siteId) {
+      siteInfo = await Site.findById(projector.siteId)
+        .select('name siteCode region state address contactPerson');
+    }
+    
+    // Calculate RMA statistics
+    const rmaStats = {
+      total: rmaRecords.length,
+      pending: rmaRecords.filter(rma => rma.caseStatus === 'Pending').length,
+      inProgress: rmaRecords.filter(rma => rma.caseStatus === 'In Progress').length,
+      resolved: rmaRecords.filter(rma => rma.caseStatus === 'Resolved').length,
+      closed: rmaRecords.filter(rma => rma.caseStatus === 'Closed').length
+    };
+    
+    res.json({
+      success: true,
+      projector: {
+        ...projector.toObject(),
+        siteInfo: siteInfo
+      },
+      rmaRecords: rmaRecords,
+      rmaStats: rmaStats
+    });
+  } catch (error) {
+    console.error('Error fetching projector details with RMA info:', error);
+    res.status(500).json({ error: 'Failed to fetch projector details', details: error.message });
   }
 });
 
@@ -73,7 +742,19 @@ router.get('/:id', async (req, res) => {
 // Create new RMA
 router.post('/', async (req, res) => {
   try {
-    const rma = new RMA(req.body);
+    const rmaData = req.body;
+    
+    // If siteId is provided, validate it exists and populate siteName
+    if (rmaData.siteId) {
+      const site = await Site.findById(rmaData.siteId);
+      if (!site) {
+        return res.status(400).json({ error: 'Invalid site ID provided' });
+      }
+      // Ensure siteName is populated from the site
+      rmaData.siteName = site.name;
+    }
+    
+    const rma = new RMA(rmaData);
     await rma.save();
     res.status(201).json(rma);
   } catch (error) {
@@ -85,9 +766,21 @@ router.post('/', async (req, res) => {
 // Update RMA
 router.put('/:id', async (req, res) => {
   try {
+    const updateData = req.body;
+    
+    // If siteId is provided, validate it exists and populate siteName
+    if (updateData.siteId) {
+      const site = await Site.findById(updateData.siteId);
+      if (!site) {
+        return res.status(400).json({ error: 'Invalid site ID provided' });
+      }
+      // Ensure siteName is populated from the site
+      updateData.siteName = site.name;
+    }
+    
     const rma = await RMA.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
     
@@ -1366,7 +2059,7 @@ router.get('/workflow/stats', async (req, res) => {
   try {
     const dateRange = req.query;
     
-    // Get overall RMA stats
+    // Get overall RMA stats - only for the 5 specific statuses
     const rmaStats = await RMA.aggregate([
       {
         $match: dateRange.startDate && dateRange.endDate ? {
@@ -1380,32 +2073,20 @@ router.get('/workflow/stats', async (req, res) => {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          underReview: {
+          'Under Review': {
             $sum: { $cond: [{ $eq: ['$caseStatus', 'Under Review'] }, 1, 0] }
           },
-          sentToCDS: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'Sent to CDS'] }, 1, 0] }
+          'Faulty Transit to CDS': {
+            $sum: { $cond: [{ $eq: ['$caseStatus', 'Faulty Transit to CDS'] }, 1, 0] }
           },
-          cdsApproved: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'CDS Approved'] }, 1, 0] }
+          'RMA Raised Yet to Deliver': {
+            $sum: { $cond: [{ $eq: ['$caseStatus', 'RMA Raised Yet to Deliver'] }, 1, 0] }
           },
-          replacementShipped: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'Replacement Shipped'] }, 1, 0] }
+          'Open': {
+            $sum: { $cond: [{ $eq: ['$caseStatus', 'Open'] }, 1, 0] }
           },
-          replacementReceived: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'Replacement Received'] }, 1, 0] }
-          },
-          faultyPartReturned: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'Faulty Part Returned'] }, 1, 0] }
-          },
-          cdsConfirmedReturn: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'CDS Confirmed Return'] }, 1, 0] }
-          },
-          completed: {
+          'Completed': {
             $sum: { $cond: [{ $eq: ['$caseStatus', 'Completed'] }, 1, 0] }
-          },
-          rejected: {
-            $sum: { $cond: [{ $eq: ['$caseStatus', 'Rejected'] }, 1, 0] }
           }
         }
       }
@@ -1413,24 +2094,20 @@ router.get('/workflow/stats', async (req, res) => {
 
     const stats = rmaStats[0] || {
       total: 0,
-      underReview: 0,
-      sentToCDS: 0,
-      cdsApproved: 0,
-      replacementShipped: 0,
-      replacementReceived: 0,
-      faultyPartReturned: 0,
-      cdsConfirmedReturn: 0,
-      completed: 0,
-      rejected: 0
+      'Under Review': 0,
+      'Faulty Transit to CDS': 0,
+      'RMA Raised Yet to Deliver': 0,
+      'Open': 0,
+      'Completed': 0
     };
 
-    // Calculate workflow metrics
-    const totalProcessed = stats.cdsApproved + stats.rejected;
-    stats.approvalRate = totalProcessed > 0 ? (stats.cdsApproved / totalProcessed * 100).toFixed(2) : 0;
+    // Calculate workflow metrics for the 5 specific statuses
+    const totalProcessed = stats['Completed'] + stats['Faulty Transit to CDS'] + stats['RMA Raised Yet to Deliver'];
+    stats.approvalRate = totalProcessed > 0 ? ((stats['Completed'] / totalProcessed) * 100).toFixed(2) : 0;
     
-    const totalWithReturns = stats.faultyPartReturned + stats.cdsConfirmedReturn + stats.completed;
+    const totalWithReturns = stats['Completed'] + stats['Faulty Transit to CDS'];
     stats.returnCompletionRate = totalWithReturns > 0 ? 
-      ((stats.completed / totalWithReturns) * 100).toFixed(2) : 0;
+      ((stats['Completed'] / totalWithReturns) * 100).toFixed(2) : 0;
 
     res.json({
       success: true,
@@ -1439,6 +2116,104 @@ router.get('/workflow/stats', async (req, res) => {
   } catch (error) {
     console.error('Error getting workflow stats:', error);
     res.status(500).json({ error: 'Failed to get workflow stats', details: error.message });
+  }
+});
+
+// Advanced search by part name with analytics
+router.get('/search/part-analytics', async (req, res) => {
+  try {
+    const { partName } = req.query;
+    
+    if (!partName || partName.trim() === '') {
+      return res.status(400).json({ error: 'Part name is required' });
+    }
+
+    const searchTerm = partName.trim();
+    console.log(`🔍 Searching for part: "${searchTerm}"`);
+
+    // Create regex for case-insensitive partial matching
+    const searchRegex = new RegExp(searchTerm, 'i');
+
+    // Search in multiple fields for part names
+    const searchQuery = {
+      $or: [
+        { defectivePartName: searchRegex },
+        { productName: searchRegex },
+        { replacedPartName: searchRegex },
+        { defectivePartNumber: searchRegex },
+        { productPartNumber: searchRegex }
+      ]
+    };
+
+    // Get all matching RMA records
+    const rmaRecords = await RMA.find(searchQuery).sort({ ascompRaisedDate: -1 });
+
+    // Calculate status distribution
+    const statusDistribution = {};
+    const priorityDistribution = {};
+    const warrantyDistribution = {};
+    
+    rmaRecords.forEach(rma => {
+      const status = rma.caseStatus || 'Unknown';
+      const priority = rma.priority || 'Unknown';
+      const warranty = rma.warrantyStatus || 'Unknown';
+      
+      statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+      priorityDistribution[priority] = (priorityDistribution[priority] || 0) + 1;
+      warrantyDistribution[warranty] = (warrantyDistribution[warranty] || 0) + 1;
+    });
+
+    // Calculate additional metrics
+    const totalCases = rmaRecords.length;
+    const completedCases = statusDistribution['Completed'] || 0;
+    const completionRate = totalCases > 0 ? ((completedCases / totalCases) * 100).toFixed(2) : 0;
+    
+    // Get recent cases (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentCases = rmaRecords.filter(rma => 
+      rma.ascompRaisedDate && new Date(rma.ascompRaisedDate) >= thirtyDaysAgo
+    ).length;
+
+    // Get average resolution time for completed cases
+    const completedRMAs = rmaRecords.filter(rma => rma.caseStatus === 'Completed');
+    let avgResolutionDays = 0;
+    if (completedRMAs.length > 0) {
+      const totalDays = completedRMAs.reduce((sum, rma) => {
+        if (rma.ascompRaisedDate && rma.shippedDate) {
+          const raisedDate = new Date(rma.ascompRaisedDate);
+          const shippedDate = new Date(rma.shippedDate);
+          const diffTime = Math.abs(shippedDate - raisedDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return sum + diffDays;
+        }
+        return sum;
+      }, 0);
+      avgResolutionDays = (totalDays / completedRMAs.length).toFixed(1);
+    }
+
+    const analytics = {
+      partName: searchTerm,
+      totalCases,
+      recentCases,
+      completionRate: parseFloat(completionRate),
+      avgResolutionDays: parseFloat(avgResolutionDays),
+      statusDistribution,
+      priorityDistribution,
+      warrantyDistribution,
+      rmaRecords: rmaRecords.slice(0, 50), // Limit to first 50 records for performance
+      searchTimestamp: new Date()
+    };
+
+    console.log(`✅ Found ${totalCases} cases for part: "${searchTerm}"`);
+    res.json(analytics);
+
+  } catch (error) {
+    console.error('Error in part analytics search:', error);
+    res.status(500).json({ 
+      error: 'Failed to search part analytics', 
+      details: error.message 
+    });
   }
 });
 

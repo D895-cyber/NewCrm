@@ -109,6 +109,8 @@ interface ProjectorInfo {
 
 export function DTRPage() {
   const { token, isAuthenticated, user } = useAuth();
+  const [technicalHeads, setTechnicalHeads] = useState<any[]>([]);
+  const [isLoadingTechnicalHeads, setIsLoadingTechnicalHeads] = useState(false);
   const [dtrs, setDtrs] = useState<DTR[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -139,7 +141,7 @@ export function DTRPage() {
       contact: ""
     },
     priority: "Medium",
-    assignedTo: "",
+    assignedTo: "unassigned",
     estimatedResolutionTime: "",
     notes: "",
     // New fields
@@ -154,7 +156,7 @@ export function DTRPage() {
 
   const [editFormData, setEditFormData] = useState({
     status: "",
-    closedReason: "",
+    closedReason: undefined as string | undefined,
     closedBy: {
       name: "",
       designation: "",
@@ -213,6 +215,25 @@ export function DTRPage() {
       resetForm();
     }
   }, [showCreateDialog]);
+
+  // Load technical heads when component mounts
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadTechnicalHeads();
+    }
+  }, [isAuthenticated]);
+
+  const loadTechnicalHeads = async () => {
+    setIsLoadingTechnicalHeads(true);
+    try {
+      const response = await apiClient.get('/dtr/users/technical-heads');
+      setTechnicalHeads(response.data || response);
+    } catch (error) {
+      console.error('Error loading technical heads:', error);
+    } finally {
+      setIsLoadingTechnicalHeads(false);
+    }
+  };
 
   const loadDTRs = async () => {
     console.log('loadDTRs called with:', { isAuthenticated, hasToken: !!token });
@@ -353,8 +374,13 @@ export function DTRPage() {
     setError(null);
     
     try {
-      console.log('Making API request to /dtr with data:', formData);
-      const response = await apiClient.post("/dtr", formData);
+      // Convert "unassigned" back to empty string for API
+      const submitData = {
+        ...formData,
+        assignedTo: formData.assignedTo === "unassigned" ? "" : formData.assignedTo
+      };
+      console.log('Making API request to /dtr with data:', submitData);
+      const response = await apiClient.post("/dtr", submitData);
       console.log('Create DTR response:', response); // Debug log
       setDtrs([response, ...dtrs]);
       setShowCreateDialog(false);
@@ -389,13 +415,19 @@ export function DTRPage() {
 
     try {
       // Prepare update data with proper closedReason handling
-      const updateData = { ...editFormData };
+      const updateData = { 
+        ...editFormData,
+        assignedTo: editFormData.assignedTo === "unassigned" ? "" : editFormData.assignedTo
+      };
       
-      // Handle closedReason based on status
+      // Handle closedReason based on status - only set if it's not empty
       if (updateData.status === 'Shifted to RMA') {
         updateData.closedReason = 'Shifted to RMA';
       } else if (updateData.status === 'Closed' && !updateData.closedReason) {
         updateData.closedReason = 'Resolved'; // Default for closed status
+      } else if (updateData.closedReason === '' || updateData.closedReason === undefined) {
+        // Remove empty or undefined closedReason to avoid validation error
+        delete updateData.closedReason;
       }
       
       console.log('Making API request to update DTR:', selectedDTR._id);
@@ -451,7 +483,7 @@ export function DTRPage() {
         contact: ""
       },
       priority: "Medium",
-      assignedTo: "",
+      assignedTo: "unassigned",
       estimatedResolutionTime: "",
       notes: "",
       // New fields
@@ -470,13 +502,13 @@ export function DTRPage() {
     setSelectedDTR(dtr);
     setEditFormData({
       status: dtr.status || 'Open',
-      closedReason: dtr.closedReason || "",
+      closedReason: dtr.closedReason || undefined,
       closedBy: dtr.closedBy || {
         name: "",
         designation: "",
         contact: ""
       },
-      assignedTo: dtr.assignedTo || "",
+      assignedTo: dtr.assignedTo || "unassigned",
       priority: dtr.priority || 'Medium',
       estimatedResolutionTime: dtr.estimatedResolutionTime || "",
       actualResolutionTime: dtr.actualResolutionTime || "",
@@ -1133,12 +1165,30 @@ export function DTRPage() {
                 </div>
               <div>
                 <Label className="text-gray-700 font-medium mb-2 block">Assigned To</Label>
-                <Input
-                  placeholder="Technician name"
-                  value={formData.assignedTo}
-                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                  className="border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
-                />
+                <Select 
+                  value={formData.assignedTo} 
+                  onValueChange={(value) => setFormData({ ...formData, assignedTo: value })}
+                  disabled={isLoadingTechnicalHeads}
+                >
+                  <SelectTrigger className="border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder={isLoadingTechnicalHeads ? "Loading technical heads..." : "Select Technical Head"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {technicalHeads.map((technicalHead) => (
+                      <SelectItem key={technicalHead.userId} value={technicalHead.userId}>
+                        {technicalHead.profile?.firstName && technicalHead.profile?.lastName 
+                          ? `${technicalHead.profile.firstName} ${technicalHead.profile.lastName}`
+                          : technicalHead.username} ({technicalHead.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {technicalHeads.length === 0 && !isLoadingTechnicalHeads && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No technical heads found.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1400,12 +1450,30 @@ export function DTRPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-gray-700 font-medium mb-2 block">Assigned To</Label>
-                <Input
-                  placeholder="Technician name"
-                  value={editFormData.assignedTo}
-                  onChange={(e) => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
-                  className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500"
-                />
+                <Select 
+                  value={editFormData.assignedTo} 
+                  onValueChange={(value) => setEditFormData({ ...editFormData, assignedTo: value })}
+                  disabled={isLoadingTechnicalHeads}
+                >
+                  <SelectTrigger className="text-white bg-gray-800 border-gray-600 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder={isLoadingTechnicalHeads ? "Loading technical heads..." : "Select Technical Head"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {technicalHeads.map((technicalHead) => (
+                      <SelectItem key={technicalHead.userId} value={technicalHead.userId}>
+                        {technicalHead.profile?.firstName && technicalHead.profile?.lastName 
+                          ? `${technicalHead.profile.firstName} ${technicalHead.profile.lastName}`
+                          : technicalHead.username} ({technicalHead.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {technicalHeads.length === 0 && !isLoadingTechnicalHeads && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No technical heads found.
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-gray-700 font-medium mb-2 block">Estimated Resolution Time</Label>

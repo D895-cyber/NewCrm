@@ -33,3 +33,8 @@ Write-Host "💡 Tip: Check both terminal windows for startup status" -Foregroun
 
 
 
+
+
+
+
+

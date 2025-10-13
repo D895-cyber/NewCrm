@@ -395,6 +395,31 @@ router.post('/users', authenticateToken, async (req, res) => {
         'manage_service_visits',
         'upload_photos',
         'update_service_status'
+      ] : role === 'rma_handler' ? [
+        'view_dashboard',
+        'manage_rma',
+        'assign_rma',
+        'view_analytics',
+        'export_data',
+        'manage_sites',
+        'manage_projectors',
+        'manage_service_visits',
+        'manage_spare_parts',
+        'manage_dtr',
+        'troubleshoot_dtr',
+        'convert_dtr_to_rma'
+      ] : role === 'technical_head' ? [
+        'view_dashboard',
+        'manage_fse',
+        'manage_service_visits',
+        'view_analytics',
+        'export_data',
+        'manage_dtr',
+        'troubleshoot_dtr',
+        'assign_dtr',
+        'supervise_fse',
+        'view_fse_reports',
+        'manage_technical_team'
       ] : [
         'view_dashboard',
         'manage_sites',
@@ -405,7 +430,15 @@ router.post('/users', authenticateToken, async (req, res) => {
         'manage_rma',
         'manage_spare_parts',
         'view_analytics',
-        'export_data'
+        'export_data',
+        'manage_dtr',
+        'troubleshoot_dtr',
+        'convert_dtr_to_rma',
+        'assign_rma',
+        'supervise_fse',
+        'view_fse_reports',
+        'manage_technical_team',
+        'assign_dtr'
       ]
     });
 

@@ -189,16 +189,35 @@ export function SitesPage() {
       setError(null);
 
       try {
-        // Filter sites that match the search term
+        // Use RMA-specific search endpoint for server-side search
+        const response = await apiClient.get(`/rma/sites/search/${encodeURIComponent(searchTerm)}`);
+        const searchResults = response.data || response;
+        
+        // Apply additional filters to search results
+        let finalFiltered = searchResults;
+        
+        if (filterType !== "All") {
+          finalFiltered = finalFiltered.filter(site => site.siteType === filterType);
+        }
+
+        if (filterStatus !== "All") {
+          finalFiltered = finalFiltered.filter(site => site.status === filterStatus);
+        }
+        
+        setFilteredSites(finalFiltered);
+      } catch (err: any) {
+        console.error('Error searching sites:', err);
+        setError('Search failed: ' + err.message);
+        // Fallback to client-side filtering
         const filtered = sites.filter(site =>
           site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (site.siteCode && site.siteCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (site.region && site.region.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (site.state && site.state.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          site.address.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          site.address.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          site.contactPerson.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          site.siteType.toLowerCase().includes(searchTerm.toLowerCase())
+          (site.address?.city && site.address.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (site.address?.state && site.address.state.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (site.contactPerson?.name && site.contactPerson.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (site.siteType && site.siteType.toLowerCase().includes(searchTerm.toLowerCase()))
         );
         
         // Apply additional filters
@@ -213,9 +232,6 @@ export function SitesPage() {
         }
         
         setFilteredSites(finalFiltered);
-      } catch (err: any) {
-        console.error('Error filtering sites:', err);
-        setError('Search failed: ' + err.message);
       } finally {
         setIsSearching(false);
       }
@@ -274,12 +290,16 @@ export function SitesPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const sitesData = await apiClient.getAllSites();
+      // Use RMA-specific sites endpoint
+      const response = await apiClient.get('/rma/sites');
+      const sitesData = response.data || response;
       setSites(sitesData);
+      setFilteredSites(sitesData);
     } catch (err: any) {
       console.error('Error loading sites:', err);
       setError('Failed to load sites. Backend server may not be running.');
       setSites([]);
+      setFilteredSites([]);
     } finally {
       setIsLoading(false);
     }
@@ -322,7 +342,9 @@ export function SitesPage() {
 
   const loadSiteStats = async () => {
     try {
-      const stats = await apiClient.getSiteStats();
+      // Use RMA-specific site statistics endpoint
+      const response = await apiClient.get('/rma/sites/stats/overview');
+      const stats = response.data || response;
       setSiteStats(stats);
     } catch (err) {
       console.error('Error loading site statistics:', err);
@@ -371,7 +393,8 @@ export function SitesPage() {
   const handleAddSite = async () => {
     try {
       setIsLoading(true);
-      await apiClient.createSite(formData);
+      // Use RMA-specific site creation endpoint
+      await apiClient.post('/rma/sites', formData);
       await loadSites();
       await loadSiteStats();
       setShowAddSite(false);
@@ -392,7 +415,8 @@ export function SitesPage() {
 
     try {
       setIsLoading(true);
-      await apiClient.deleteSite(siteId);
+      // Use RMA-specific site deletion endpoint
+      await apiClient.delete(`/rma/sites/${siteId}`);
       await loadSites();
       await loadSiteStats();
       console.log('Site deleted successfully');

@@ -189,6 +189,30 @@ export function WorkflowManagement() {
     }
   };
 
+  // Only show these specific statuses
+  const availableStatuses = React.useMemo(() => {
+    const allowedStatuses = [
+      'Completed',
+      'Faulty Transit to CDS', 
+      'RMA Raised Yet to Deliver',
+      'Open',
+      'Under Review'
+    ];
+    
+    const statusCounts = (rmas || []).reduce((acc, rma) => {
+      const status = rma.caseStatus || 'Unknown';
+      if (allowedStatuses.includes(status)) {
+        acc[status] = (acc[status] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return allowedStatuses
+      .filter(status => statusCounts[status] > 0)
+      .map(status => ({ status, count: statusCounts[status] }))
+      .sort((a, b) => b.count - a.count);
+  }, [rmas]);
+
   const filteredRMAs = (rmas || []).filter(rma => {
     const matchesSearch = rma.rmaNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          rma.siteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -328,12 +352,12 @@ export function WorkflowManagement() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="all">All Status</option>
-                    <option value="Under Review">Under Review</option>
-                    <option value="Replacement Approved">Replacement Approved</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Rejected">Rejected</option>
+                    <option value="all">All Status ({rmas?.length || 0})</option>
+                    {availableStatuses.map(({ status, count }) => (
+                      <option key={status} value={status}>
+                        {status} ({count})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

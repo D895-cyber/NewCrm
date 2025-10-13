@@ -146,6 +146,36 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
     return () => window.removeEventListener('hashchange', apply);
   }, []);
 
+  // Hash routing for page navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      console.log('Dashboard hash routing:', hash);
+      
+      switch (hash) {
+        case '#rma-management':
+          setActivePage('RMA Management');
+          break;
+        case '#dtr-management':
+          setActivePage('Daily Trouble Reports');
+          break;
+        case '#dashboard':
+          setActivePage('Dashboard');
+          break;
+        default:
+          // Keep current page if hash doesn't match
+          break;
+      }
+    };
+
+    // Apply on mount
+    handleHashChange();
+    
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Hash routing for analytics pages
   useEffect(() => {
     const handleHashChange = () => {

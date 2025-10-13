@@ -22,6 +22,9 @@ class ApiClient {
   // Method to set authentication token
   setAuthToken(token: string) {
     this.headers['Authorization'] = `Bearer ${token}`;
+    if (isDevelopment()) {
+      console.log('🔐 Auth token set in API client:', token.substring(0, 20) + '...');
+    }
   }
 
   // Method to clear authentication token
@@ -67,15 +70,16 @@ class ApiClient {
       // Detect FormData bodies to avoid incorrect headers
       const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
       
-      if (isDevelopment()) {
-        console.log(`API ${method} request to:`, url, isFormData ? '(multipart)' : '');
-      }
-
       // Merge headers, but drop JSON content-type for FormData so the browser sets boundary automatically
       const mergedHeaders: Record<string, string> = {
         ...this.headers,
         ...(options.headers as Record<string, string> | undefined),
       } as Record<string, string>;
+      
+      if (isDevelopment()) {
+        console.log(`API ${method} request to:`, url, isFormData ? '(multipart)' : '');
+        console.log('🔐 Request headers:', mergedHeaders);
+      }
       if (isFormData && mergedHeaders['Content-Type']) {
         delete mergedHeaders['Content-Type'];
       }
@@ -347,7 +351,7 @@ class ApiClient {
   }
 
   async getRMAHistoryByProjector(projectorSerial: string) {
-    return this.get(`/rma/projector/${encodeURIComponent(projectorSerial)}`);
+    return this.get(`/rma/projector/${encodeURIComponent(projectorSerial)}/details`);
   }
 
   // Service Visit methods

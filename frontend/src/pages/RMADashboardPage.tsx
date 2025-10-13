@@ -14,6 +14,7 @@ import { downloadCSV } from "../utils/export";
 import { ProjectorsPage } from "../components/pages/ProjectorsPage";
 import { RMAPage } from "../components/pages/RMAPage";
 import { DTRPage } from "../components/pages/DTRPage";
+import { SitesPage } from "../components/pages/SitesPage";
 import {
   RefreshCw,
   AlertTriangle,
@@ -128,6 +129,53 @@ export function RMADashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(8);
   
+  // Sites management state
+  const [sites, setSites] = useState<any[]>([]);
+  const [selectedSite, setSelectedSite] = useState<any>(null);
+  const [siteSearchTerm, setSiteSearchTerm] = useState("");
+  const [showSiteSelector, setShowSiteSelector] = useState(false);
+
+  // Map backend data to frontend display format
+  const mapBackendDataToFrontend = (backendRMA: any) => {
+    return {
+      _id: backendRMA._id,
+      rmaNumber: backendRMA.rmaNumber || 'N/A',
+      callLogNumber: backendRMA.callLogNumber || 'N/A',
+      rmaOrderNumber: backendRMA.rmaOrderNumber || 'N/A',
+      ascompRaisedDate: backendRMA.ascompRaisedDate ? new Date(backendRMA.ascompRaisedDate).toLocaleDateString() : 
+                        backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
+      customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
+                         backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
+      siteName: backendRMA.siteName || backendRMA.customerSite || 'N/A',
+      productName: backendRMA.productPartNumber || backendRMA.productName || backendRMA.projectorModel || 'N/A',
+      productPartNumber: backendRMA.serialNumber || backendRMA.productPartNumber || backendRMA.defectivePartNumber || 'N/A',
+      serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
+      defectivePartNumber: backendRMA.defectivePartNumber || 'N/A',
+      defectivePartName: backendRMA.defectivePartName || 'Projector Component',
+      defectiveSerialNumber: backendRMA.defectiveSerialNumber || 'N/A',
+      symptoms: backendRMA.symptoms || backendRMA.failureDescription || backendRMA.reason || 'N/A',
+      replacedPartNumber: backendRMA.replacedPartNumber || 'N/A',
+      replacedPartName: backendRMA.replacedPartName || 'N/A',
+      replacedPartSerialNumber: backendRMA.replacedPartSerialNumber || 'N/A',
+      replacementNotes: backendRMA.replacementNotes || 'N/A',
+      shippedDate: backendRMA.shippedDate ? new Date(backendRMA.shippedDate).toLocaleDateString() : 'N/A',
+      trackingNumber: backendRMA.trackingNumber || 'N/A',
+      shippedThru: backendRMA.shippedThru || 'N/A',
+      caseStatus: backendRMA.caseStatus || backendRMA.status || 'Under Review',
+      approvalStatus: backendRMA.approvalStatus || 'Pending Review',
+      priority: backendRMA.priority || 'Medium',
+      warrantyStatus: backendRMA.warrantyStatus || 'In Warranty',
+      estimatedCost: backendRMA.estimatedCost || 0,
+      notes: backendRMA.notes || 'N/A',
+      brand: backendRMA.brand || 'N/A',
+      projectorModel: backendRMA.projectorModel || 'N/A',
+      customerSite: backendRMA.customerSite || 'N/A',
+      technician: backendRMA.technician || 'N/A',
+      createdBy: backendRMA.createdBy || 'System'
+    };
+  };
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
+  
   
   // New RMA form state
   const [newRMA, setNewRMA] = useState({
@@ -137,6 +185,7 @@ export function RMADashboardPage() {
     sxNumber: "",
     ascompRaisedDate: "",
     customerErrorDate: "",
+    siteId: "",
     siteName: "",
     productName: "",
     productPartNumber: "",
@@ -204,6 +253,7 @@ export function RMADashboardPage() {
       apiClient.setAuthToken(token);
       loadDashboardData();
       loadRMAData();
+      loadSites();
       
       // Auto-refresh every 30 seconds
       const interval = setInterval(() => {
@@ -266,7 +316,9 @@ export function RMADashboardPage() {
       console.log('ðŸ” Loading RMA data for table...');
       const rmaResponse = await apiClient.getAllRMA();
       console.log('ðŸ“Š RMA data loaded:', rmaResponse.length, 'records');
-      setRmaData(rmaResponse || []);
+      // Apply mapping function to transform backend data to frontend format
+      const mappedRmaData = (rmaResponse || []).map(mapBackendDataToFrontend);
+      setRmaData(mappedRmaData);
     } catch (err: any) {
       console.error('Error loading RMA data:', err);
       setRmaData([]);
@@ -390,6 +442,59 @@ export function RMADashboardPage() {
       console.error('Error creating RMA:', err);
     } finally {
       setIsLoadingRMAs(false);
+    }
+  };
+
+  // Load all sites for RMA management
+  const loadSites = async () => {
+    try {
+      setIsLoadingSites(true);
+      const response = await apiClient.get('/rma/sites');
+      setSites(response.data || response);
+    } catch (err: any) {
+      console.error('Error loading sites:', err);
+    } finally {
+      setIsLoadingSites(false);
+    }
+  };
+
+  // Search sites
+  const searchSites = async (query: string) => {
+    if (query.trim().length < 2) {
+      setSites([]);
+      return;
+    }
+    
+    try {
+      setIsLoadingSites(true);
+      const response = await apiClient.get(`/rma/sites/search/${encodeURIComponent(query)}`);
+      setSites(response.data || response);
+    } catch (err: any) {
+      console.error('Error searching sites:', err);
+    } finally {
+      setIsLoadingSites(false);
+    }
+  };
+
+  // Handle site selection
+  const handleSiteSelect = (site: any) => {
+    setSelectedSite(site);
+    setNewRMA(prev => ({
+      ...prev,
+      siteId: site._id,
+      siteName: site.name
+    }));
+    setShowSiteSelector(false);
+    setSiteSearchTerm("");
+  };
+
+  // Load projectors for selected site
+  const loadSiteProjectors = async (siteId: string) => {
+    try {
+      const response = await apiClient.get(`/rma/sites/${siteId}/projectors`);
+      setAvailableProjectors(response.data.projectors || []);
+    } catch (err: any) {
+      console.error('Error loading site projectors:', err);
     }
   };
 
@@ -820,7 +925,7 @@ export function RMADashboardPage() {
                           Part: {rma.defectivePartName || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-300">
-                          Serial: {rma.defectiveSerialNumber || 'N/A'}
+                          SN: {rma.serialNumber || 'N/A'}
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {(rma.symptoms || '').split(',').map((symptom: string, idx: number) => (
@@ -1405,85 +1510,8 @@ export function RMADashboardPage() {
   );
 
   const renderSiteManagement = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Site Management</h1>
-          <p className="text-gray-400 mt-1">Manage customer sites and locations</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Site
-          </Button>
-          <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-            <MapPin className="w-4 h-4 mr-2" />
-            View Map
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white">Site Locations</CardTitle>
-              <CardDescription className="text-gray-400">Customer sites and their status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <div key={item} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <MapPin className="w-8 h-8 text-green-400" />
-                      <div>
-                        <p className="text-white font-medium">Site {item} - Customer {item}</p>
-                        <p className="text-gray-400 text-sm">Location: City {item}, State</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="border-green-500 text-green-500">
-                        Active
-                      </Badge>
-                      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white">Site Statistics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Total Sites</span>
-                  <span className="text-white font-bold">{dashboardData?.siteStats?.totalSites || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Sites with RMAs</span>
-                  <span className="text-white font-bold">{dashboardData?.siteStats?.sitesWithActiveRMAs || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">High RMA Sites</span>
-                  <span className="text-white font-bold">{dashboardData?.siteStats?.highRMASites || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Active Sites</span>
-                  <span className="text-white font-bold">{(dashboardData?.siteStats?.totalSites || 0) - (dashboardData?.siteStats?.sitesWithActiveRMAs || 0)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="h-full">
+      <SitesPage />
     </div>
   );
 
@@ -1755,13 +1783,34 @@ export function RMADashboardPage() {
             />
           </div>
           <div>
-            <Label htmlFor="siteName">Site Name</Label>
-            <Input
-              id="siteName"
-              value={newRMA.siteName}
-              onChange={(e) => setNewRMA({...newRMA, siteName: e.target.value})}
-              placeholder="Enter site name"
-            />
+            <Label htmlFor="siteName">Site</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="siteName"
+                value={newRMA.siteName}
+                onChange={(e) => setNewRMA({...newRMA, siteName: e.target.value})}
+                placeholder="Enter site name or click Select"
+                readOnly
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSiteSelector(true)}
+              >
+                Select Site
+              </Button>
+            </div>
+            {selectedSite && (
+              <div className="mt-2 p-2 bg-dark-hover rounded text-sm">
+                <div className="text-white font-medium">{selectedSite.name}</div>
+                <div className="text-gray-300 text-xs">
+                  {selectedSite.siteCode} • {selectedSite.region} • {selectedSite.state}
+                </div>
+                <div className="text-gray-300 text-xs">
+                  Projectors: {selectedSite.totalProjectors || 0} total, {selectedSite.activeProjectors || 0} active
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <Label htmlFor="productName">Product Name</Label>
@@ -2037,6 +2086,78 @@ export function RMADashboardPage() {
     </Dialog>
   );
 
+  // Site Selector Modal
+  const renderSiteSelector = () => (
+    <Dialog open={showSiteSelector} onOpenChange={setShowSiteSelector}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Select Site</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="siteSearch">Search Sites</Label>
+            <Input
+              id="siteSearch"
+              value={siteSearchTerm}
+              onChange={(e) => {
+                setSiteSearchTerm(e.target.value);
+                searchSites(e.target.value);
+              }}
+              placeholder="Search by site name, code, region, state, city..."
+            />
+          </div>
+          
+          {isLoadingSites ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {sites.map((site) => (
+                <div
+                  key={site._id}
+                  className="p-4 border border-dark-color rounded-lg hover:bg-dark-hover cursor-pointer transition-colors"
+                  onClick={() => handleSiteSelect(site)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-white text-lg">{site.name}</h3>
+                      <div className="text-gray-300 text-sm mt-1">
+                        <div>Code: {site.siteCode}</div>
+                        <div>Region: {site.region} • State: {site.state}</div>
+                        {site.address && (
+                          <div>Address: {site.address.city}, {site.address.pincode}</div>
+                        )}
+                        {site.contactPerson && (
+                          <div>Contact: {site.contactPerson.name} ({site.contactPerson.email})</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-gray-300">
+                      <div>Projectors: {site.totalProjectors || 0}</div>
+                      <div>Active: {site.activeProjectors || 0}</div>
+                      <div>Type: {site.siteType}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {sites.length === 0 && siteSearchTerm && (
+                <div className="text-center py-8 text-gray-400">
+                  No sites found matching "{siteSearchTerm}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowSiteSelector(false)}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -2223,6 +2344,7 @@ export function RMADashboardPage() {
       {renderAddRMAModal()}
       {renderEditRMAModal()}
       {renderSerialNumberSelector()}
+      {renderSiteSelector()}
     </div>
   );
 }

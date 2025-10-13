@@ -26,8 +26,10 @@ import {
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV } from "../../utils/export";
 import { isDevelopment } from "../../utils/config";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function ProjectorsPage() {
+  const { isAuthenticated, token } = useAuth();
   const [searchSerial, setSearchSerial] = useState("");
   const [selectedProjector, setSelectedProjector] = useState<any>(null);
   const [, setSearchResult] = useState<any>(null);
@@ -68,11 +70,49 @@ export function ProjectorsPage() {
   const [sites, setSites] = useState<any[]>([]);
   const [projectorReports, setProjectorReports] = useState<any[]>([]);
   const [projectorSpares, setProjectorSpares] = useState<any[]>([]);
+  const [projectorRMAData, setProjectorRMAData] = useState<any>(null);
+
+  // Set authentication token
+  useEffect(() => {
+    console.log('🔐 ProjectorsPage auth check:', { isAuthenticated, hasToken: !!token, tokenPreview: token ? token.substring(0, 20) + '...' : 'none' });
+    
+    if (isAuthenticated && token) {
+      console.log('🔐 Setting auth token in ProjectorsPage');
+      apiClient.setAuthToken(token);
+    } else {
+      console.log('🔐 No auth token available in ProjectorsPage - checking localStorage...');
+      const storedToken = localStorage.getItem('authToken');
+      if (storedToken) {
+        console.log('🔐 Found stored token, setting it:', storedToken.substring(0, 20) + '...');
+        apiClient.setAuthToken(storedToken);
+      } else {
+        console.log('🔐 No stored token found either');
+      }
+    }
+  }, [isAuthenticated, token]);
 
   // Load data on component mount
   useEffect(() => {
-    loadData();
-  }, []);
+    const storedToken = localStorage.getItem('authToken');
+    const hasValidToken = (isAuthenticated && token) || storedToken;
+    
+    console.log('🔐 Loading data check:', { 
+      isAuthenticated, 
+      hasToken: !!token, 
+      hasStoredToken: !!storedToken,
+      hasValidToken 
+    });
+    
+    if (hasValidToken) {
+      console.log('🔐 Loading data with valid authentication');
+      // Add a small delay to ensure the auth token is set in the API client
+      setTimeout(() => {
+        loadData();
+      }, 100);
+    } else {
+      console.log('🔐 Not loading data - no valid authentication found');
+    }
+  }, [isAuthenticated, token]);
 
   // Dynamic search effect - triggers when user types
   useEffect(() => {
@@ -215,6 +255,20 @@ export function ProjectorsPage() {
     }
   };
 
+  const loadProjectorRMAData = async (serialNumber: string) => {
+    try {
+      const response = await apiClient.get(`/rma/projector/${serialNumber}/details`);
+      if (response.success) {
+        setProjectorRMAData(response);
+      } else {
+        setProjectorRMAData(null);
+      }
+    } catch (err) {
+      console.error('Error loading projector RMA data:', err);
+      setProjectorRMAData(null);
+    }
+  };
+
   const handleSearch = async () => {
     if (!searchSerial.trim()) return;
     
@@ -227,11 +281,18 @@ export function ProjectorsPage() {
       if (projectorData && !projectorData.error) {
         // Fetch RMA history for this projector
         try {
-          const rmaHistory = await apiClient.getRMAHistoryByProjector(searchSerial);
-          projectorData.rmaHistory = rmaHistory || [];
+          const rmaResponse = await apiClient.getRMAHistoryByProjector(searchSerial);
+          if (rmaResponse.success) {
+            projectorData.rmaHistory = rmaResponse.rmaRecords || [];
+            projectorData.rmaStats = rmaResponse.rmaStats || {};
+          } else {
+            projectorData.rmaHistory = [];
+            projectorData.rmaStats = {};
+          }
         } catch (rmaErr: any) {
           console.error('Error fetching RMA history:', rmaErr);
           projectorData.rmaHistory = [];
+          projectorData.rmaStats = {};
         }
         // Fetch recent service reports
         try {
@@ -275,6 +336,8 @@ export function ProjectorsPage() {
         setSearchResult(projectorData);
         setSelectedProjector(projectorData);
         setShowAllProjectors(false);
+        // Load RMA data for this projector
+        await loadProjectorRMAData(projectorData.serialNumber);
         console.log('Found projector with RMA history:', projectorData);
       } else {
         setSearchResult(null);
@@ -706,7 +769,12 @@ export function ProjectorsPage() {
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-dark-primary mb-2">{selectedProjector.model}</h2>
-                    <p className="text-dark-secondary">Serial: {selectedProjector.serialNumber}</p>
+                    <div className="flex items-center gap-4">
+                      <p className="text-dark-secondary">Serial: {selectedProjector.serialNumber}</p>
+                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        SN: {selectedProjector.serialNumber}
+                      </div>
+                    </div>
                   </div>
                   <div className={`dark-tag ${getStatusColor(selectedProjector.status)}`}>
                     {selectedProjector.status}
@@ -1040,29 +1108,55 @@ export function ProjectorsPage() {
               <div className="dark-card">
                 <h3 className="text-xl font-bold text-dark-primary flex items-center gap-2 mb-6">
                   <RotateCcw className="w-5 h-5" />
-                  RMA History ({selectedProjector.rmaHistory?.length || 0})
+                  RMA History ({projectorRMAData?.rmaRecords?.length || 0})
                 </h3>
                 
-                {selectedProjector.rmaHistory && selectedProjector.rmaHistory.length > 0 ? (
+                {projectorRMAData?.rmaStats && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{projectorRMAData.rmaStats.total}</div>
+                      <div className="text-sm text-blue-800">Total RMAs</div>
+                    </div>
+                    <div className="bg-yellow-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-600">{projectorRMAData.rmaStats.pending}</div>
+                      <div className="text-sm text-yellow-800">Pending</div>
+                    </div>
+                    <div className="bg-orange-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">{projectorRMAData.rmaStats.inProgress}</div>
+                      <div className="text-sm text-orange-800">In Progress</div>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{projectorRMAData.rmaStats.resolved}</div>
+                      <div className="text-sm text-green-800">Resolved</div>
+                    </div>
+                  </div>
+                )}
+                
+                {projectorRMAData?.rmaRecords && projectorRMAData.rmaRecords.length > 0 ? (
                   <div className="space-y-4">
-                    {selectedProjector.rmaHistory.map((rma: any, _index: number) => (
+                    {projectorRMAData.rmaRecords.map((rma: any, _index: number) => (
                       <div key={rma._id} className="p-4 bg-dark-bg rounded-lg border border-dark-color">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <h4 className="font-semibold text-dark-primary">{rma.partName}</h4>
-                            <p className="text-sm text-dark-secondary">{rma.partNumber}</p>
+                            <h4 className="font-semibold text-dark-primary">{rma.productName || 'Unknown Product'}</h4>
+                            <p className="text-sm text-dark-secondary">RMA #: {rma.rmaNumber}</p>
+                            <p className="text-sm text-dark-secondary">Site: {rma.siteName}</p>
                           </div>
                           <div className="text-right">
-                            <div className={`dark-tag ${rma.status === "Under Review" ? "bg-yellow-600" : "bg-green-600"}`}>
-                              {rma.status}
+                            <div className={`dark-tag ${
+                              rma.caseStatus === "Pending" ? "bg-yellow-600" : 
+                              rma.caseStatus === "In Progress" ? "bg-orange-600" :
+                              rma.caseStatus === "Resolved" ? "bg-green-600" :
+                              rma.caseStatus === "Closed" ? "bg-gray-600" : "bg-blue-600"
+                            }`}>
+                              {rma.caseStatus}
                             </div>
-                            <p className="text-xs text-dark-secondary mt-1">{formatDate(rma.issueDate)}</p>
+                            <p className="text-xs text-dark-secondary mt-1">{formatDate(rma.createdAt)}</p>
                           </div>
                         </div>
-                        <p className="text-sm text-dark-secondary mb-2">{rma.reason}</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-dark-secondary">RMA #: {rma.rmaNumber}</span>
-                          <span className="text-sm font-medium text-dark-primary">₹{rma.estimatedCost?.toLocaleString()}</span>
+                          <span className="text-sm text-dark-secondary">Priority: {rma.priority || 'Normal'}</span>
+                          <span className="text-sm text-dark-secondary">Warranty: {rma.warrantyStatus || 'Unknown'}</span>
                         </div>
                       </div>
                     ))}
@@ -1070,7 +1164,8 @@ export function ProjectorsPage() {
                 ) : (
                   <div className="text-center py-8">
                     <RotateCcw className="w-12 h-12 text-dark-secondary mx-auto mb-4" />
-                    <p className="text-dark-secondary">No RMA history found</p>
+                    <p className="text-dark-secondary">No RMA history found for this projector</p>
+                    <p className="text-sm text-dark-secondary mt-2">Serial Number: {selectedProjector.serialNumber}</p>
                   </div>
                 )}
               </div>
@@ -1232,6 +1327,8 @@ export function ProjectorsPage() {
                               } else {
                                 setSelectedProjector(fullData);
                               }
+                              // Load RMA data for this projector
+                              await loadProjectorRMAData(projector.serialNumber);
                             }
                           } catch (err) {
                             console.error('Error loading projector details:', err);
@@ -1343,6 +1440,8 @@ export function ProjectorsPage() {
                             } else {
                               setSelectedProjector(fullData);
                             }
+                            // Load RMA data for this projector
+                            await loadProjectorRMAData(projector.serialNumber);
                           }
                         } catch (err) {
                           console.error('Error loading projector details:', err);

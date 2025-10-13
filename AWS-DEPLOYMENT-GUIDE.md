@@ -86,6 +86,7 @@ ADMIN_EMAIL=admin@projectorcare.com
 MANAGER_EMAIL=manager@projectorcare.com
 ```
 
+
 ### 3. Domain Configuration
 
 #### Custom Domain Setup

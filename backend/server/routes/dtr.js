@@ -1,11 +1,54 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const DTR = require('../models/DTR');
 const Projector = require('../models/Projector');
 const Site = require('../models/Site');
 const RMA = require('../models/RMA');
 const User = require('../models/User');
 const { authenticateToken: auth } = require('../middleware/auth');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/dtr-attachments';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    // Allow images and zip files
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/zip',
+      'application/x-zip-compressed'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype) || file.originalname.endsWith('.zip')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, GIF, WebP) and ZIP files are allowed'), false);
+    }
+  },
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
 
 // Get all DTRs with pagination and filters
 router.get('/', auth, async (req, res) => {
@@ -170,7 +213,8 @@ router.put('/:id', auth, async (req, res) => {
     // Handle closedReason based on status
     if (status === 'Shifted to RMA') {
       updateData.closedReason = 'Shifted to RMA';
-    } else if (closedReason !== undefined) {
+    } else if (closedReason !== undefined && closedReason !== '') {
+      // Only set closedReason if it's not empty and is a valid enum value
       updateData.closedReason = closedReason;
     }
     
@@ -1002,6 +1046,335 @@ router.get('/users/rma-managers', auth, async (req, res) => {
     res.json(rmaManagers);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching RMA managers', error: error.message });
+  }
+});
+
+// Get all technical heads
+router.get('/users/technical-heads', auth, async (req, res) => {
+  try {
+    const technicalHeads = await User.find({
+      role: 'technical_head',
+      isActive: true
+    }).select('userId username email profile role');
+    
+    res.json(technicalHeads);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching technical heads', error: error.message });
+  }
+});
+
+// Get RMA handlers for assignment
+router.get('/users/rma-handlers', auth, async (req, res) => {
+  try {
+    const rmaHandlers = await User.find({
+      role: 'rma_handler',
+      isActive: true
+    }).select('userId username email profile role');
+
+    res.json(rmaHandlers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching RMA handlers', error: error.message });
+  }
+});
+
+// Assign DTR to technical head
+router.post('/:id/assign-technical-head', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { technicalHeadId, technicalHeadName, technicalHeadEmail, assignedBy } = req.body;
+
+    // Verify the user has permission to assign DTRs
+    if (!['admin', 'rma_handler'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Only admins and RMA handlers can assign DTRs to technical heads.' 
+      });
+    }
+
+    // Find the DTR
+    const dtr = await DTR.findById(id);
+    if (!dtr) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'DTR not found' 
+      });
+    }
+
+    // Verify the technical head exists
+    const technicalHead = await User.findOne({ 
+      userId: technicalHeadId, 
+      role: 'technical_head',
+      isActive: true 
+    });
+    
+    if (!technicalHead) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Technical head not found or inactive' 
+      });
+    }
+
+    // Update the DTR
+    dtr.assignedTo = technicalHeadId;
+    dtr.assignedBy = req.user.userId;
+    dtr.status = 'In Progress'; // Use valid status from enum
+    dtr.assignedDate = new Date();
+    dtr.assignedToDetails = {
+      name: technicalHeadName,
+      email: technicalHeadEmail,
+      role: 'technical_head',
+      assignedDate: new Date()
+    };
+
+    await dtr.save();
+
+    res.json({
+      success: true,
+      message: 'DTR successfully assigned to technical head',
+      data: {
+        dtrId: dtr._id,
+        caseId: dtr.caseId,
+        assignedTo: technicalHeadId,
+        assignedToName: technicalHeadName,
+        assignedBy: req.user.userId,
+        assignedDate: dtr.assignedDate
+      }
+    });
+
+  } catch (error) {
+    console.error('Error assigning DTR to technical head:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error assigning DTR to technical head', 
+      error: error.message 
+    });
+  }
+});
+
+// Technical Head finalizes DTR and assigns back to RMA Handler
+router.post('/:id/finalize-by-technical-head', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resolution, notes, rmaHandlerId, rmaHandlerName, rmaHandlerEmail } = req.body;
+
+    // Verify the user has permission to finalize DTRs
+    if (!['admin', 'technical_head'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Only admins and technical heads can finalize DTRs.' 
+      });
+    }
+
+    // Find the DTR
+    const dtr = await DTR.findById(id);
+    if (!dtr) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'DTR not found' 
+      });
+    }
+
+    // Verify the RMA handler exists
+    const rmaHandler = await User.findOne({ 
+      userId: rmaHandlerId, 
+      role: 'rma_handler',
+      isActive: true 
+    });
+    
+    if (!rmaHandler) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'RMA handler not found or inactive' 
+      });
+    }
+
+    // Update the DTR
+    dtr.status = 'Ready for RMA';
+    dtr.resolution = resolution;
+    dtr.notes = notes || dtr.notes;
+    dtr.finalizedBy = req.user.userId;
+    dtr.finalizedDate = new Date();
+    dtr.assignedTo = rmaHandlerId; // Assign back to RMA handler
+    dtr.assignedBy = req.user.userId;
+    dtr.assignedDate = new Date();
+    dtr.assignedToDetails = {
+      name: rmaHandlerName,
+      email: rmaHandlerEmail,
+      role: 'rma_handler',
+      assignedDate: new Date()
+    };
+
+    await dtr.save();
+
+    res.json({
+      success: true,
+      message: 'DTR successfully finalized and assigned back to RMA handler',
+      data: {
+        dtrId: dtr._id,
+        caseId: dtr.caseId,
+        status: dtr.status,
+        assignedTo: rmaHandlerId,
+        assignedToName: rmaHandlerName,
+        finalizedBy: req.user.userId,
+        finalizedDate: dtr.finalizedDate
+      }
+    });
+
+  } catch (error) {
+    console.error('Error finalizing DTR by technical head:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error finalizing DTR', 
+      error: error.message 
+    });
+  }
+});
+
+// Upload files for DTR assignment
+router.post('/:id/upload-files', auth, upload.array('files', 10), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verify the user has permission to upload files
+    if (!['admin', 'rma_handler', 'technical_head'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Only admins, RMA handlers, and technical heads can upload files.' 
+      });
+    }
+
+    // Find the DTR
+    const dtr = await DTR.findById(id);
+    if (!dtr) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'DTR not found' 
+      });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No files uploaded' 
+      });
+    }
+
+    // Process uploaded files
+    const uploadedFiles = req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      path: file.path,
+      uploadedBy: req.user.userId,
+      uploadedAt: new Date()
+    }));
+
+    // Add files to DTR attachments
+    if (!dtr.attachments) {
+      dtr.attachments = [];
+    }
+    dtr.attachments.push(...uploadedFiles);
+
+    await dtr.save();
+
+    res.json({
+      success: true,
+      message: 'Files uploaded successfully',
+      data: {
+        dtrId: dtr._id,
+        caseId: dtr.caseId,
+        uploadedFiles: uploadedFiles.map(file => ({
+          filename: file.filename,
+          originalName: file.originalName,
+          mimetype: file.mimetype,
+          size: file.size,
+          uploadedAt: file.uploadedAt
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error uploading files:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error uploading files', 
+      error: error.message 
+    });
+  }
+});
+
+// Get DTR attachments
+router.get('/:id/attachments', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const dtr = await DTR.findById(id).select('attachments caseId');
+    if (!dtr) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'DTR not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        dtrId: dtr._id,
+        caseId: dtr.caseId,
+        attachments: dtr.attachments || []
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching attachments:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching attachments', 
+      error: error.message 
+    });
+  }
+});
+
+// Download DTR attachment
+router.get('/:id/attachments/:filename', auth, async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+    
+    const dtr = await DTR.findById(id);
+    if (!dtr) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'DTR not found' 
+      });
+    }
+
+    const attachment = dtr.attachments.find(att => att.filename === filename);
+    if (!attachment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Attachment not found' 
+      });
+    }
+
+    const filePath = path.join(process.cwd(), attachment.path);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'File not found on server' 
+      });
+    }
+
+    res.download(filePath, attachment.originalName);
+
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error downloading attachment', 
+      error: error.message 
+    });
   }
 });
 

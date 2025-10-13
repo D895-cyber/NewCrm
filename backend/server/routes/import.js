@@ -44,13 +44,16 @@ const EXCEL_COLUMN_MAPPING = {
   'Customer Error Ds': 'customerErrorDate',
   'Customer Error Date': 'customerErrorDate',
   'Site Name': 'siteName',
-  'Product Nam': 'productName',
-  'Product Name': 'productName',
-  'Product Par': 'productPartNumber',
-  'Product Part #': 'productPartNumber',
-  'Product Part Number': 'productPartNumber',
-  'Serial #': 'serialNumber',
-  'Serial Number': 'serialNumber',
+  'Product Nam': 'productPartNumber', // Swapped: Product Name contains projector model, map to productPartNumber
+  'Product Name': 'productPartNumber', // Swapped: Product Name contains projector model, map to productPartNumber
+  'Product Par': 'productName', // Swapped: Product Part contains projector model, map to productName
+  'Product Part #': 'productName', // Swapped: Product Part contains projector model, map to productName
+  'Product Part Number': 'productName', // Swapped: Product Part contains projector model, map to productName
+  'Serial #': 'productPartNumber', // Swapped: Serial Number contains part number, map to productPartNumber
+  'Serial Number': 'productPartNumber', // Swapped: Serial Number contains part number, map to productPartNumber
+  'Projector Serial': 'projectorSerial', // Actual projector serial number
+  'Projector Serial #': 'projectorSerial', // Actual projector serial number
+  'Projector Serial Number': 'projectorSerial', // Actual projector serial number
   'Defective Pa': 'defectivePartName',
   'Defective Part Name': 'defectivePartName',
   'Defecti': 'defectivePartName', // Partial match

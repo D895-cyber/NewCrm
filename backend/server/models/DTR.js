@@ -103,7 +103,7 @@ const DTRSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Open', 'In Progress', 'Closed', 'Shifted to RMA'],
+    enum: ['Open', 'In Progress', 'Completed by Technical Head', 'Ready for RMA', 'Closed', 'Shifted to RMA'],
     default: 'Open'
   },
   closedReason: {
@@ -125,6 +125,26 @@ const DTRSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: null
   },
+  assignedToDetails: {
+    name: String,
+    email: String,
+    role: String,
+    assignedDate: Date
+  },
+  assignedBy: {
+    type: String,
+    ref: 'User'
+  },
+  assignedDate: {
+    type: Date
+  },
+  finalizedBy: {
+    type: String,
+    ref: 'User'
+  },
+  finalizedDate: {
+    type: Date
+  },
   estimatedResolutionTime: {
     type: String,
     trim: true
@@ -137,10 +157,36 @@ const DTRSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  attachments: {
-    type: [String],
-    default: [] // URLs to uploaded files
-  },
+  attachments: [{
+    filename: {
+      type: String,
+      required: true
+    },
+    originalName: {
+      type: String,
+      required: true
+    },
+    mimetype: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: Number,
+      required: true
+    },
+    path: {
+      type: String,
+      required: true
+    },
+    uploadedBy: {
+      type: String,
+      ref: 'User'
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   // Projector details (populated from serial number lookup)
   projectorDetails: {
     model: String,

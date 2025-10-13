@@ -31,9 +31,14 @@ router.get('/:serial', async (req, res) => {
     const services = await Service.find({ projectorSerial: serial })
       .sort({ date: -1 });
 
-    // Get RMA history
-    const rmaRecords = await RMA.find({ projectorSerial: serial })
-      .sort({ issueDate: -1 });
+    // Get RMA history (case-insensitive search)
+    const rmaRecords = await RMA.find({ 
+      $or: [
+        { projectorSerial: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { defectiveSerialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } },
+        { serialNumber: { $regex: new RegExp(`^${serial}$`, 'i') } }
+      ]
+    }).sort({ issueDate: -1 });
 
     // Get AMC contract details
     const AMCContract = require('../models/AMCContract');

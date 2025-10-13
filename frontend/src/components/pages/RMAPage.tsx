@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { 
   RotateCcw, 
   Plus, 
@@ -27,11 +34,15 @@ import { convertToCSV, downloadCSV, generateLabel, printLabel } from "../../util
 import { useData } from "../../contexts/DataContext";
 import { ImportOptions } from "../ImportOptions";
 import RMAImport from "../RMAImport";
+import { AdvancedRMASearch } from "../AdvancedRMASearch";
+import { AssignDTRToTechnicalHeadDialog } from "../dialogs/AssignDTRToTechnicalHeadDialog";
+import { useAuth } from "../../contexts/AuthContext";
 
 
 
 export function RMAPage() {
   const { rma: rmaItems, refreshRMA, refreshData, isLoading: dataLoading } = useData();
+  const { user } = useAuth();
   const [forceUpdate, setForceUpdate] = useState(0);
   const [localRMAItems, setLocalRMAItems] = useState<any[]>([]);
   
@@ -47,9 +58,9 @@ export function RMAPage() {
       customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
                          backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
       siteName: backendRMA.siteName || backendRMA.customerSite || 'N/A',
-      productName: backendRMA.productName || backendRMA.projectorModel || 'N/A',
-      productPartNumber: backendRMA.productPartNumber || backendRMA.partNumber || 'N/A',
-      serialNumber: backendRMA.serialNumber || backendRMA.projectorSerial || 'N/A',
+      productName: backendRMA.productPartNumber || backendRMA.productName || backendRMA.projectorModel || 'N/A',
+      productPartNumber: backendRMA.serialNumber || backendRMA.productPartNumber || backendRMA.partNumber || 'N/A',
+      serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
       defectivePartNumber: backendRMA.defectivePartNumber || backendRMA.partNumber || 'N/A',
       defectivePartName: backendRMA.defectivePartName || backendRMA.partName || 'Projector Component',
       defectiveSerialNumber: backendRMA.defectiveSerialNumber || backendRMA.projectorSerial || 'N/A',
@@ -96,6 +107,12 @@ export function RMAPage() {
       setLocalRMAItems([]);
     }
   }, [rmaItems]);
+
+  // Load technical heads when component mounts
+  useEffect(() => {
+    loadTechnicalHeads();
+    loadReadyForRMADTRs();
+  }, []);
   
   // Debug: Log component render
   console.log('RMAPage rendered with', rmaItems?.length || 0, 'items');
@@ -124,7 +141,14 @@ export function RMAPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportComponent, setShowImportComponent] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [editingRMA, setEditingRMA] = useState<any>(null);
+  const [showAssignDTRDialog, setShowAssignDTRDialog] = useState(false);
+  const [selectedDTRForAssignment, setSelectedDTRForAssignment] = useState<any>(null);
+  const [readyForRMADTRs, setReadyForRMADTRs] = useState<any[]>([]);
+  const [isLoadingReadyDTRs, setIsLoadingReadyDTRs] = useState(false);
+  const [technicalHeads, setTechnicalHeads] = useState<any[]>([]);
+  const [isLoadingTechnicalHeads, setIsLoadingTechnicalHeads] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSerialNumberSelector, setShowSerialNumberSelector] = useState(false);
@@ -216,6 +240,30 @@ export function RMAPage() {
     setShowSerialNumberSelector(false);
     setSerialNumberSearch("");
   };
+
+  // Only show these specific statuses
+  const availableStatuses = React.useMemo(() => {
+    const allowedStatuses = [
+      'Completed',
+      'Faulty Transit to CDS', 
+      'RMA Raised Yet to Deliver',
+      'Open',
+      'Under Review'
+    ];
+    
+    const statusCounts = (localRMAItems || []).reduce((acc, rma) => {
+      const status = rma.caseStatus || 'Unknown';
+      if (allowedStatuses.includes(status)) {
+        acc[status] = (acc[status] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return allowedStatuses
+      .filter(status => statusCounts[status] > 0)
+      .map(status => ({ status, count: statusCounts[status] }))
+      .sort((a, b) => b.count - a.count);
+  }, [localRMAItems]);
 
   const filteredRMAs = (localRMAItems || []).filter(rma => {
     const matchesSearch = (rma.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -497,13 +545,19 @@ export function RMAPage() {
       const freshRMA = await response.json();
       console.log('Fresh RMA data from API:', freshRMA);
       
-      setEditingRMA(freshRMA);
+      setEditingRMA({ 
+        ...freshRMA, 
+        assignedTo: freshRMA.assignedTo || "unassigned" 
+      });
       console.log('Set editingRMA to fresh data:', freshRMA);
       setShowEditModal(true);
     } catch (error) {
       console.error('Failed to fetch fresh RMA data:', error);
       // Fallback to using the passed RMA data
-      setEditingRMA({ ...rma });
+      setEditingRMA({ 
+        ...rma, 
+        assignedTo: rma.assignedTo || "unassigned" 
+      });
       setShowEditModal(true);
     }
   };
@@ -523,8 +577,14 @@ export function RMAPage() {
         throw new Error('RMA ID is missing. Cannot update RMA.');
       }
       
+      // Convert "unassigned" back to empty string for API
+      const updateData = {
+        ...editingRMA,
+        assignedTo: editingRMA.assignedTo === "unassigned" ? "" : editingRMA.assignedTo
+      };
+      
       // Update RMA via API
-      await apiClient.updateRMA(editingRMA._id, editingRMA);
+      await apiClient.updateRMA(editingRMA._id, updateData);
       
       // Immediately update the local state
       console.log('Updating local state for RMA:', editingRMA._id);
@@ -562,6 +622,82 @@ export function RMAPage() {
     } catch (err: any) {
       console.error('Error updating RMA:', err);
       setError('Failed to update RMA: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAssignDTR = (rma: any) => {
+    // Check if user has permission to assign DTRs
+    if (!user || !['admin', 'rma_handler'].includes(user.role)) {
+      setError('You do not have permission to assign DTRs to technical heads');
+      return;
+    }
+
+    // For now, we'll use the RMA data to create a DTR assignment
+    // In a real scenario, you might want to check if there's an associated DTR
+    setSelectedDTRForAssignment({
+      _id: rma._id,
+      caseId: rma.rmaNumber || rma.callLogNumber,
+      assignedTo: rma.assignedTo
+    });
+    setShowAssignDTRDialog(true);
+  };
+
+  const handleDTRAssigned = async () => {
+    // Refresh data after assignment
+    await refreshRMA();
+    await refreshData();
+    setShowAssignDTRDialog(false);
+    setSelectedDTRForAssignment(null);
+  };
+
+  const loadTechnicalHeads = async () => {
+    setIsLoadingTechnicalHeads(true);
+    try {
+      const response = await apiClient.get('/dtr/users/technical-heads');
+      setTechnicalHeads(response.data || response);
+    } catch (error) {
+      console.error('Error loading technical heads:', error);
+    } finally {
+      setIsLoadingTechnicalHeads(false);
+    }
+  };
+
+  const loadReadyForRMADTRs = async () => {
+    try {
+      setIsLoadingReadyDTRs(true);
+      const response = await apiClient.get('/dtr?limit=1000');
+      if (response && response.dtrs) {
+        const readyDTRs = response.dtrs.filter((dtr: any) => dtr.status === 'Ready for RMA');
+        setReadyForRMADTRs(readyDTRs);
+      }
+    } catch (error) {
+      console.error('Error loading DTRs ready for RMA:', error);
+    } finally {
+      setIsLoadingReadyDTRs(false);
+    }
+  };
+
+  const handleConvertDTRToRMA = async (dtr: any) => {
+    try {
+      setIsLoading(true);
+      const response = await apiClient.post(`/dtr/${dtr._id}/convert-to-rma`, {
+        rmaManagerId: user?.userId, // Current user as RMA manager
+        rmaManagerName: user?.username || user?.email,
+        rmaManagerEmail: user?.email
+      });
+
+      if (response.success) {
+        await refreshData();
+        await loadReadyForRMADTRs();
+        setError(null);
+      } else {
+        setError(response.message || 'Failed to convert DTR to RMA');
+      }
+    } catch (error: any) {
+      console.error('Error converting DTR to RMA:', error);
+      setError(error.response?.data?.message || 'Error converting DTR to RMA');
     } finally {
       setIsLoading(false);
     }
@@ -777,21 +913,12 @@ export function RMAPage() {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-4 py-2 bg-dark-bg border border-dark-color rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
               >
-                <option value="All">All Status</option>
-                <option value="Open">Open</option>
-                <option value="Under Review">Under Review</option>
-                <option value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</option>
-                <option value="Sent to CDS">Sent to CDS</option>
-                <option value="Faulty Transit to CDS">Faulty Transit to CDS</option>
-                <option value="CDS Approved">CDS Approved</option>
-                <option value="Replacement Shipped">Replacement Shipped</option>
-                <option value="Replacement Received">Replacement Received</option>
-                <option value="Installation Complete">Installation Complete</option>
-                <option value="Faulty Part Returned">Faulty Part Returned</option>
-                <option value="CDS Confirmed Return">CDS Confirmed Return</option>
-                <option value="Completed">Completed</option>
-                <option value="Closed">Closed</option>
-                <option value="Rejected">Rejected</option>
+                <option value="All">All Status ({localRMAItems?.length || 0})</option>
+                {availableStatuses.map(({ status, count }) => (
+                  <option key={status} value={status}>
+                    {status} ({count})
+                  </option>
+                ))}
               </select>
               
               <select 
@@ -825,6 +952,14 @@ export function RMAPage() {
             >
               <FileText className="w-4 h-4 mr-2" />
               Import Data
+            </Button>
+            
+            <Button 
+              onClick={() => setShowAdvancedSearch(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white h-11 px-6"
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Advanced Search
             </Button>
             
             <Button 
@@ -864,6 +999,46 @@ export function RMAPage() {
             </div>
           )}
         </div>
+
+        {/* DTRs Ready for RMA Conversion */}
+        {readyForRMADTRs.length > 0 && (
+          <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden mb-6">
+            <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 border-b border-dark-color">
+              <h2 className="text-xl font-semibold text-white">DTRs Ready for RMA Conversion</h2>
+              <p className="text-sm text-green-100 mt-1">Showing {readyForRMADTRs.length} DTRs ready for conversion</p>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {readyForRMADTRs.map((dtr: any) => (
+                  <div key={dtr._id} className="flex items-center justify-between p-4 bg-dark-hover rounded-lg border border-dark-color">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="font-medium text-dark-primary">Case ID: {dtr.caseId}</p>
+                          <p className="text-sm text-dark-secondary">Serial: {dtr.serialNumber}</p>
+                          <p className="text-sm text-dark-secondary">Site: {dtr.siteName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-dark-secondary">Problem: {dtr.problemName || dtr.complaintDescription}</p>
+                          <p className="text-sm text-dark-secondary">Status: <span className="text-green-400">{dtr.status}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleConvertDTRToRMA(dtr)}
+                        className="bg-green-600 hover:bg-green-700"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Converting...' : 'Convert to RMA'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
               {/* RMA Table */}
       <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
@@ -952,13 +1127,13 @@ export function RMAPage() {
                     <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
                         <div className="text-gray-300 text-sm">
-                          {rma.defectivePartName || 'N/A'}
+                          {rma.defectivePartNumber || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-300">
-                          Part: {rma.defectivePartNumber || 'N/A'}
+                          Part: {rma.defectivePartName || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-300">
-                          Serial: {rma.defectiveSerialNumber || 'N/A'}
+                          Serial: {rma.defectivePartNumber || 'N/A'}
                         </div>
                         {rma.symptoms && rma.symptoms !== 'N/A' && (
                           <div className="text-xs text-gray-100 bg-gray-700 px-2 py-1 rounded border border-gray-600" title={rma.symptoms}>
@@ -1047,6 +1222,15 @@ export function RMAPage() {
                         >
                           <FileText className="w-4 h-4" />
                         </button>
+                        {user && ['admin', 'rma_handler'].includes(user.role) && (
+                          <button 
+                            className="p-2 hover:bg-orange-100 rounded-lg transition-colors text-orange-600 hover:text-orange-800 border border-orange-200 hover:border-orange-300" 
+                            onClick={() => handleAssignDTR(rma)}
+                            title="Assign DTR to Technical Head"
+                          >
+                            <Workflow className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1082,7 +1266,7 @@ export function RMAPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Part Name</label>
-                      <p className="text-dark-primary">{selectedRMA.partName}</p>
+                      <p className="text-dark-primary">{selectedRMA.productName}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Part Number</label>
@@ -1090,7 +1274,7 @@ export function RMAPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Serial Number</label>
-                      <p className="text-dark-primary">{selectedRMA.serialNumber}</p>
+                      <p className="text-dark-primary">SN: {selectedRMA.serialNumber}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Brand & Model</label>
@@ -1134,7 +1318,11 @@ export function RMAPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-dark-secondary">Assigned To</label>
-                      <p className="text-dark-primary">{selectedRMA.assignedTo}</p>
+                      <p className="text-dark-primary">
+                        {typeof selectedRMA.assignedTo === 'string' ? selectedRMA.assignedTo : 
+                         typeof selectedRMA.assignedTo === 'object' && selectedRMA.assignedTo?.name ? selectedRMA.assignedTo.name : 
+                         'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2119,12 +2307,30 @@ export function RMAPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-dark-secondary">Assigned To</label>
-                    <Input
-                      value={editingRMA.assignedTo || ''}
-                      onChange={(e) => setEditingRMA({...editingRMA, assignedTo: e.target.value})}
-                      className="mt-1 bg-dark-bg border-dark-color text-dark-primary"
-                      placeholder="Assigned to"
-                    />
+                    <Select 
+                      value={editingRMA.assignedTo || ''} 
+                      onValueChange={(value) => setEditingRMA({...editingRMA, assignedTo: value})}
+                      disabled={isLoadingTechnicalHeads}
+                    >
+                      <SelectTrigger className="mt-1 bg-dark-bg border-dark-color text-dark-primary">
+                        <SelectValue placeholder={isLoadingTechnicalHeads ? "Loading technical heads..." : "Select Technical Head"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {technicalHeads.map((technicalHead) => (
+                          <SelectItem key={technicalHead.userId} value={technicalHead.userId}>
+                            {technicalHead.profile?.firstName && technicalHead.profile?.lastName 
+                              ? `${technicalHead.profile.firstName} ${technicalHead.profile.lastName}`
+                              : technicalHead.username} ({technicalHead.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {technicalHeads.length === 0 && !isLoadingTechnicalHeads && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        No technical heads found.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium text-dark-secondary">Estimated Cost (₹)</label>
@@ -2370,6 +2576,43 @@ export function RMAPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Advanced Search Modal */}
+      {showAdvancedSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-semibold">Advanced RMA Search</h2>
+              <Button 
+                onClick={() => setShowAdvancedSearch(false)}
+                variant="outline"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <AdvancedRMASearch 
+                onRmaSelect={(rma) => {
+                  setSelectedRMA(rma);
+                  setShowAdvancedSearch(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DTR Assignment Dialog */}
+      {showAssignDTRDialog && selectedDTRForAssignment && (
+        <AssignDTRToTechnicalHeadDialog
+          open={showAssignDTRDialog}
+          onOpenChange={setShowAssignDTRDialog}
+          dtrId={selectedDTRForAssignment._id}
+          dtrCaseId={selectedDTRForAssignment.caseId}
+          currentAssignee={selectedDTRForAssignment.assignedTo}
+          onAssigned={handleDTRAssigned}
+        />
       )}
     </>
   );
