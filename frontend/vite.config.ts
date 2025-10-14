@@ -10,6 +10,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, './src'),
     },
   },
+  publicDir: 'public', // ensures manifest.json, icons, etc. are copied to dist
   server: {
     port: 3000,
     host: true,
@@ -27,6 +28,9 @@ export default defineConfig({
     sourcemap: false, // Disable sourcemaps to save memory
     minify: 'esbuild', // Use esbuild for faster, less memory-intensive minification
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+      },
       output: {
         // Reduce chunk splitting to use less memory
         manualChunks: undefined
