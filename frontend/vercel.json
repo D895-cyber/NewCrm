@@ -1,4 +1,5 @@
 {
+  "public": true,
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -28,6 +29,10 @@
         {
           "key": "Content-Type",
           "value": "application/json"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
       ]
     },
@@ -37,6 +42,10 @@
         {
           "key": "Content-Type",
           "value": "application/javascript"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
       ]
     },
@@ -46,6 +55,10 @@
         {
           "key": "Content-Type",
           "value": "application/javascript"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
       ]
     },
@@ -55,6 +68,10 @@
         {
           "key": "Content-Type",
           "value": "image/svg+xml"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
         }
       ]
     }
