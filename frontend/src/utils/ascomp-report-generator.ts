@@ -48,40 +48,45 @@ const generateASCOMPReportHTML = (report: any): string => {
   const reportType = safeAccess(report, ['reportType'], 'First');
   
   const siteName = safeAccess(report, ['siteName'], 'Site Name Not Available');
+  const siteAddress = safeAccess(report, ['siteAddress'], '');
   const siteInchargeName = safeAccess(report, ['siteIncharge', 'name'], 'Mr. - -');
-  const siteInchargePhone = safeAccess(report, ['siteIncharge', 'phone'], '');
+  const siteInchargePhone = safeAccess(report, ['siteIncharge', 'contact'], '');
   const engineerName = safeAccess(report, ['engineer', 'name'], 'Engineer Name');
+  const engineerPhone = safeAccess(report, ['engineer', 'phone'], '');
+  const engineerEmail = safeAccess(report, ['engineer', 'email'], '');
   
   const projectorModel = safeAccess(report, ['projectorModel'], 'Model Not Available');
   const projectorSerial = safeAccess(report, ['projectorSerial'], 'Serial Not Available');
+  const brand = safeAccess(report, ['brand'], 'Brand Not Available');
   const softwareVersion = safeAccess(report, ['softwareVersion'], 'Version Not Available');
-  const projectorHours = safeAccess(report, ['projectorHours'], '0');
+  const projectorHours = safeAccess(report, ['projectorRunningHours'], '0');
   
   const lampModel = safeAccess(report, ['lampModel'], 'Lamp Model Not Available');
-  const lampHours = safeAccess(report, ['lampHours'], '0');
+  const lampHours = safeAccess(report, ['lampRunningHours'], '0');
   const currentLampHours = safeAccess(report, ['currentLampHours'], '0');
-  const lampReplacementRequired = safeAccess(report, ['lampReplacementRequired'], 'No');
+  const lampReplacementRequired = safeAccess(report, ['replacementRequired'], false) ? 'Yes' : 'No';
 
-  // Extract technical data from report
+  // Extract technical data from report using the correct form structure
   const voltageParameters = safeAccess(report, ['voltageParameters'], {});
-  const lampPowerMeasurements = safeAccess(report, ['lampPowerMeasurements'], {});
-  const environmentStatus = safeAccess(report, ['environmentStatus'], {});
+  const contentFunctionality = safeAccess(report, ['contentFunctionality'], {});
   const observations = safeAccess(report, ['observations'], []);
   const recommendedParts = safeAccess(report, ['recommendedParts'], []);
-  const colorCoordinates = safeAccess(report, ['colorCoordinates'], {});
-  const colorAccuracy = safeAccess(report, ['colorAccuracy'], {});
+  const measuredColorCoordinates = safeAccess(report, ['measuredColorCoordinates'], []);
+  const cieColorAccuracy = safeAccess(report, ['cieColorAccuracy'], []);
   const screenInfo = safeAccess(report, ['screenInfo'], {});
-  const airPollution = safeAccess(report, ['airPollution'], {});
-  const contentServer = safeAccess(report, ['contentServer'], '-');
-  const leStatus = safeAccess(report, ['leStatus'], '-');
-  const acStatus = safeAccess(report, ['acStatus'], '-');
-
-  // Extract sections data
-  const opticals = safeAccess(report, ['opticals'], []);
-  const electronics = safeAccess(report, ['electronics'], []);
-  const mechanical = safeAccess(report, ['mechanical'], []);
-  const lightEngineTest = safeAccess(report, ['lightEngineTest'], []);
+  const airPollutionLevels = safeAccess(report, ['airPollutionLevels'], {});
+  const finalStatus = safeAccess(report, ['finalStatus'], {});
   const imageEvaluation = safeAccess(report, ['imageEvaluation'], {});
+
+  // Extract inspection sections data using the correct form structure
+  const inspectionSections = safeAccess(report, ['inspectionSections'], {});
+  const opticals = safeAccess(inspectionSections, ['opticals'], []);
+  const electronics = safeAccess(inspectionSections, ['electronics'], []);
+  const mechanical = safeAccess(inspectionSections, ['mechanical'], []);
+  const lightEngineTestPatterns = safeAccess(inspectionSections, ['lightEngineTestPatterns'], []);
+  const serialNumberVerified = safeAccess(inspectionSections, ['serialNumberVerified'], {});
+  const disposableConsumables = safeAccess(inspectionSections, ['disposableConsumables'], []);
+  const coolant = safeAccess(inspectionSections, ['coolant'], {});
 
   return `
     <!DOCTYPE html>
@@ -465,12 +470,16 @@ const generateASCOMPReportHTML = (report: any): string => {
         <div class="info-box">
           <h3>Site & Personnel</h3>
           <div class="info-item"><strong>Site:</strong> ${siteName}</div>
+          <div class="info-item"><strong>Address:</strong> ${siteAddress}</div>
           <div class="info-item"><strong>Site In-charge:</strong> ${siteInchargeName} ${siteInchargePhone ? `(Contact: ${siteInchargePhone})` : ''}</div>
           <div class="info-item"><strong>Ascomp Engineer:</strong> ${engineerName}</div>
+          <div class="info-item"><strong>Engineer Phone:</strong> ${engineerPhone}</div>
+          <div class="info-item"><strong>Engineer Email:</strong> ${engineerEmail}</div>
         </div>
         
         <div class="info-box">
           <h3>Projector & Lamp Information</h3>
+          <div class="info-item"><strong>Brand:</strong> ${brand}</div>
           <div class="info-item"><strong>Model:</strong> ${projectorModel}</div>
           <div class="info-item"><strong>Serial Number:</strong> ${projectorSerial}</div>
           <div class="info-item"><strong>Software Version:</strong> ${softwareVersion}</div>
@@ -496,120 +505,95 @@ const generateASCOMPReportHTML = (report: any): string => {
           ${(() => {
             let rows = '';
             
-            // OPTICALS Section - Dynamic descriptions from FSE input
-            const opticalsData = [
-              { description: safeAccess(opticals, ['item1', 'description'], ''), status: safeAccess(opticals, ['item1', 'status'], ''), result: safeAccess(opticals, ['item1', 'result'], 'OK') },
-              { description: safeAccess(opticals, ['item2', 'description'], ''), status: safeAccess(opticals, ['item2', 'status'], ''), result: safeAccess(opticals, ['item2', 'result'], 'OK') },
-              { description: safeAccess(opticals, ['item3', 'description'], ''), status: safeAccess(opticals, ['item3', 'status'], ''), result: safeAccess(opticals, ['item3', 'result'], 'OK') },
-              { description: safeAccess(opticals, ['item4', 'description'], ''), status: safeAccess(opticals, ['item4', 'status'], ''), result: safeAccess(opticals, ['item4', 'result'], 'OK') },
-              { description: safeAccess(opticals, ['item5', 'description'], ''), status: safeAccess(opticals, ['item5', 'status'], ''), result: safeAccess(opticals, ['item5', 'result'], 'OK') }
-            ];
+            // OPTICALS Section - Use actual form data
+            if (opticals && opticals.length > 0) {
+              opticals.forEach((item, index) => {
+                rows += `
+                  <tr>
+                    ${index === 0 ? `<td class="section-header" rowspan="${opticals.length}">OPTICALS</td>` : ''}
+                    <td>${safeAccess(item, ['description'], '')}</td>
+                    <td>${safeAccess(item, ['status'], '')}</td>
+                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                  </tr>
+                `;
+              });
+            }
             
-            opticalsData.forEach((item, index) => {
-              rows += `
-                <tr>
-                  ${index === 0 ? `<td class="section-header" rowspan="${opticalsData.length}">OPTICALS</td>` : ''}
-                  <td>${item.description}</td>
-                  <td>${item.status}</td>
-                  <td class="status-ok">${item.result}</td>
-                </tr>
-              `;
-            });
-            
-            // ELECTRONICS Section - Dynamic descriptions from FSE input
-            const electronicsData = [
-              { description: safeAccess(electronics, ['item1', 'description'], ''), status: safeAccess(electronics, ['item1', 'status'], ''), result: safeAccess(electronics, ['item1', 'result'], 'OK') },
-              { description: safeAccess(electronics, ['item2', 'description'], ''), status: safeAccess(electronics, ['item2', 'status'], ''), result: safeAccess(electronics, ['item2', 'result'], 'OK') },
-              { description: safeAccess(electronics, ['item3', 'description'], ''), status: safeAccess(electronics, ['item3', 'status'], ''), result: safeAccess(electronics, ['item3', 'result'], 'OK') },
-              { description: safeAccess(electronics, ['item4', 'description'], ''), status: safeAccess(electronics, ['item4', 'status'], ''), result: safeAccess(electronics, ['item4', 'result'], 'OK') },
-              { description: safeAccess(electronics, ['item5', 'description'], ''), status: safeAccess(electronics, ['item5', 'status'], ''), result: safeAccess(electronics, ['item5', 'result'], 'OK') },
-              { description: safeAccess(electronics, ['item6', 'description'], ''), status: safeAccess(electronics, ['item6', 'status'], ''), result: safeAccess(electronics, ['item6', 'result'], 'OK') }
-            ];
-            
-            electronicsData.forEach((item, index) => {
-              rows += `
-                <tr>
-                  ${index === 0 ? `<td class="section-header" rowspan="${electronicsData.length}">ELECTRONICS</td>` : ''}
-                  <td>${item.description}</td>
-                  <td>${item.status}</td>
-                  <td class="status-ok">${item.result}</td>
-                </tr>
-              `;
-            });
+            // ELECTRONICS Section - Use actual form data
+            if (electronics && electronics.length > 0) {
+              electronics.forEach((item, index) => {
+                rows += `
+                  <tr>
+                    ${index === 0 ? `<td class="section-header" rowspan="${electronics.length}">ELECTRONICS</td>` : ''}
+                    <td>${safeAccess(item, ['description'], '')}</td>
+                    <td>${safeAccess(item, ['status'], '')}</td>
+                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                  </tr>
+                `;
+              });
+            }
             
             // Serial Number verified
             rows += `
               <tr>
                 <td class="section-header" rowspan="1">Serial Number verified</td>
-                <td>${safeAccess(report, ['serialVerified', 'description'], 'Chassis label vs Touch Panel')}</td>
-                <td>${safeAccess(report, ['serialVerified', 'status'], '')}</td>
-                <td class="status-ok">${safeAccess(report, ['serialVerified', 'result'], 'OK')}</td>
+                <td>${safeAccess(serialNumberVerified, ['description'], 'Chassis label vs Touch Panel')}</td>
+                <td>${safeAccess(serialNumberVerified, ['status'], '')}</td>
+                <td class="status-ok">${safeAccess(serialNumberVerified, ['result'], 'OK')}</td>
               </tr>
             `;
             
             // Disposable Consumables
-            rows += `
-              <tr>
-                <td class="section-header" rowspan="1">Disposable Consumables</td>
-                <td>${safeAccess(report, ['consumables', 'description'], 'Air Intake, LAD and RAD')}</td>
-                <td>${safeAccess(report, ['consumables', 'status'], 'replaced')}</td>
-                <td class="status-ok">${safeAccess(report, ['consumables', 'result'], 'OK')}</td>
-              </tr>
-            `;
+            if (disposableConsumables && disposableConsumables.length > 0) {
+              disposableConsumables.forEach((item, index) => {
+                rows += `
+                  <tr>
+                    ${index === 0 ? `<td class="section-header" rowspan="${disposableConsumables.length}">Disposable Consumables</td>` : ''}
+                    <td>${safeAccess(item, ['description'], 'Air Intake, LAD and RAD')}</td>
+                    <td>${safeAccess(item, ['status'], 'replaced')}</td>
+                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                  </tr>
+                `;
+              });
+            }
             
             // Coolant
             rows += `
               <tr>
                 <td class="section-header" rowspan="1">Coolant</td>
-                <td>${safeAccess(report, ['coolant', 'description'], 'Level and Color')}</td>
-                <td>${safeAccess(report, ['coolant', 'status'], '')}</td>
-                <td class="status-ok">${safeAccess(report, ['coolant', 'result'], 'OK')}</td>
+                <td>${safeAccess(coolant, ['description'], 'Level and Color')}</td>
+                <td>${safeAccess(coolant, ['status'], '')}</td>
+                <td class="status-ok">${safeAccess(coolant, ['result'], 'OK')}</td>
               </tr>
             `;
             
             // Light Engine Test Pattern
-            const lightEngineData = [
-              { description: safeAccess(lightEngineTest, ['item1', 'description'], ''), status: safeAccess(lightEngineTest, ['item1', 'status'], ''), result: safeAccess(lightEngineTest, ['item1', 'result'], 'OK') },
-              { description: safeAccess(lightEngineTest, ['item2', 'description'], ''), status: safeAccess(lightEngineTest, ['item2', 'status'], ''), result: safeAccess(lightEngineTest, ['item2', 'result'], 'OK') },
-              { description: safeAccess(lightEngineTest, ['item3', 'description'], ''), status: safeAccess(lightEngineTest, ['item3', 'status'], ''), result: safeAccess(lightEngineTest, ['item3', 'result'], 'OK') },
-              { description: safeAccess(lightEngineTest, ['item4', 'description'], ''), status: safeAccess(lightEngineTest, ['item4', 'status'], ''), result: safeAccess(lightEngineTest, ['item4', 'result'], 'OK') },
-              { description: safeAccess(lightEngineTest, ['item5', 'description'], ''), status: safeAccess(lightEngineTest, ['item5', 'status'], ''), result: safeAccess(lightEngineTest, ['item5', 'result'], 'OK') }
-            ];
+            if (lightEngineTestPatterns && lightEngineTestPatterns.length > 0) {
+              lightEngineTestPatterns.forEach((item, index) => {
+                rows += `
+                  <tr>
+                    ${index === 0 ? `<td class="section-header" rowspan="${lightEngineTestPatterns.length}">Light Engine Test Pattern</td>` : ''}
+                    <td>${safeAccess(item, ['color'], '')}</td>
+                    <td>${safeAccess(item, ['status'], '')}</td>
+                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                  </tr>
+                `;
+              });
+            }
             
-            lightEngineData.forEach((item, index) => {
-              rows += `
-                <tr>
-                  ${index === 0 ? `<td class="section-header" rowspan="${lightEngineData.length}">Light Engine Test Pattern</td>` : ''}
-                  <td>${item.description}</td>
-                  <td>${item.status}</td>
-                  <td class="status-ok">${item.result}</td>
-                </tr>
-              `;
-            });
-            
-            // MECHANICAL Section
-            const mechanicalData = [
-              { description: safeAccess(mechanical, ['item1', 'description'], ''), status: safeAccess(mechanical, ['item1', 'status'], ''), result: safeAccess(mechanical, ['item1', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item2', 'description'], ''), status: safeAccess(mechanical, ['item2', 'status'], ''), result: safeAccess(mechanical, ['item2', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item3', 'description'], ''), status: safeAccess(mechanical, ['item3', 'status'], ''), result: safeAccess(mechanical, ['item3', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item4', 'description'], ''), status: safeAccess(mechanical, ['item4', 'status'], ''), result: safeAccess(mechanical, ['item4', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item5', 'description'], ''), status: safeAccess(mechanical, ['item5', 'status'], ''), result: safeAccess(mechanical, ['item5', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item6', 'description'], ''), status: safeAccess(mechanical, ['item6', 'status'], ''), result: safeAccess(mechanical, ['item6', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item7', 'description'], ''), status: safeAccess(mechanical, ['item7', 'status'], ''), result: safeAccess(mechanical, ['item7', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item8', 'description'], ''), status: safeAccess(mechanical, ['item8', 'status'], ''), result: safeAccess(mechanical, ['item8', 'result'], 'OK') },
-              { description: safeAccess(mechanical, ['item9', 'description'], ''), status: safeAccess(mechanical, ['item9', 'status'], ''), result: safeAccess(mechanical, ['item9', 'result'], 'OK') }
-            ];
-            
-            mechanicalData.forEach((item, index) => {
-              rows += `
-                <tr>
-                  ${index === 0 ? `<td class="section-header" rowspan="${mechanicalData.length}">MECHANICAL</td>` : ''}
-                  <td>${item.description}</td>
-                  <td>${item.status}</td>
-                  <td class="status-ok">${item.result}</td>
-                </tr>
-              `;
-            });
+            // MECHANICAL Section - Use actual form data
+            if (mechanical && mechanical.length > 0) {
+              mechanical.forEach((item, index) => {
+                rows += `
+                  <tr>
+                    ${index === 0 ? `<td class="section-header" rowspan="${mechanical.length}">MECHANICAL</td>` : ''}
+                    <td>${safeAccess(item, ['description'], '')}</td>
+                    <td>${safeAccess(item, ['status'], '')}</td>
+                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                  </tr>
+                `;
+              });
+            }
             
             return rows;
           })()}
@@ -824,24 +808,24 @@ const generateASCOMPReportHTML = (report: any): string => {
         </div>
         
         <div class="section-title">CONTENT PLAYING SERVER</div>
-        <div style="margin-bottom: 20px;">${contentServer}</div>
+        <div style="margin-bottom: 20px;">${safeAccess(contentFunctionality, ['serverContentPlaying'], '-')}</div>
         
         <div class="section-title">FL ON 100% LAMP POWER BEFORE AND AFTER</div>
         <table class="technical-table" style="width: 300px;">
           <tbody>
             <tr>
               <td>Before</td>
-              <td>${safeAccess(lampPowerMeasurements, ['flBeforePM'], '-')}</td>
+              <td>${safeAccess(contentFunctionality, ['lampPowerTestBefore'], '-')}</td>
             </tr>
             <tr>
               <td>After</td>
-              <td>${safeAccess(lampPowerMeasurements, ['flAfterPM'], '-')}</td>
+              <td>${safeAccess(contentFunctionality, ['lampPowerTestAfter'], '-')}</td>
             </tr>
           </tbody>
         </table>
         
         <div class="section-title">PROJECTOR PLACEMENT, ROOM, ENVIRONMENT</div>
-        <div style="margin-bottom: 20px;">${safeAccess(environmentStatus, ['projectorPlacement'], 'ok')}</div>
+        <div style="margin-bottom: 20px;">${safeAccess(contentFunctionality, ['projectorPlacementEnvironment'], 'ok')}</div>
         
         <div class="section-title">OBSERVATIONS AND REMARKS</div>
         <table class="observations-table">
@@ -852,10 +836,15 @@ const generateASCOMPReportHTML = (report: any): string => {
             </tr>
           </thead>
           <tbody>
-            ${Array.from({ length: 6 }, (_, i) => `
+            ${observations && observations.length > 0 ? observations.map((obs, i) => `
+              <tr>
+                <td>${safeAccess(obs, ['number'], i + 1)}</td>
+                <td>${safeAccess(obs, ['description'], '-')}</td>
+              </tr>
+            `).join('') : Array.from({ length: 6 }, (_, i) => `
               <tr>
                 <td>${i + 1}</td>
-                <td>${safeAccess(observations, [i, 'description'], '-')}</td>
+                <td>-</td>
               </tr>
             `).join('')}
           </tbody>
@@ -875,13 +864,21 @@ const generateASCOMPReportHTML = (report: any): string => {
                 </tr>
               </thead>
               <tbody>
-                ${Array.from({ length: 6 }, (_, i) => `
+                ${recommendedParts && recommendedParts.length > 0 ? recommendedParts.map((part, i) => `
                   <tr>
-                    <td>${safeAccess(recommendedParts, [i, 'serialNumber'], '-')}</td>
-                    <td>${safeAccess(recommendedParts, [i, 'partName'], '-')}</td>
-                    <td>${safeAccess(recommendedParts, [i, 'partNumber'], '-')}</td>
-                    <td>${safeAccess(recommendedParts, [i, 'quantity'], '-')}</td>
-                    <td>${safeAccess(recommendedParts, [i, 'notes'], '-')}</td>
+                    <td>${i + 1}</td>
+                    <td>${safeAccess(part, ['partName'], '-')}</td>
+                    <td>${safeAccess(part, ['partNumber'], '-')}</td>
+                    <td>${safeAccess(part, ['quantity'], '-')}</td>
+                    <td>${safeAccess(part, ['notes'], '-')}</td>
+                  </tr>
+                `).join('') : Array.from({ length: 6 }, (_, i) => `
+                  <tr>
+                    <td>${i + 1}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -900,54 +897,21 @@ const generateASCOMPReportHTML = (report: any): string => {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>White 2K</td>
-                  <td>${safeAccess(colorCoordinates, ['white2k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['white2k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['white2k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>White 4K</td>
-                  <td>${safeAccess(colorCoordinates, ['white4k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['white4k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['white4k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Red 2K</td>
-                  <td>${safeAccess(colorCoordinates, ['red2k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['red2k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['red2k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Red 4K</td>
-                  <td>${safeAccess(colorCoordinates, ['red4k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['red4k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['red4k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Green 2K</td>
-                  <td>${safeAccess(colorCoordinates, ['green2k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['green2k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['green2k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Green 4K</td>
-                  <td>${safeAccess(colorCoordinates, ['green4k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['green4k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['green4k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Blue 2K</td>
-                  <td>${safeAccess(colorCoordinates, ['blue2k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['blue2k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['blue2k', 'y'], '-')}</td>
-                </tr>
-                <tr>
-                  <td>Blue 4K</td>
-                  <td>${safeAccess(colorCoordinates, ['blue4k', 'fL'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['blue4k', 'x'], '-')}</td>
-                  <td>${safeAccess(colorCoordinates, ['blue4k', 'y'], '-')}</td>
-                </tr>
+                ${measuredColorCoordinates && measuredColorCoordinates.length > 0 ? measuredColorCoordinates.map((coord) => `
+                  <tr>
+                    <td>${safeAccess(coord, ['testPattern'], '-')}</td>
+                    <td>${safeAccess(coord, ['fl'], '-')}</td>
+                    <td>${safeAccess(coord, ['x'], '-')}</td>
+                    <td>${safeAccess(coord, ['y'], '-')}</td>
+                  </tr>
+                `).join('') : Array.from({ length: 4 }, (_, i) => `
+                  <tr>
+                    <td>${['White', 'Red', 'Green', 'Blue'][i]}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                  </tr>
+                `).join('')}
               </tbody>
             </table>
           </div>
@@ -979,24 +943,21 @@ const generateASCOMPReportHTML = (report: any): string => {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Blue 4K</td>
-              <td>${safeAccess(colorAccuracy, ['blue4k', 'x'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['blue4k', 'y'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['blue4k', 'fL'], '-')}</td>
-            </tr>
-            <tr>
-              <td>BW Step-10 2K</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_2k', 'x'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_2k', 'y'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_2k', 'fL'], '-')}</td>
-            </tr>
-            <tr>
-              <td>BW Step-10 4K</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_4k', 'x'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_4k', 'y'], '-')}</td>
-              <td>${safeAccess(colorAccuracy, ['bwStep10_4k', 'fL'], '-')}</td>
-            </tr>
+            ${cieColorAccuracy && cieColorAccuracy.length > 0 ? cieColorAccuracy.map((coord) => `
+              <tr>
+                <td>${safeAccess(coord, ['testPattern'], '-')}</td>
+                <td>${safeAccess(coord, ['x'], '-')}</td>
+                <td>${safeAccess(coord, ['y'], '-')}</td>
+                <td>${safeAccess(coord, ['fl'], '-')}</td>
+              </tr>
+            `).join('') : Array.from({ length: 4 }, (_, i) => `
+              <tr>
+                <td>${['White', 'Red', 'Green', 'Blue'][i]}</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
         
@@ -1025,7 +986,7 @@ const generateASCOMPReportHTML = (report: any): string => {
             </tr>
             <tr>
               <td>Screen Make</td>
-              <td>${safeAccess(screenInfo, ['make'], '-')}</td>
+              <td>${safeAccess(screenInfo, ['screenMake'], '-')}</td>
               <td>${safeAccess(screenInfo, ['throwDistance'], '-')}</td>
               <td>-</td>
             </tr>
@@ -1048,21 +1009,23 @@ const generateASCOMPReportHTML = (report: any): string => {
           </thead>
           <tbody>
             <tr>
-              <td>${safeAccess(airPollution, ['level'], '4')}</td>
-              <td>${safeAccess(airPollution, ['hcho'], '32')}</td>
-              <td>${safeAccess(airPollution, ['tvoc'], '3')}</td>
-              <td>${safeAccess(airPollution, ['pm1'], '3')}</td>
-              <td>${safeAccess(airPollution, ['pm25'], '4')}</td>
-              <td>${safeAccess(airPollution, ['pm10'], '3')}</td>
-              <td>${safeAccess(airPollution, ['temperature'], '-')}</td>
-              <td>${safeAccess(airPollution, ['humidity'], '-')}</td>
+              <td>${safeAccess(airPollutionLevels, ['overall'], '4')}</td>
+              <td>${safeAccess(airPollutionLevels, ['hcho'], '32')}</td>
+              <td>${safeAccess(airPollutionLevels, ['tvoc'], '3')}</td>
+              <td>${safeAccess(airPollutionLevels, ['pm1'], '3')}</td>
+              <td>${safeAccess(airPollutionLevels, ['pm25'], '4')}</td>
+              <td>${safeAccess(airPollutionLevels, ['pm10'], '3')}</td>
+              <td>${safeAccess(airPollutionLevels, ['temperature'], '-')}</td>
+              <td>${safeAccess(airPollutionLevels, ['humidity'], '-')}</td>
             </tr>
           </tbody>
         </table>
         
         <div class="status-section">
-          <div class="status-item">LE Status During PM: ${leStatus}</div>
-          <div class="status-item">AC Status: ${acStatus}</div>
+          <div class="status-item">LE Status During PM: ${safeAccess(finalStatus, ['leStatusDuringPM'], '-')}</div>
+          <div class="status-item">AC Status: ${safeAccess(finalStatus, ['acStatus'], '-')}</div>
+          <div class="status-item">Photos Before: ${safeAccess(finalStatus, ['photosBefore'], '-')}</div>
+          <div class="status-item">Photos After: ${safeAccess(finalStatus, ['photosAfter'], '-')}</div>
           <div class="status-item">Review Photos: <a href="#" style="color: #0066cc; text-decoration: underline;">Click Here.</a></div>
         </div>
         

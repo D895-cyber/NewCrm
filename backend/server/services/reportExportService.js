@@ -80,11 +80,18 @@ const convertDocxToPdf = async (docBuffer) => {
 const buildTemplateData = (report) => {
   const plainReport = report.toObject ? report.toObject() : report;
 
-  if (!plainReport.inspectionSections && plainReport.sections) {
+  // Handle ASCOMP data structure - ensure both sections and inspectionSections are available
+  if (plainReport.sections && !plainReport.inspectionSections) {
     plainReport.inspectionSections = {
       opticals: plainReport.sections.opticals || [],
       electronics: plainReport.sections.electronics || [],
       mechanical: plainReport.sections.mechanical || []
+    };
+  } else if (plainReport.inspectionSections && !plainReport.sections) {
+    plainReport.sections = {
+      opticals: plainReport.inspectionSections.opticals || [],
+      electronics: plainReport.inspectionSections.electronics || [],
+      mechanical: plainReport.inspectionSections.mechanical || []
     };
   }
 
@@ -104,6 +111,25 @@ const buildTemplateData = (report) => {
       position: index + 1,
       partName: part.partName || '',
       partNumber: part.partNumber || ''
+    })),
+    // ASCOMP-specific data for report generation
+    opticalsList: (plainReport.sections?.opticals || plainReport.inspectionSections?.opticals || []).map((item, index) => ({
+      position: index + 1,
+      description: item.description || '',
+      status: item.status || '',
+      result: item.result || 'OK'
+    })),
+    electronicsList: (plainReport.sections?.electronics || plainReport.inspectionSections?.electronics || []).map((item, index) => ({
+      position: index + 1,
+      description: item.description || '',
+      status: item.status || '',
+      result: item.result || 'OK'
+    })),
+    mechanicalList: (plainReport.sections?.mechanical || plainReport.inspectionSections?.mechanical || []).map((item, index) => ({
+      position: index + 1,
+      description: item.description || '',
+      status: item.status || '',
+      result: item.result || 'OK'
     }))
   };
 };
@@ -121,6 +147,18 @@ const buildTokenReplacements = (data) => {
 
   const recommendedPartsBlock = (data.recommendedPartsList || [])
     .map((part) => `${part.position}. ${safe(part.partName)} (${safe(part.partNumber)})`)
+    .join('\n');
+
+  const opticalsBlock = (data.opticalsList || [])
+    .map((item) => `${item.position}. ${safe(item.description)} - Status: ${safe(item.status)} - Result: ${safe(item.result)}`)
+    .join('\n');
+
+  const electronicsBlock = (data.electronicsList || [])
+    .map((item) => `${item.position}. ${safe(item.description)} - Status: ${safe(item.status)} - Result: ${safe(item.result)}`)
+    .join('\n');
+
+  const mechanicalBlock = (data.mechanicalList || [])
+    .map((item) => `${item.position}. ${safe(item.description)} - Status: ${safe(item.status)} - Result: ${safe(item.result)}`)
     .join('\n');
 
   const environmentSummary = [
@@ -166,7 +204,11 @@ const buildTokenReplacements = (data) => {
     SYSTEM_STATUS_AC: safe(data.systemStatus?.acStatus),
     OBSERVATIONS_BLOCK: observationsBlock,
     RECOMMENDED_PARTS_BLOCK: recommendedPartsBlock,
-    ENVIRONMENT_SUMMARY: environmentSummary
+    ENVIRONMENT_SUMMARY: environmentSummary,
+    // ASCOMP Section Blocks
+    OPTICALS_BLOCK: opticalsBlock,
+    ELECTRONICS_BLOCK: electronicsBlock,
+    MECHANICAL_BLOCK: mechanicalBlock
   };
 };
 

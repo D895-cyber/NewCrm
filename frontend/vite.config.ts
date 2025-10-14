@@ -39,7 +39,9 @@ export default defineConfig({
     assetsInlineLimit: 2048, // Reduce inline limit
     // Memory optimization
     reportCompressedSize: false, // Skip compression reporting to save memory
-    emptyOutDir: true
+    emptyOutDir: true,
+    // Ensure PWA files are copied
+    copyPublicDir: true
   },
   // For deployment on platforms like Vercel/Netlify
   base: '/'

@@ -72,7 +72,7 @@ import { validateServiceReport, validateEnvironmentalConditions, validateTechnic
 interface ServiceReportData {
   // 1. General Information
   reportNumber: string;
-  reportType: 'First' | 'Follow-up' | 'Final';
+  reportType: 'First' | 'Second' | 'Third' | 'Fourth' | 'Emergency' | 'Installation';
   date: string;
   siteName: string;
   siteAddress: string;
@@ -102,11 +102,19 @@ interface ServiceReportData {
   // 4. Inspection Sections (Fixed checklists with OK/Not OK/Yes/No options)
   inspectionSections: {
     // OPTICALS Section
-    opticals: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
+    opticals: Array<{ description: string; status: string; result: string }>;
     // ELECTRONICS Section
-    electronics: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
+    electronics: Array<{ description: string; status: string; result: string }>;
     // MECHANICAL Section
-    mechanical: Array<{ description: string; status: 'OK' | 'Not OK' | 'Yes' | 'No' }>;
+    mechanical: Array<{ description: string; status: string; result: string }>;
+    // Serial Number Verification
+    serialNumberVerified: { description: string; status: string; result: string };
+    // Disposable Consumables
+    disposableConsumables: Array<{ description: string; status: string; result: string }>;
+    // Coolant
+    coolant: { description: string; status: string; result: string };
+    // Light Engine Test Patterns
+    lightEngineTestPatterns: Array<{ color: string; status: string; result: string }>;
   };
 
   // 5. Voltage Parameters (Values to be filled)
@@ -122,6 +130,8 @@ interface ServiceReportData {
     lampPowerTestBefore: string;
     lampPowerTestAfter: string;
     projectorPlacementEnvironment: string;
+    roomStatus: string;
+    environmentStatus: string;
   };
 
   // 7. Observations & Remarks (Numbered list 4-6 observations)
@@ -139,6 +149,8 @@ interface ServiceReportData {
     pixelDefects: 'Yes' | 'No';
     imageVibration: 'Yes' | 'No';
     liteLOC: 'Yes' | 'No';
+    spotOnScreen: 'Yes' | 'No';
+    screenCropping: 'Yes' | 'No';
   };
 
   // 9. Recommended Parts to Change
@@ -177,6 +189,7 @@ interface ServiceReportData {
     pm10: string;
     temperature: string;
     humidity: string;
+    overall: string;
   };
 
   // Final Status
@@ -190,6 +203,14 @@ interface ServiceReportData {
   // Additional fields
   photos: Array<{ url: string; description: string; category: string }>;
   notes: string;
+  
+  // Company Information
+  companyName: string;
+  companyAddress: string;
+  companyContact: {
+    desk: string;
+    mobile: string;
+  };
 }
 
 // Deeply merge provided overrides into defaults to ensure nested structures always exist
@@ -241,7 +262,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const defaultFormData = {
     // 1. General Information
     reportNumber: `ASCOMP-${Date.now()}`,
-    reportType: 'First' as 'First' | 'Follow-up' | 'Final',
+    reportType: 'First' as 'First' | 'Second' | 'Third' | 'Fourth' | 'Emergency' | 'Installation',
     date: new Date().toISOString().split('T')[0],
     siteName: '',
     siteAddress: '',
@@ -272,32 +293,56 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
     inspectionSections: {
       // OPTICALS Section
       opticals: [
-        { description: 'Reflector', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'UV filter', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Integrator Rod', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Cold Mirror', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Fold Mirror', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
+        { description: 'Reflector', status: 'OK', result: 'OK' },
+        { description: 'UV filter', status: 'OK', result: 'OK' },
+        { description: 'Integrator Rod', status: 'OK', result: 'OK' },
+        { description: 'Cold Mirror', status: 'OK', result: 'OK' },
+        { description: 'Fold Mirror', status: 'OK', result: 'OK' }
       ],
       // ELECTRONICS Section
       electronics: [
-        { description: 'Touch Panel', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'EVB Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'IMCB Board/s', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'PIB Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'ICP Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'IMB/S Board', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
+        { description: 'Touch Panel', status: 'OK', result: 'OK' },
+        { description: 'EVB Board', status: 'OK', result: 'OK' },
+        { description: 'IMCB Board/s', status: 'OK', result: 'OK' },
+        { description: 'PIB Board', status: 'OK', result: 'OK' },
+        { description: 'ICP Board', status: 'OK', result: 'OK' },
+        { description: 'IMB/S Board', status: 'OK', result: 'OK' }
       ],
       // MECHANICAL Section
       mechanical: [
-        { description: 'AC blower and Vane Switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Extractor Vane Switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Exhaust CFM', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Light Engine 4 fans with LAD fan', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Card Cage Top and Bottom fans', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Radiator fan and Pump', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Connector and hose for the Pump', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Security and lamp house lock switch', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' },
-        { description: 'Lamp LOC Mechanism X, Y and Z movement', status: 'OK' as 'OK' | 'Not OK' | 'Yes' | 'No' }
+        { description: 'AC blower and Vane Switch', status: 'OK', result: 'OK' },
+        { description: 'Extractor Vane Switch', status: 'OK', result: 'OK' },
+        { description: 'Exhaust CFM', status: 'OK', result: 'OK' },
+        { description: 'Light Engine 4 fans with LAD fan', status: 'OK', result: 'OK' },
+        { description: 'Card Cage Top and Bottom fans', status: 'OK', result: 'OK' },
+        { description: 'Radiator fan and Pump', status: 'OK', result: 'OK' },
+        { description: 'Connector and hose for the Pump', status: 'OK', result: 'OK' },
+        { description: 'Security and lamp house lock switch', status: 'OK', result: 'OK' },
+        { description: 'Lamp LOC Mechanism X, Y and Z movement', status: 'OK', result: 'OK' }
+      ],
+      // Serial Number Verification
+      serialNumberVerified: {
+        description: 'Chassis label vs Touch Panel',
+        status: 'OK',
+        result: 'OK'
+      },
+      // Disposable Consumables
+      disposableConsumables: [
+        { description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }
+      ],
+      // Coolant
+      coolant: {
+        description: 'Level and Color',
+        status: 'OK',
+        result: 'OK'
+      },
+      // Light Engine Test Patterns
+      lightEngineTestPatterns: [
+        { color: 'White', status: 'OK', result: 'OK' },
+        { color: 'Red', status: 'OK', result: 'OK' },
+        { color: 'Green', status: 'OK', result: 'OK' },
+        { color: 'Blue', status: 'OK', result: 'OK' },
+        { color: 'Black', status: 'OK', result: 'OK' }
       ]
     },
 
@@ -313,7 +358,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       serverContentPlaying: '',
       lampPowerTestBefore: '',
       lampPowerTestAfter: '',
-      projectorPlacementEnvironment: ''
+      projectorPlacementEnvironment: '',
+      roomStatus: 'OK',
+      environmentStatus: 'OK'
     },
 
     // 7. Observations & Remarks
@@ -337,7 +384,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       channelsChecked: 'Yes' as 'Yes' | 'No',
       pixelDefects: 'Yes' as 'Yes' | 'No',
       imageVibration: 'Yes' as 'Yes' | 'No',
-      liteLOC: 'Yes' as 'Yes' | 'No'
+      liteLOC: 'Yes' as 'Yes' | 'No',
+      spotOnScreen: 'Yes' as 'Yes' | 'No',
+      screenCropping: 'Yes' as 'Yes' | 'No'
     },
 
     // 9. Recommended Parts to Change
@@ -387,7 +436,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       pm25: '',
       pm10: '',
       temperature: '',
-      humidity: ''
+      humidity: '',
+      overall: ''
     },
 
     // Final Status
@@ -400,7 +450,15 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
     // Additional fields
     photos: [],
-    notes: ''
+    notes: '',
+    
+    // Company Information
+    companyName: 'ASCOMP Technologies',
+    companyAddress: '123 Technology Street, Tech City, TC 12345',
+    companyContact: {
+      desk: '+1-555-0123',
+      mobile: '+1-555-0124'
+    }
   };
   const [formData, setFormData] = useState(() => {
     const merged = mergeWithDefaults(defaultFormData, initialData);
@@ -477,7 +535,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       }
       
       // Run validation
-      const validationResult = validateServiceReport(updatedData);
+      const validationResult = validateServiceReport(updatedData as any);
       setValidationErrors([
         ...validationResult.errors,
         ...validationResult.warnings,
@@ -683,7 +741,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const loadStandardChecklist = () => {
     setFormData((prev) => ({
       ...prev,
-      sections: {
+      inspectionSections: {
+        ...prev.inspectionSections,
         opticals: [
           { description: 'Reflector', status: '-', result: 'OK' },
           { description: 'UV filter', status: '-', result: 'OK' },
@@ -709,27 +768,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
           { description: 'Connector and hose for the Pump', status: '-', result: 'OK' },
           { description: 'Security and lamp house lock switch', status: '-', result: 'OK' },
           { description: 'Lamp LOC Mechanism X, Y and Z movement', status: '-', result: 'OK' }
-        ],
-        disposableConsumables: [
-          { description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }
-        ],
-        coolant: {
-          description: 'Level and Color',
-          status: '-',
-          result: 'OK'
-        },
-        lightEngineTestPatterns: [
-          { color: 'White', status: '-', result: 'OK' },
-          { color: 'Red', status: '-', result: 'OK' },
-          { color: 'Green', status: '-', result: 'OK' },
-          { color: 'Blue', status: '-', result: 'OK' },
-          { color: 'Black', status: '-', result: 'OK' }
-        ],
-        serialNumberVerified: {
-          description: 'Chassis label vs Touch Panel',
-          status: '-',
-          result: 'OK'
-        }
+        ]
       }
     }));
   };
@@ -1146,16 +1185,16 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
                     <div>
                       <Input
-                        value="OK"
-                        onChange={(e) => handleInputChange('sections.serialNumberVerified.status', e.target.value)}
+                        value={formData.inspectionSections?.serialNumberVerified?.status || 'OK'}
+                        onChange={(e) => handleInputChange('inspectionSections.serialNumberVerified.status', e.target.value)}
                         placeholder="Status"
                         className="text-center"
                       />
                     </div>
                     <div>
                       <Select 
-                        value="OK" 
-                        onValueChange={(value) => handleInputChange('sections.serialNumberVerified.result', value)}
+                        value={formData.inspectionSections?.serialNumberVerified?.result || 'OK'} 
+                        onValueChange={(value) => handleInputChange('inspectionSections.serialNumberVerified.result', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1230,7 +1269,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Disposable Consumables</h3>
                   <div className="space-y-3">
-                    {[{ description: 'Air Intake, LAD and RAD', status: 'Replaced', result: 'OK' }].map((item, index) => (
+                    {(formData.inspectionSections?.disposableConsumables || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1240,7 +1279,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         <div>
                           <Input
                             value={item.status}
-                            onChange={(e) => handleSectionItemChange('disposableConsumables', index, 'status', e.target.value)}
+                            onChange={(e) => handleInputChange('inspectionSections.disposableConsumables', [{ ...item, status: e.target.value }])}
                             placeholder="Status"
                             className="text-center"
                           />
@@ -1248,7 +1287,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         <div>
                           <Select 
                             value={item.result} 
-                            onValueChange={(value) => handleSectionItemChange('disposableConsumables', index, 'result', value)}
+                            onValueChange={(value) => handleInputChange('inspectionSections.disposableConsumables', [{ ...item, result: value }])}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -1278,16 +1317,16 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
                     <div>
                       <Input
-                        value="OK"
-                        onChange={(e) => handleInputChange('sections.coolant.status', e.target.value)}
+                        value={formData.inspectionSections?.coolant?.status || 'OK'}
+                        onChange={(e) => handleInputChange('inspectionSections.coolant.status', e.target.value)}
                         placeholder="Status"
                         className="text-center"
                       />
                     </div>
                     <div>
                       <Select 
-                        value="OK" 
-                        onValueChange={(value) => handleInputChange('sections.coolant.result', value)}
+                        value={formData.inspectionSections?.coolant?.result || 'OK'} 
+                        onValueChange={(value) => handleInputChange('inspectionSections.coolant.result', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1308,13 +1347,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Light Engine Test Patterns</h3>
                   <div className="space-y-3">
-                    {[
-                      { color: 'White', status: 'OK', result: 'OK' },
-                      { color: 'Red', status: 'OK', result: 'OK' },
-                      { color: 'Green', status: 'OK', result: 'OK' },
-                      { color: 'Blue', status: 'OK', result: 'OK' },
-                      { color: 'Black', status: 'OK', result: 'OK' }
-                    ].map((item, index) => (
+                    {(formData.inspectionSections?.lightEngineTestPatterns || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
                           <Label className="text-sm font-medium text-gray-700">
@@ -1324,7 +1357,11 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         <div>
                           <Input
                             value={item.status}
-                            onChange={(e) => handleSectionItemChange('lightEngineTestPatterns', index, 'status', e.target.value)}
+                            onChange={(e) => handleInputChange('inspectionSections.lightEngineTestPatterns', 
+                              formData.inspectionSections?.lightEngineTestPatterns?.map((pattern, i) => 
+                                i === index ? { ...pattern, status: e.target.value } : pattern
+                              ) || []
+                            )}
                             placeholder="Status"
                             className="text-center"
                           />
@@ -1332,7 +1369,11 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         <div>
                           <Select 
                             value={item.result} 
-                            onValueChange={(value) => handleSectionItemChange('lightEngineTestPatterns', index, 'result', value)}
+                            onValueChange={(value) => handleInputChange('inspectionSections.lightEngineTestPatterns', 
+                              formData.inspectionSections?.lightEngineTestPatterns?.map((pattern, i) => 
+                                i === index ? { ...pattern, result: value } : pattern
+                              ) || []
+                            )}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -1494,10 +1535,10 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
 
                     <div>
-                      <Label htmlFor="liteLoc">LiteLOC</Label>
+                      <Label htmlFor="liteLOC">LiteLOC</Label>
                       <Select 
-                        value={formData.imageEvaluation.liteLoc} 
-                        onValueChange={(value) => handleInputChange('imageEvaluation.liteLoc', value)}
+                        value={formData.imageEvaluation.liteLOC} 
+                        onValueChange={(value) => handleInputChange('imageEvaluation.liteLOC', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1773,8 +1814,8 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                   <Label htmlFor="contentPlayingServer">Content Playing Server</Label>
                   <Input
                     id="contentPlayingServer"
-                    value={formData.contentPlayingServer}
-                    onChange={(e) => handleInputChange('contentPlayingServer', e.target.value)}
+                    value={formData.contentFunctionality?.serverContentPlaying || ''}
+                    onChange={(e) => handleInputChange('contentFunctionality.serverContentPlaying', e.target.value)}
                     placeholder="e.g., Dolby IMS3000"
                   />
                 </div>
@@ -1831,38 +1872,38 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ok">OK</SelectItem>
-                          <SelectItem value="not ok">Not OK</SelectItem>
+                          <SelectItem value="OK">OK</SelectItem>
+                          <SelectItem value="Not OK">Not OK</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label htmlFor="room">Room</Label>
                       <Select 
-                        value="OK" 
-                        onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
+                        value={formData.contentFunctionality?.roomStatus || 'OK'} 
+                        onValueChange={(value) => handleInputChange('contentFunctionality.roomStatus', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ok">OK</SelectItem>
-                          <SelectItem value="not ok">Not OK</SelectItem>
+                          <SelectItem value="OK">OK</SelectItem>
+                          <SelectItem value="Not OK">Not OK</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label htmlFor="environment">Environment</Label>
                       <Select 
-                        value="OK" 
-                        onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
+                        value={formData.contentFunctionality?.environmentStatus || 'OK'} 
+                        onValueChange={(value) => handleInputChange('contentFunctionality.environmentStatus', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ok">OK</SelectItem>
-                          <SelectItem value="not ok">Not OK</SelectItem>
+                          <SelectItem value="OK">OK</SelectItem>
+                          <SelectItem value="Not OK">Not OK</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

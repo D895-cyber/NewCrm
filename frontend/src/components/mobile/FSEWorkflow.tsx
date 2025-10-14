@@ -424,9 +424,20 @@ export function FSEWorkflow() {
         console.warn('Failed to fetch projector details, using defaults:', err);
       }
 
+      // Transform ASCOMP inspectionSections to sections format for report generation
+      const transformedSections = reportData.inspectionSections ? {
+        opticals: reportData.inspectionSections.opticals || [],
+        electronics: reportData.inspectionSections.electronics || [],
+        mechanical: reportData.inspectionSections.mechanical || []
+      } : {};
+
       // Merge workflow data with ASCOMP report data
       const mergedReportData = {
         ...reportData,
+        // Transform inspectionSections to sections for report generation
+        sections: transformedSections,
+        // Keep original inspectionSections for backward compatibility
+        inspectionSections: reportData.inspectionSections,
         visitId: selectedVisit?.visitId,
         siteId: selectedVisit?.siteId,
         siteName: selectedVisit?.siteName,
