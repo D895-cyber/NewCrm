@@ -1,4 +1,6 @@
 {
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -28,10 +30,6 @@
         {
           "key": "Content-Type",
           "value": "application/json"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
         }
       ]
     },
@@ -41,10 +39,6 @@
         {
           "key": "Content-Type",
           "value": "application/javascript"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
         }
       ]
     },
@@ -54,10 +48,6 @@
         {
           "key": "Content-Type",
           "value": "application/javascript"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
         }
       ]
     },
@@ -67,10 +57,6 @@
         {
           "key": "Content-Type",
           "value": "image/svg+xml"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
         }
       ]
     }
