@@ -18,6 +18,16 @@ services:
     env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
+    headers:
+      - path: /manifest.json
+        name: Content-Type
+        value: application/json
+      - path: /sw.js
+        name: Content-Type
+        value: application/javascript
+      - path: /christie.svg
+        name: Content-Type
+        value: image/svg+xml
     routes:
       - type: rewrite
         source: /api/*
