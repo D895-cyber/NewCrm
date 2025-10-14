@@ -1,64 +1,58 @@
 {
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/index.html"
+      "src": "/manifest.json",
+      "headers": { 
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/json"
+      },
+      "continue": true
     },
     {
-      "source": "/admin/(.*)",
-      "destination": "/index.html"
+      "src": "/sw.js",
+      "headers": { 
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/javascript"
+      },
+      "continue": true
     },
     {
-      "source": "/dashboard/(.*)",
-      "destination": "/index.html"
+      "src": "/pwa.js",
+      "headers": { 
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/javascript"
+      },
+      "continue": true
     },
     {
-      "source": "/mobile-fse",
-      "destination": "/index.html"
+      "src": "/christie.svg",
+      "headers": { 
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "image/svg+xml"
+      },
+      "continue": true
     },
     {
-      "source": "/mobile-fse/(.*)",
-      "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/manifest.json",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/json"
-        }
-      ]
+      "src": "/api/(.*)",
+      "dest": "/index.html"
     },
     {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
+      "src": "/admin/(.*)",
+      "dest": "/index.html"
     },
     {
-      "source": "/pwa.js",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
+      "src": "/dashboard/(.*)",
+      "dest": "/index.html"
     },
     {
-      "source": "/christie.svg",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "image/svg+xml"
-        }
-      ]
+      "src": "/mobile-fse",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/mobile-fse/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
