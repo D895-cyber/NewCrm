@@ -2119,34 +2119,88 @@ router.get('/workflow/stats', async (req, res) => {
   }
 });
 
-// Advanced search by part name with analytics
+// Advanced search by part name, part number, model number, or serial number with analytics
 router.get('/search/part-analytics', async (req, res) => {
   try {
-    const { partName } = req.query;
+    const { partName, partNumber, modelNumber, serialNumber } = req.query;
     
-    if (!partName || partName.trim() === '') {
-      return res.status(400).json({ error: 'Part name is required' });
+    // Determine search type and value
+    let searchType = 'partName';
+    let searchTerm = '';
+    let searchQuery = {};
+
+    if (partName && partName.trim() !== '') {
+      searchType = 'partName';
+      searchTerm = partName.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      searchQuery = {
+        $or: [
+          { defectivePartName: searchRegex },
+          { productName: searchRegex },
+          { replacedPartName: searchRegex }
+        ]
+      };
+    } else if (partNumber && partNumber.trim() !== '') {
+      searchType = 'partNumber';
+      searchTerm = partNumber.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      searchQuery = {
+        $or: [
+          { defectivePartNumber: searchRegex },
+          { productPartNumber: searchRegex },
+          { replacedPartNumber: searchRegex },
+          { serialNumber: searchRegex }, // Part numbers are often stored in serialNumber field
+          { defectiveSerialNumber: searchRegex },
+          { replacedPartSerialNumber: searchRegex },
+          { productName: searchRegex }, // Sometimes part numbers are in productName
+          { defectivePartName: searchRegex }, // Sometimes part numbers are in part names
+          { replacedPartName: searchRegex }
+        ]
+      };
+    } else if (modelNumber && modelNumber.trim() !== '') {
+      searchType = 'modelNumber';
+      searchTerm = modelNumber.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      searchQuery = {
+        $or: [
+          { projectorModel: searchRegex },
+          { productName: searchRegex }
+        ]
+      };
+    } else if (serialNumber && serialNumber.trim() !== '') {
+      searchType = 'serialNumber';
+      searchTerm = serialNumber.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      searchQuery = {
+        $or: [
+          { projectorSerial: searchRegex },
+          { serialNumber: searchRegex },
+          { defectiveSerialNumber: searchRegex },
+          { replacedPartSerialNumber: searchRegex }
+        ]
+      };
+    } else {
+      return res.status(400).json({ error: 'Search parameter is required (partName, partNumber, modelNumber, or serialNumber)' });
     }
 
-    const searchTerm = partName.trim();
-    console.log(`🔍 Searching for part: "${searchTerm}"`);
-
-    // Create regex for case-insensitive partial matching
-    const searchRegex = new RegExp(searchTerm, 'i');
-
-    // Search in multiple fields for part names
-    const searchQuery = {
-      $or: [
-        { defectivePartName: searchRegex },
-        { productName: searchRegex },
-        { replacedPartName: searchRegex },
-        { defectivePartNumber: searchRegex },
-        { productPartNumber: searchRegex }
-      ]
-    };
+    console.log(`🔍 Searching for ${searchType}: "${searchTerm}"`);
+    console.log('Search query:', JSON.stringify(searchQuery, null, 2));
 
     // Get all matching RMA records
     const rmaRecords = await RMA.find(searchQuery).sort({ ascompRaisedDate: -1 });
+    console.log(`📊 Found ${rmaRecords.length} matching records`);
+    
+    // Debug: Log first few records to see their structure
+    if (rmaRecords.length > 0) {
+      console.log('Sample record fields:', {
+        rmaNumber: rmaRecords[0].rmaNumber,
+        serialNumber: rmaRecords[0].serialNumber,
+        productPartNumber: rmaRecords[0].productPartNumber,
+        defectivePartNumber: rmaRecords[0].defectivePartNumber,
+        productName: rmaRecords[0].productName,
+        defectivePartName: rmaRecords[0].defectivePartName
+      });
+    }
 
     // Calculate status distribution
     const statusDistribution = {};
@@ -2194,6 +2248,8 @@ router.get('/search/part-analytics', async (req, res) => {
 
     const analytics = {
       partName: searchTerm,
+      searchType: searchType,
+      searchValue: searchTerm,
       totalCases,
       recentCases,
       completionRate: parseFloat(completionRate),
@@ -2205,7 +2261,7 @@ router.get('/search/part-analytics', async (req, res) => {
       searchTimestamp: new Date()
     };
 
-    console.log(`✅ Found ${totalCases} cases for part: "${searchTerm}"`);
+    console.log(`✅ Found ${totalCases} cases for ${searchType}: "${searchTerm}"`);
     res.json(analytics);
 
   } catch (error) {
@@ -2214,6 +2270,22 @@ router.get('/search/part-analytics', async (req, res) => {
       error: 'Failed to search part analytics', 
       details: error.message 
     });
+  }
+});
+
+// Debug endpoint to check RMA data structure
+router.get('/debug/part-numbers', async (req, res) => {
+  try {
+    const sampleRMAs = await RMA.find({}).limit(5).select('rmaNumber serialNumber productPartNumber defectivePartNumber productName defectivePartName');
+    
+    res.json({
+      message: 'Sample RMA records with part number fields',
+      count: sampleRMAs.length,
+      records: sampleRMAs
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ error: 'Failed to fetch debug data' });
   }
 });
 

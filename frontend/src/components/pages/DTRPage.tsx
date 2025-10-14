@@ -179,6 +179,12 @@ export function DTRPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [selectedDTRForAssignment, setSelectedDTRForAssignment] = useState<DTR | null>(null);
+  const [assignFormData, setAssignFormData] = useState({
+    assignedTo: "",
+    files: [] as File[]
+  });
 
   useEffect(() => {
     console.log('DTR Page useEffect triggered with:', {
@@ -473,6 +479,71 @@ export function DTRPage() {
     }
   };
 
+  const handleAssignDTR = async () => {
+    if (!isAuthenticated || !token) {
+      setError('Please log in to assign DTRs');
+      return;
+    }
+
+    if (!selectedDTRForAssignment) {
+      setError('No DTR selected for assignment');
+      return;
+    }
+
+    if (!assignFormData.assignedTo) {
+      setError('Please select a technical head');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('assignedTo', assignFormData.assignedTo);
+      
+      // Add files if any
+      assignFormData.files.forEach((file, index) => {
+        formData.append(`attachments`, file);
+      });
+
+      const response = await apiClient.put(`/dtr/${selectedDTRForAssignment._id}/assign`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Update the DTRs list with the updated DTR
+      setDtrs(dtrs.map(dtr => dtr._id === selectedDTRForAssignment._id ? response : dtr));
+      setShowAssignDialog(false);
+      setSelectedDTRForAssignment(null);
+      setAssignFormData({ assignedTo: "", files: [] });
+      loadStats();
+      
+      console.log('DTR assigned successfully');
+    } catch (error: any) {
+      console.error("Error assigning DTR:", error);
+      setError(error.message || "Failed to assign DTR. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setAssignFormData(prev => ({
+      ...prev,
+      files: [...prev.files, ...files]
+    }));
+  };
+
+  const removeFile = (index: number) => {
+    setAssignFormData(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
+  };
+
   const resetForm = () => {
     setFormData({
       serialNumber: "",
@@ -525,6 +596,15 @@ export function DTRPage() {
   const openViewDialog = (dtr: DTR) => {
     setSelectedDTR(dtr);
     setShowViewDialog(true);
+  };
+
+  const openAssignDialog = (dtr: DTR) => {
+    setSelectedDTRForAssignment(dtr);
+    setAssignFormData({
+      assignedTo: typeof dtr.assignedTo === 'string' ? dtr.assignedTo : dtr.assignedTo?.name || "",
+      files: []
+    });
+    setShowAssignDialog(true);
   };
 
   const getStatusColor = (status: string | undefined) => {
@@ -980,6 +1060,14 @@ export function DTRPage() {
                         onClick={() => openEditDialog(dtr)}
                       >
                         <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAssignDialog(dtr)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <User className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -1865,6 +1953,156 @@ export function DTRPage() {
             </DialogDescription>
           </DialogHeader>
           <DTRBulkImport />
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign DTR to Technical Head Dialog */}
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader className="border-b border-gray-200 pb-4">
+            <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <User className="w-6 h-6" />
+              Assign DTR to Technical Head
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 mt-2">
+              Assign this DTR case to a technical head for resolution
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDTRForAssignment && (
+            <div className="space-y-6 py-4">
+              {/* DTR Case ID */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                  <span className="font-medium text-gray-900">DTR Case ID:</span>
+                </div>
+                <div className="font-mono text-lg text-blue-600">
+                  {selectedDTRForAssignment.caseId || 'N/A'}
+                </div>
+              </div>
+
+              {/* Current Assignment */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-gray-900">Currently assigned to:</span>
+                </div>
+                <div className="text-gray-700">
+                  {selectedDTRForAssignment.assignedTo ? 
+                    (typeof selectedDTRForAssignment.assignedTo === 'string' ? 
+                      selectedDTRForAssignment.assignedTo : 
+                      selectedDTRForAssignment.assignedTo?.name || 'N/A') : 
+                    'N/A'}
+                </div>
+              </div>
+
+              {/* File Attachment Section */}
+              <div>
+                <Label className="text-gray-700 font-medium mb-2 block">Attach Files (Images & Logs)</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-8 h-8 text-gray-400" />
+                    <div className="text-gray-600">
+                      <p className="font-medium">Click to select files or drag and drop</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Supported: Images (JPEG, PNG, GIF, WebP) and ZIP files (max 50MB each)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".jpg,.jpeg,.png,.gif,.webp,.zip"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById('file-upload')?.click()}
+                      className="mt-2"
+                    >
+                      Choose Files
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Display selected files */}
+                {assignFormData.files.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-gray-700 font-medium">Selected Files:</Label>
+                    {assignFormData.files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Technical Head Selection */}
+              <div>
+                <Label className="text-gray-700 font-medium mb-2 block">Select Technical Head *</Label>
+                <Select 
+                  value={assignFormData.assignedTo} 
+                  onValueChange={(value) => setAssignFormData({ ...assignFormData, assignedTo: value })}
+                  disabled={isLoadingTechnicalHeads}
+                >
+                  <SelectTrigger className="border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500">
+                    <SelectValue placeholder={isLoadingTechnicalHeads ? "Loading technical heads..." : "Select Technical Head"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {technicalHeads.map((technicalHead) => (
+                      <SelectItem key={technicalHead.userId} value={technicalHead.userId}>
+                        {technicalHead.profile?.firstName && technicalHead.profile?.lastName 
+                          ? `${technicalHead.profile.firstName} ${technicalHead.profile.lastName}`
+                          : technicalHead.username} ({technicalHead.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {technicalHeads.length === 0 && !isLoadingTechnicalHeads && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    No technical heads found.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAssignDTR}
+              disabled={!assignFormData.assignedTo || isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Assigning...
+                </>
+              ) : (
+                'Assign to Technical Head'
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

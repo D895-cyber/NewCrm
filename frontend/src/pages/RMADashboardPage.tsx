@@ -43,7 +43,8 @@ import {
   Download,
   Search,
   Loader2,
-  Workflow
+  Workflow,
+  LogOut
 } from "lucide-react";
 
 interface DashboardData {
@@ -105,7 +106,7 @@ interface DashboardData {
 }
 
 export function RMADashboardPage() {
-  const { user, isAuthenticated, token } = useAuth();
+  const { user, isAuthenticated, token, logout } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [rmaData, setRmaData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,8 +244,8 @@ export function RMADashboardPage() {
     { id: 'projector-management', label: 'Projector Management', icon: Monitor, description: 'Manage projectors' },
     { id: 'site-management', label: 'Site Management', icon: MapPin, description: 'Manage sites' },
     { id: 'dtr-management', label: 'DTR Management', icon: AlertCircle, description: 'Daily Trouble Reports' },
-    { id: 'user-management', label: 'User Management', icon: Users, description: 'Manage users' },
-    { id: 'settings', label: 'Settings', icon: Settings, description: 'System settings' }
+    { id: 'settings', label: 'Settings', icon: Settings, description: 'System settings' },
+    { id: 'logout', label: 'Logout', icon: LogOut, description: 'Sign out of system', isLogout: true }
   ];
 
   useEffect(() => {
@@ -1605,100 +1606,6 @@ export function RMADashboardPage() {
     </div>
   );
 
-  const renderUserManagement = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">User Management</h1>
-          <p className="text-gray-400 mt-1">Manage system users and permissions</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Button>
-          <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-            <Users className="w-4 h-4 mr-2" />
-            Roles
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white">System Users</CardTitle>
-              <CardDescription className="text-gray-400">Active users and their roles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: 'Admin User', role: 'admin', email: 'admin@ascomp.com' },
-                  { name: 'RMA Manager', role: 'rma_manager', email: 'rma.manager@ascomp.com' },
-                  { name: 'John Technician', role: 'technician', email: 'technician@ascomp.com' },
-                  { name: 'Sarah Engineer', role: 'engineer', email: 'engineer@ascomp.com' },
-                  { name: 'Mike FSE', role: 'fse', email: 'fse@ascomp.com' }
-                ].map((user, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold">{user.name.split(' ').map(n => n[0]).join('')}</span>
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{user.name}</p>
-                        <p className="text-gray-400 text-sm">{user.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="border-blue-500 text-blue-500">
-                        {user.role}
-                      </Badge>
-                      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white">User Roles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Admin</span>
-                  <span className="text-white font-bold">1</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">RMA Manager</span>
-                  <span className="text-white font-bold">1</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Technician</span>
-                  <span className="text-white font-bold">1</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Engineer</span>
-                  <span className="text-white font-bold">1</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">FSE</span>
-                  <span className="text-white font-bold">1</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderSettings = () => (
     <div className="space-y-6">
@@ -1717,17 +1624,17 @@ export function RMADashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">System Name</span>
-                <span className="text-white">RMA Portal</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">System Name</span>
+                <span className="text-white font-semibold bg-gray-700 px-3 py-1 rounded-md">RMA Portal</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Version</span>
-                <span className="text-white">1.0.0</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">Version</span>
+                <span className="text-white font-semibold bg-gray-700 px-3 py-1 rounded-md">1.0.0</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Environment</span>
-                <span className="text-white">Production</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">Environment</span>
+                <span className="text-white font-semibold bg-gray-700 px-3 py-1 rounded-md">Production</span>
               </div>
             </div>
           </CardContent>
@@ -1740,21 +1647,21 @@ export function RMADashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Email Notifications</span>
-                <Button size="sm" variant="outline" className="border-green-500 text-green-500">
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">Email Notifications</span>
+                <Button size="sm" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
                   Enabled
                 </Button>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">SMS Alerts</span>
-                <Button size="sm" variant="outline" className="border-gray-500 text-gray-500">
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">SMS Alerts</span>
+                <Button size="sm" variant="outline" className="border-gray-500 text-gray-500 hover:bg-gray-500 hover:text-white">
                   Disabled
                 </Button>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Push Notifications</span>
-                <Button size="sm" variant="outline" className="border-green-500 text-green-500">
+              <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                <span className="text-gray-300 font-medium">Push Notifications</span>
+                <Button size="sm" variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
                   Enabled
                 </Button>
               </div>
@@ -2174,8 +2081,6 @@ export function RMADashboardPage() {
         return renderSiteManagement();
       case 'dtr-management':
         return renderDTRManagement();
-      case 'user-management':
-        return renderUserManagement();
       case 'settings':
         return renderSettings();
       default:
@@ -2253,7 +2158,8 @@ export function RMADashboardPage() {
       <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-in-out' : 'w-72'} bg-dark-bg border-r border-dark-color flex flex-col ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}>
         {/* Logo */}
         <div className={`${isMobile ? 'pt-20' : ''} p-8 border-b border-dark-color`}>
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4">
+          {user?.role !== 'rma_handler' && (
             <Button
               onClick={() => {
                 window.location.hash = '';
@@ -2265,6 +2171,7 @@ export function RMADashboardPage() {
             >
               <ArrowRight className="w-4 h-4 rotate-180" />
             </Button>
+          )}
             <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center dark-shadow-lg relative overflow-hidden">
               <ClipboardList className="w-6 h-6 text-white" />
             </div>
@@ -2287,6 +2194,15 @@ export function RMADashboardPage() {
                   </span>
                 </div>
               </div>
+              <Button
+                onClick={logout}
+                variant="ghost"
+                size="sm"
+                className="text-dark-secondary hover:text-red-400 hover:bg-red-900/20 p-2"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -2298,21 +2214,26 @@ export function RMADashboardPage() {
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.id;
+              const isLogout = item.isLogout;
               
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    setActiveSection(item.id);
-                    setSidebarOpen(false);
+                    if (isLogout) {
+                      logout();
+                    } else {
+                      setActiveSection(item.id);
+                      setSidebarOpen(false);
+                    }
                   }}
                   className={`dark-nav-item w-full text-left ${
                     isActive ? "dark-nav-item-active" : ""
-                  }`}
+                  } ${isLogout ? "hover:text-red-400 hover:bg-red-900/20" : ""}`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? "text-dark-primary" : "text-dark-secondary"}`} />
+                  <Icon className={`w-5 h-5 ${isActive ? "text-dark-primary" : "text-dark-secondary"} ${isLogout ? "text-red-400" : ""}`} />
                   <div>
-                    <div className="font-medium">{item.label}</div>
+                    <div className={`font-medium ${isLogout ? "text-red-400" : ""}`}>{item.label}</div>
                     <div className="text-xs text-dark-secondary">{item.description}</div>
                   </div>
                 </button>

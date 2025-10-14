@@ -329,13 +329,13 @@ export function TechnicalHeadDashboardPage() {
         })));
         
         // Temporary debug: If no DTRs found for current user, show all assigned DTRs
-        if (assignedDTRs.length === 0 && allAssignedDTRs.length > 0) {
+        if (assignedDTRs.length === 0 && response.dtrs.length > 0) {
           console.log('⚠️ No DTRs found for current user, but there are assigned DTRs. Showing all assigned DTRs for debugging.');
           console.log('This suggests a user ID/username mismatch. Check the comparison above.');
         }
         
         // Debug: Show detailed comparison for each assigned DTR
-        allAssignedDTRs.forEach((dtr: any, index: number) => {
+        response.dtrs.forEach((dtr: any, index: number) => {
           console.log(`DTR ${index + 1} (${dtr.caseId}) assignment analysis:`, {
             dtrAssignedTo: dtr.assignedTo,
             dtrAssignedToType: typeof dtr.assignedTo,
@@ -589,9 +589,8 @@ export function TechnicalHeadDashboardPage() {
       return isAssignedToCurrentUser;
     }).length;
     
-    // Temporary fallback: If no DTRs found for current user, show all assigned DTRs for debugging
+    // Debug: Show all assigned DTRs count for debugging
     const allAssignedDTRsCount = dtrs.filter(dtr => dtr.assignedTo).length;
-    const finalAssignedDTRsCount = assignedDTRs > 0 ? assignedDTRs : allAssignedDTRsCount;
     const readyForRMA = dtrs.filter(dtr => {
       // Only count DTRs assigned to current technical head that are ready for RMA
       const isAssignedToCurrentUser = dtr.assignedTo && (
@@ -605,7 +604,8 @@ export function TechnicalHeadDashboardPage() {
     console.log('Dashboard Assignment Debug:');
     console.log('Total DTR items:', dtrs.length);
     console.log('Pending DTRs:', pendingDTRs);
-    console.log('Assigned DTRs:', assignedDTRs);
+    console.log('Assigned DTRs (to current user):', assignedDTRs);
+    console.log('All Assigned DTRs (total):', allAssignedDTRsCount);
     console.log('Ready for RMA:', readyForRMA);
     console.log('All DTR statuses:', dtrs.map(dtr => ({ 
       caseId: dtr.caseId, 
@@ -662,9 +662,9 @@ export function TechnicalHeadDashboardPage() {
               <UserCheck className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-dark-primary">{finalAssignedDTRsCount}</div>
+              <div className="text-2xl font-bold text-dark-primary">{assignedDTRs}</div>
               <p className="text-xs text-dark-secondary">
-                Assigned to technical heads
+                Assigned to you
               </p>
             </CardContent>
           </Card>
@@ -750,11 +750,44 @@ export function TechnicalHeadDashboardPage() {
   };
 
   const renderFSEManagement = () => {
-    const filteredFSEs = fses.filter(fse => 
+    // Calculate visit statistics for each FSE
+    const fsesWithStats = fses.map(fse => {
+      const fseVisits = serviceVisits.filter(visit => 
+        visit.fseId === fse._id || visit.fseName === fse.name
+      );
+      
+      const totalVisits = fseVisits.length;
+      const completedVisits = fseVisits.filter(visit => 
+        visit.status === 'Completed' || visit.workflowStatus?.completed === true
+      ).length;
+      const pendingVisits = fseVisits.filter(visit => 
+        visit.status === 'Pending' || visit.status === 'In Progress' || visit.status === 'Scheduled'
+      ).length;
+      
+      return {
+        ...fse,
+        totalVisits,
+        completedVisits,
+        pendingVisits
+      };
+    });
+
+    const filteredFSEs = fsesWithStats.filter(fse => 
       fse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fse.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fse.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Debug: Log FSE statistics
+    console.log('FSE Statistics Debug:');
+    console.log('Total FSEs:', fses.length);
+    console.log('Total Service Visits:', serviceVisits.length);
+    console.log('FSEs with calculated stats:', fsesWithStats.map(fse => ({
+      name: fse.name,
+      totalVisits: fse.totalVisits,
+      completedVisits: fse.completedVisits,
+      pendingVisits: fse.pendingVisits
+    })));
 
     return (
       <div className="space-y-6">
@@ -814,6 +847,28 @@ export function TechnicalHeadDashboardPage() {
             </Card>
           ))}
         </div>
+
+        {/* No FSEs message */}
+        {filteredFSEs.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-dark-secondary mb-4">
+              <Users className="h-12 w-12 mx-auto mb-4 text-dark-secondary" />
+              <h3 className="text-lg font-medium text-dark-primary mb-2">No FSEs Found</h3>
+              <p className="text-dark-secondary">
+                {fses.length === 0 
+                  ? "No FSEs are currently available in the system."
+                  : "No FSEs match your search criteria."
+                }
+              </p>
+              {fses.length > 0 && (
+                <div className="mt-4 text-sm text-dark-secondary">
+                  <p>Total FSEs in system: {fses.length}</p>
+                  <p>Total Service Visits: {serviceVisits.length}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -917,6 +972,12 @@ export function TechnicalHeadDashboardPage() {
   };
 
   const renderDTRManagement = () => {
+    // Debug: Log current user and DTR assignment info
+    console.log('DTR Management Debug:');
+    console.log('Current user:', user);
+    console.log('Total DTRs loaded:', dtrs.length);
+    console.log('DTRs with assignments:', dtrs.filter(dtr => dtr.assignedTo).length);
+    
     const filteredDTRs = dtrs.filter(dtr => {
       // Only show DTRs assigned to current technical head
       const isAssignedToCurrentUser = dtr.assignedTo && (
@@ -930,6 +991,22 @@ export function TechnicalHeadDashboardPage() {
         (dtr.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       return isAssignedToCurrentUser && matchesSearch;
+    });
+
+    // Debug: Log filtered results
+    console.log('DTRs assigned to current user:', filteredDTRs.length);
+    console.log('Filtered DTRs:', filteredDTRs.map(dtr => ({
+      caseId: dtr.caseId,
+      assignedTo: dtr.assignedTo,
+      assignedToType: typeof dtr.assignedTo
+    })));
+
+    // Temporary: If no DTRs assigned to current user, show all DTRs for debugging
+    const displayDTRs = filteredDTRs.length > 0 ? filteredDTRs : dtrs.filter(dtr => {
+      const matchesSearch = (dtr.caseId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dtr.siteName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dtr.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
     });
 
     return (
@@ -961,7 +1038,7 @@ export function TechnicalHeadDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {filteredDTRs.map((dtr) => (
+          {displayDTRs.map((dtr) => (
             <Card key={dtr._id} className="bg-dark-card border-dark-color">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -1023,6 +1100,29 @@ export function TechnicalHeadDashboardPage() {
             </Card>
           ))}
         </div>
+
+        {/* No DTRs message */}
+        {displayDTRs.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-dark-secondary mb-4">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-dark-secondary" />
+              <h3 className="text-lg font-medium text-dark-primary mb-2">No DTRs Found</h3>
+              <p className="text-dark-secondary">
+                {dtrs.length === 0 
+                  ? "No DTRs are currently available in the system."
+                  : "No DTRs are assigned to you or match your search criteria."
+                }
+              </p>
+              {dtrs.length > 0 && (
+                <div className="mt-4 text-sm text-dark-secondary">
+                  <p>Total DTRs in system: {dtrs.length}</p>
+                  <p>DTRs with assignments: {dtrs.filter(dtr => dtr.assignedTo).length}</p>
+                  <p>Current user: {user?.username} (ID: {user?.userId})</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

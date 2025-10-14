@@ -26,8 +26,7 @@ import {
   Loader2,
   Activity,
   Truck,
-  AlertCircle,
-  Workflow
+  AlertCircle
 } from "lucide-react";
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV, generateLabel, printLabel } from "../../utils/export";
@@ -302,15 +301,11 @@ export function RMAPage() {
         return "bg-violet-600 text-white border border-violet-500 shadow-sm";
       case "Completed":
         return "bg-green-600 text-white border border-green-500 shadow-sm";
-      case "Closed":
-        return "bg-slate-600 text-white border border-slate-500 shadow-sm";
       case "Rejected":
         return "bg-red-700 text-white border border-red-600 shadow-sm";
       case "Replacement Approved":
         return "bg-green-600 text-white border border-green-500 shadow-sm";
       case "Repair In Progress":
-        return "bg-blue-600 text-white border border-blue-500 shadow-sm";
-      case "In Progress":
         return "bg-blue-600 text-white border border-blue-500 shadow-sm";
       default:
         return "bg-gray-600 text-white border border-gray-500 shadow-sm";
@@ -369,15 +364,11 @@ export function RMAPage() {
         return <CheckCircle className="w-4 h-4" />;
       case "Completed":
         return <CheckCircle className="w-4 h-4" />;
-      case "Closed":
-        return <XCircle className="w-4 h-4" />;
       case "Rejected":
         return <XCircle className="w-4 h-4" />;
       case "Replacement Approved":
         return <CheckCircle className="w-4 h-4" />;
       case "Repair In Progress":
-        return <AlertTriangle className="w-4 h-4" />;
-      case "In Progress":
         return <AlertTriangle className="w-4 h-4" />;
       default:
         return <RotateCcw className="w-4 h-4" />;
@@ -426,7 +417,7 @@ export function RMAPage() {
 
       // Prepare RMA data for backend
       const rmaData = {
-        rmaNumber: newRMA.rmaNumber,
+        // rmaNumber: newRMA.rmaNumber, // Remove this - let backend auto-generate
         callLogNumber: newRMA.callLogNumber,
         rmaOrderNumber: newRMA.rmaOrderNumber,
         sxNumber: newRMA.sxNumber,
@@ -627,22 +618,6 @@ export function RMAPage() {
     }
   };
 
-  const handleAssignDTR = (rma: any) => {
-    // Check if user has permission to assign DTRs
-    if (!user || !['admin', 'rma_handler'].includes(user.role)) {
-      setError('You do not have permission to assign DTRs to technical heads');
-      return;
-    }
-
-    // For now, we'll use the RMA data to create a DTR assignment
-    // In a real scenario, you might want to check if there's an associated DTR
-    setSelectedDTRForAssignment({
-      _id: rma._id,
-      caseId: rma.rmaNumber || rma.callLogNumber,
-      assignedTo: rma.assignedTo
-    });
-    setShowAssignDTRDialog(true);
-  };
 
   const handleDTRAssigned = async () => {
     // Refresh data after assignment
@@ -834,14 +809,15 @@ export function RMAPage() {
             </div>
           </div>
           
+          {/* Faulty Transit to CDS */}
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-200">
             <div className="flex items-center">
               <div className="p-3 bg-white/20 rounded-full">
-                <Activity className="w-6 h-6 text-white" />
+                <AlertTriangle className="w-6 h-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-blue-100 opacity-90">In Progress</p>
-                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'In Progress' || r.caseStatus === 'Repair In Progress').length}</p>
+                <p className="text-sm font-medium text-blue-100 opacity-90">Faulty Transit to CDS</p>
+                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'Faulty Transit to CDS').length}</p>
               </div>
             </div>
           </div>
@@ -857,16 +833,6 @@ export function RMAPage() {
               </div>
             </div>
 
-            {/* Closed RMAs */}
-            <div className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-lg p-4 flex items-center">
-              <div className="bg-slate-500 p-3 rounded-full">
-                <XCircle className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-blue-100 opacity-90">Closed</p>
-                <p className="text-3xl font-bold text-white">{localRMAItems.filter(r => r.caseStatus === 'Closed').length}</p>
-              </div>
-            </div>
 
             {/* RMA Raised Yet to Deliver */}
             <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-4 flex items-center">
@@ -962,17 +928,6 @@ export function RMAPage() {
               Advanced Search
             </Button>
             
-            <Button 
-              onClick={() => {
-                // This will be handled by the parent Dashboard component
-                const event = new CustomEvent('navigateToPage', { detail: 'RMA Workflow' });
-                window.dispatchEvent(event);
-              }}
-              className="bg-orange-600 hover:bg-orange-700 text-white h-11 px-6"
-            >
-              <Workflow className="w-4 h-4 mr-2" />
-              Workflow
-            </Button>
           </div>
           
           {/* Active Filters Display */}
@@ -1048,17 +1003,6 @@ export function RMAPage() {
               <h2 className="text-xl font-semibold text-white">RMA Records</h2>
               <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
             </div>
-            <Button 
-              onClick={() => {
-                // This will be handled by the parent Dashboard component
-                const event = new CustomEvent('navigateToPage', { detail: 'RMA Workflow' });
-                window.dispatchEvent(event);
-              }}
-              className="bg-orange-600 hover:bg-orange-700 text-white h-10 px-4"
-            >
-              <Workflow className="w-4 h-4 mr-2" />
-              Workflow Management
-            </Button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -1222,15 +1166,6 @@ export function RMAPage() {
                         >
                           <FileText className="w-4 h-4" />
                         </button>
-                        {user && ['admin', 'rma_handler'].includes(user.role) && (
-                          <button 
-                            className="p-2 hover:bg-orange-100 rounded-lg transition-colors text-orange-600 hover:text-orange-800 border border-orange-200 hover:border-orange-300" 
-                            onClick={() => handleAssignDTR(rma)}
-                            title="Assign DTR to Technical Head"
-                          >
-                            <Workflow className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -1427,13 +1362,14 @@ export function RMAPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-dark-secondary">RMA Number *</label>
+                  <label className="text-sm font-medium text-dark-secondary">RMA Number</label>
                   <Input
-                    value={newRMA.rmaNumber}
-                    onChange={(e) => setNewRMA({...newRMA, rmaNumber: e.target.value})}
-                    className="mt-1 bg-dark-card border-dark-color text-dark-primary"
-                    placeholder="RMA-2024-XXX"
+                    value="Auto-generated"
+                    readOnly
+                    className="mt-1 bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
+                    placeholder="Will be auto-generated"
                   />
+                  <p className="text-xs text-gray-500 mt-1">RMA number will be automatically generated when you create the RMA</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-dark-secondary">Call Log Number</label>
@@ -1707,7 +1643,6 @@ export function RMAPage() {
                     <option value="Faulty Part Returned">Faulty Part Returned</option>
                     <option value="CDS Confirmed Return">CDS Confirmed Return</option>
                     <option value="Completed">Completed</option>
-                    <option value="Closed">Closed</option>
                     <option value="Rejected">Rejected</option>
                   </select>
                   {!newRMA.caseStatus && (
@@ -1860,7 +1795,7 @@ export function RMAPage() {
               </button>
               <button 
                 onClick={handleCreateRMA}
-                disabled={isLoading || !newRMA.rmaNumber || !newRMA.productPartNumber || !newRMA.productName || !newRMA.rmaReason}
+                disabled={isLoading || !newRMA.productPartNumber || !newRMA.productName || !newRMA.rmaReason}
                 className="flex-1 dark-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
@@ -1904,10 +1839,11 @@ export function RMAPage() {
                     <label className="text-sm font-medium text-dark-secondary">RMA Number</label>
                     <Input
                       value={editingRMA.rmaNumber || ''}
-                      onChange={(e) => setEditingRMA({...editingRMA, rmaNumber: e.target.value})}
-                      className="mt-1 bg-dark-bg border-dark-color text-dark-primary"
+                      readOnly
+                      className="mt-1 bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
                       placeholder="RMA-2024-XXX"
                     />
+                    <p className="text-xs text-gray-500 mt-1">RMA number cannot be changed after creation</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-dark-secondary">Call Log Number</label>
@@ -2203,7 +2139,6 @@ export function RMAPage() {
                       <option value="Faulty Part Returned">Faulty Part Returned</option>
                       <option value="CDS Confirmed Return">CDS Confirmed Return</option>
                       <option value="Completed">Completed</option>
-                      <option value="Closed">Closed</option>
                       <option value="Rejected">Rejected</option>
                     </select>
                   </div>

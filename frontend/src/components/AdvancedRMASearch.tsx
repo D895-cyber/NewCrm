@@ -13,11 +13,17 @@ import {
   XCircle,
   Loader2,
   Download,
-  Eye
+  Eye,
+  Package,
+  Hash,
+  Monitor,
+  Cpu
 } from 'lucide-react';
 
 interface PartAnalytics {
   partName: string;
+  searchType: string;
+  searchValue: string;
   totalCases: number;
   recentCases: number;
   completionRate: number;
@@ -29,19 +35,33 @@ interface PartAnalytics {
   searchTimestamp: Date;
 }
 
+type SearchType = 'partName' | 'partNumber' | 'modelNumber' | 'serialNumber';
+
 interface AdvancedRMASearchProps {
   onRmaSelect?: (rma: any) => void;
 }
 
 export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('partName');
   const [isSearching, setIsSearching] = useState(false);
   const [analytics, setAnalytics] = useState<PartAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const searchTypeOptions = [
+    { value: 'partName', label: 'Part Name', icon: Package, placeholder: 'Enter part name (e.g., Assy. Light Engine)' },
+    { value: 'partNumber', label: 'Part Number', icon: Hash, placeholder: 'Enter part number (e.g., 003-001529-01)' },
+    { value: 'modelNumber', label: 'Model Number', icon: Monitor, placeholder: 'Enter model number (e.g., PT-RZ970)' },
+    { value: 'serialNumber', label: 'Serial Number', icon: Cpu, placeholder: 'Enter projector serial number' }
+  ];
+
+  const getSearchTypeConfig = () => {
+    return searchTypeOptions.find(option => option.value === searchType) || searchTypeOptions[0];
+  };
+
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
-      setError('Please enter a part name to search');
+      setError(`Please enter a ${getSearchTypeConfig().label.toLowerCase()} to search`);
       return;
     }
 
@@ -50,7 +70,8 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
     setAnalytics(null);
 
     try {
-      const response = await fetch(`/api/rma/search/part-analytics?partName=${encodeURIComponent(searchTerm.trim())}`);
+      const searchParam = `${searchType}=${encodeURIComponent(searchTerm.trim())}`;
+      const response = await fetch(`/api/rma/search/part-analytics?${searchParam}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -102,6 +123,8 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
       'RMA Number': rma.rmaNumber,
       'Site Name': rma.siteName,
       'Part Name': rma.defectivePartName || rma.productName,
+      'Part Number': rma.productPartNumber || rma.defectivePartNumber,
+      'Model Number': rma.projectorModel || rma.productName,
       'Serial Number': rma.serialNumber,
       'Status': rma.caseStatus,
       'Priority': rma.priority,
@@ -118,7 +141,7 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rma-search-${analytics.partName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+    a.download = `rma-search-${analytics.searchValue.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -130,30 +153,52 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Advanced Part Search
+            Advanced RMA Search
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter part name (e.g., Assy. Light Engine)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleSearch} 
-              disabled={isSearching}
-              className="px-6"
-            >
-              {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              Search
-            </Button>
+          <div className="space-y-4">
+            {/* Search Type Selector */}
+            <div className="flex flex-wrap gap-2">
+              {searchTypeOptions.map((option) => {
+                const IconComponent = option.icon;
+                return (
+                  <Button
+                    key={option.value}
+                    variant={searchType === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSearchType(option.value as SearchType)}
+                    className="flex items-center gap-2"
+                  >
+                    <IconComponent className="h-4 w-4" />
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="flex gap-2">
+              <Input
+                placeholder={getSearchTypeConfig().placeholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSearch} 
+                disabled={isSearching}
+                className="px-6"
+              >
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                Search
+              </Button>
+            </div>
           </div>
           {error && (
             <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -275,6 +320,9 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
                       <th className="text-left p-2">RMA Number</th>
                       <th className="text-left p-2">Site Name</th>
                       <th className="text-left p-2">Part Name</th>
+                      <th className="text-left p-2">Part Number</th>
+                      <th className="text-left p-2">Model</th>
+                      <th className="text-left p-2">Serial Number</th>
                       <th className="text-left p-2">Status</th>
                       <th className="text-left p-2">Priority</th>
                       <th className="text-left p-2">Date Raised</th>
@@ -287,6 +335,9 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
                         <td className="p-2 font-medium">{rma.rmaNumber}</td>
                         <td className="p-2">{rma.siteName}</td>
                         <td className="p-2">{rma.defectivePartName || rma.productName}</td>
+                        <td className="p-2">{rma.productPartNumber || rma.defectivePartNumber || 'N/A'}</td>
+                        <td className="p-2">{rma.projectorModel || rma.productName || 'N/A'}</td>
+                        <td className="p-2">{rma.serialNumber || 'N/A'}</td>
                         <td className="p-2">
                           <Badge className={getStatusColor(rma.caseStatus)}>
                             {rma.caseStatus}
@@ -321,3 +372,4 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
     </div>
   );
 }
+
