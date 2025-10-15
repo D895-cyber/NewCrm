@@ -156,12 +156,40 @@ export function RMADashboardPage() {
       defectiveSerialNumber: backendRMA.defectiveSerialNumber || 'N/A',
       symptoms: backendRMA.symptoms || backendRMA.failureDescription || backendRMA.reason || 'N/A',
       replacedPartNumber: backendRMA.replacedPartNumber || 'N/A',
-      replacedPartName: backendRMA.replacedPartName || 'N/A',
+      replacedPartName: (() => {
+        const replacedName = backendRMA.replacedPartName || 'N/A';
+        const defectiveName = backendRMA.defectivePartName || 'Projector Component';
+        
+        // Only replace if the replacement part name is clearly a symptom description
+        const clearSymptomPatterns = [
+          'integrator rod chipped',
+          'prism chipped', 
+          'segmen prism',
+          'connection lost',
+          'power cycle',
+          'marriage failure',
+          'imb marriage',
+          'imb marriage failure'
+        ];
+        
+        // Check if it's exactly a symptom pattern or contains clear symptom indicators
+        const isSymptomDescription = replacedName === 'N/A' || 
+          clearSymptomPatterns.some(pattern => replacedName.toLowerCase().includes(pattern.toLowerCase())) ||
+          (replacedName.toLowerCase().includes('chipped') && replacedName.toLowerCase().includes('rod')) ||
+          (replacedName.toLowerCase().includes('marriage') && replacedName.toLowerCase().includes('failure'));
+        
+        if (isSymptomDescription) {
+          return defectiveName;
+        }
+        return replacedName;
+      })(),
       replacedPartSerialNumber: backendRMA.replacedPartSerialNumber || 'N/A',
       replacementNotes: backendRMA.replacementNotes || 'N/A',
       shippedDate: backendRMA.shippedDate ? new Date(backendRMA.shippedDate).toLocaleDateString() : 'N/A',
       trackingNumber: backendRMA.trackingNumber || 'N/A',
       shippedThru: backendRMA.shippedThru || 'N/A',
+      // Include shipping data for proper tracking display
+      shipping: backendRMA.shipping || null,
       caseStatus: backendRMA.caseStatus || backendRMA.status || 'Under Review',
       approvalStatus: backendRMA.approvalStatus || 'Pending Review',
       priority: backendRMA.priority || 'Medium',
@@ -402,6 +430,7 @@ export function RMADashboardPage() {
         sxNumber: "",
         ascompRaisedDate: "",
         customerErrorDate: "",
+        siteId: "",
         siteName: "",
         productName: "",
         productPartNumber: "",
@@ -503,12 +532,50 @@ export function RMADashboardPage() {
   const handleUpdateRMA = async () => {
     try {
       setIsLoadingRMAs(true);
-      await apiClient.updateRMA(editingRMA._id, editingRMA);
+      setError(null);
+      
+      console.log('Updating RMA with data:', editingRMA);
+      
+      // Validate required fields
+      if (!editingRMA._id) {
+        throw new Error('RMA ID is missing. Cannot update RMA.');
+      }
+      
+      // Prepare update data
+      const updateData = {
+        ...editingRMA,
+        // Ensure we don't send undefined values
+        caseStatus: editingRMA.caseStatus || 'Under Review',
+        approvalStatus: editingRMA.approvalStatus || 'Pending Review',
+        priority: editingRMA.priority || 'Medium'
+      };
+      
+      console.log('Sending update data:', updateData);
+      
+      const updatedRMA = await apiClient.updateRMA(editingRMA._id, updateData);
+      console.log('RMA updated successfully:', updatedRMA);
+      
       await loadRMAData();
       setShowEditModal(false);
       setEditingRMA(null);
+      
+      // Show success message
+      (window as any).showToast?.({
+        type: 'success',
+        title: 'RMA Updated',
+        message: `RMA ${editingRMA.rmaNumber} has been updated successfully`
+      });
+      
     } catch (err: any) {
       console.error('Error updating RMA:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to update RMA');
+      
+      // Show error message
+      (window as any).showToast?.({
+        type: 'error',
+        title: 'Update Failed',
+        message: err.response?.data?.error || err.message || 'Failed to update RMA'
+      });
     } finally {
       setIsLoadingRMAs(false);
     }
@@ -942,9 +1009,35 @@ export function RMADashboardPage() {
                         <div className="text-white text-sm">
                           {rma.replacedPartNumber || 'N/A'}
                         </div>
-                        <div className="text-xs text-gray-300">
-                          Part: {rma.replacedPartName || 'N/A'}
-                        </div>
+       <div className="text-xs text-gray-300">
+         Part: {(() => {
+           const replacedName = rma.replacedPartName || 'N/A';
+           const defectiveName = rma.defectivePartName || 'N/A';
+           
+           // Only replace if the replacement part name is clearly a symptom description
+           const clearSymptomPatterns = [
+             'integrator rod chipped',
+             'prism chipped', 
+             'segmen prism',
+             'connection lost',
+             'power cycle',
+             'marriage failure',
+             'imb marriage',
+             'imb marriage failure'
+           ];
+           
+           // Check if it's exactly a symptom pattern or contains clear symptom indicators
+           const isSymptomDescription = replacedName === 'N/A' || 
+             clearSymptomPatterns.some(pattern => replacedName.toLowerCase().includes(pattern.toLowerCase())) ||
+             (replacedName.toLowerCase().includes('chipped') && replacedName.toLowerCase().includes('rod')) ||
+             (replacedName.toLowerCase().includes('marriage') && replacedName.toLowerCase().includes('failure'));
+           
+           if (isSymptomDescription) {
+             return defectiveName;
+           }
+           return replacedName;
+         })()}
+       </div>
                         <div className="text-xs text-gray-300">
                           Serial: {rma.replacedPartSerialNumber || 'N/A'}
                         </div>
@@ -976,19 +1069,85 @@ export function RMADashboardPage() {
                         <div className="text-white text-sm">
                           Error: {formatDate(rma.customerErrorDate || rma.ascompRaisedDate)}
                         </div>
-                        <div className="text-white text-sm">
-                          Shipped: {formatDate(rma.shippedDate)}
-                        </div>
-                        <div className="text-xs text-gray-300">
-                          Track: {rma.trackingNumber ? (
-                            <span className="text-blue-400 hover:text-blue-300 cursor-pointer">
-                              {rma.trackingNumber}
-                            </span>
-                          ) : 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-300">
-                          Via: {rma.shippedThru || 'N/A'}
-                        </div>
+                        
+                        {/* Replacement Part Tracking */}
+                        {(rma.shipping?.outbound?.trackingNumber || rma.trackingNumber) && (
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <div className="text-xs text-green-400 font-semibold">Replacement Shipped:</div>
+                            <div className="text-xs text-gray-300">
+                              {formatDate(rma.shipping?.outbound?.shippedDate || rma.shippedDate)}
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              Track: <span className="text-blue-400 hover:text-blue-300 cursor-pointer">
+                                {rma.shipping?.outbound?.trackingNumber || rma.trackingNumber}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              Via: {rma.shipping?.outbound?.carrier || rma.shippedThru || 'N/A'}
+                            </div>
+                            {(rma.shipping?.outbound?.status || rma.trackingNumber) && (
+                              <div className="text-xs text-gray-300">
+                                Status: <span className={`px-1 py-0.5 rounded text-xs ${
+                                  // If RMA is completed and has tracking details, show delivered
+                                  (rma.caseStatus === 'Completed' && (rma.shipping?.outbound?.trackingNumber || rma.trackingNumber)) ? 'bg-green-600' :
+                                  (rma.shipping?.outbound?.status === 'delivered') ? 'bg-green-600' :
+                                  (rma.shipping?.outbound?.status === 'in_transit') ? 'bg-blue-600' :
+                                  (rma.shipping?.outbound?.status === 'exception') ? 'bg-red-600' :
+                                  rma.trackingNumber ? 'bg-blue-600' :
+                                  'bg-gray-600'
+                                }`}>
+                                  {(() => {
+                                    // If RMA is completed and has tracking details, show delivered
+                                    if (rma.caseStatus === 'Completed' && (rma.shipping?.outbound?.trackingNumber || rma.trackingNumber)) {
+                                      return 'delivered';
+                                    }
+                                    return rma.shipping?.outbound?.status ? rma.shipping.outbound.status.replace('_', ' ') : 'Shipped';
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Defective Part Return Tracking */}
+                        {(rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber) && (
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <div className="text-xs text-orange-400 font-semibold">Defective Return:</div>
+                            <div className="text-xs text-gray-300">
+                              {formatDate(rma.shipping?.return?.shippedDate || rma.rmaReturnShippedDate)}
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              Track: <span className="text-blue-400 hover:text-blue-300 cursor-pointer">
+                                {rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              Via: {rma.shipping?.return?.carrier || rma.rmaReturnShippedThru || 'N/A'}
+                            </div>
+                            {(rma.shipping?.return?.status || rma.rmaReturnTrackingNumber) && (
+                              <div className="text-xs text-gray-300">
+                                Status: <span className={`px-1 py-0.5 rounded text-xs ${
+                                  // If RMA is completed and has return tracking details, show delivered
+                                  (rma.caseStatus === 'Completed' && (rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber)) ? 'bg-green-600' :
+                                  (rma.shipping?.return?.status === 'delivered') ? 'bg-green-600' :
+                                  (rma.shipping?.return?.status === 'in_transit') ? 'bg-blue-600' :
+                                  (rma.shipping?.return?.status === 'exception') ? 'bg-red-600' :
+                                  rma.rmaReturnTrackingNumber ? 'bg-blue-600' :
+                                  'bg-gray-600'
+                                }`}>
+                                  {(() => {
+                                    // If RMA is completed and has return tracking details, show delivered
+                                    if (rma.caseStatus === 'Completed' && (rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber)) {
+                                      return 'delivered';
+                                    }
+                                    return rma.shipping?.return?.status ? rma.shipping.return.status.replace('_', ' ') : 'Shipped';
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                       </div>
                     </td>
                     <td className="py-4 px-4">
@@ -1881,23 +2040,40 @@ export function RMADashboardPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-caseStatus">Status</Label>
-               <Select value={editingRMA.caseStatus || editingRMA.approvalStatus || 'Under Review'} onValueChange={(value) => setEditingRMA({...editingRMA, caseStatus: value})}>
+              <Label htmlFor="edit-caseStatus">Case Status</Label>
+               <Select value={editingRMA.caseStatus || 'Under Review'} onValueChange={(value) => setEditingRMA({...editingRMA, caseStatus: value})}>
                  <SelectTrigger>
                    <SelectValue />
                  </SelectTrigger>
                  <SelectContent>
+                   <SelectItem value="Open">Open</SelectItem>
                    <SelectItem value="Under Review">Under Review</SelectItem>
+                   <SelectItem value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</SelectItem>
+                   <SelectItem value="Sent to CDS">Sent to CDS</SelectItem>
+                   <SelectItem value="Faulty Transit to CDS">Faulty Transit to CDS</SelectItem>
+                   <SelectItem value="CDS Approved">CDS Approved</SelectItem>
+                   <SelectItem value="Replacement Shipped">Replacement Shipped</SelectItem>
+                   <SelectItem value="Replacement Received">Replacement Received</SelectItem>
+                   <SelectItem value="Installation Complete">Installation Complete</SelectItem>
+                   <SelectItem value="Faulty Part Returned">Faulty Part Returned</SelectItem>
+                   <SelectItem value="CDS Confirmed Return">CDS Confirmed Return</SelectItem>
+                   <SelectItem value="Completed">Completed</SelectItem>
+                   <SelectItem value="Closed">Closed</SelectItem>
+                   <SelectItem value="Rejected">Rejected</SelectItem>
+                 </SelectContent>
+               </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-approvalStatus">Approval Status</Label>
+               <Select value={editingRMA.approvalStatus || 'Pending Review'} onValueChange={(value) => setEditingRMA({...editingRMA, approvalStatus: value})}>
+                 <SelectTrigger>
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
                    <SelectItem value="Pending Review">Pending Review</SelectItem>
                    <SelectItem value="Approved">Approved</SelectItem>
                    <SelectItem value="Rejected">Rejected</SelectItem>
-                   <SelectItem value="Completed">Completed</SelectItem>
-                   <SelectItem value="RMA Raised Yet to Deliver">RMA Raised Yet to Deliver</SelectItem>
-                   <SelectItem value="Ready Transit to CDS">Ready Transit to CDS</SelectItem>
-                   <SelectItem value="Faulty Transit to CDS">Faulty Transit to CDS</SelectItem>
-                   <SelectItem value="Shipped to Site">Shipped to Site</SelectItem>
-                   <SelectItem value="Delivered">Delivered</SelectItem>
-                   <SelectItem value="Closed">Closed</SelectItem>
+                   <SelectItem value="Under Investigation">Under Investigation</SelectItem>
                  </SelectContent>
                </Select>
             </div>
@@ -2159,7 +2335,7 @@ export function RMADashboardPage() {
         {/* Logo */}
         <div className={`${isMobile ? 'pt-20' : ''} p-8 border-b border-dark-color`}>
         <div className="flex items-center space-x-4">
-          {user?.role !== 'rma_handler' && (
+          {user?.role !== 'admin' && (
             <Button
               onClick={() => {
                 window.location.hash = '';

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const RMA = require('../models/RMA');
 const Site = require('../models/Site');
@@ -7,6 +8,172 @@ const DeliveryProviderService = require('../services/DeliveryProviderService');
 const EmailProcessingService = require('../services/EmailProcessingService');
 const CDSFormService = require('../services/CDSFormService');
 const ReturnWorkflowService = require('../services/ReturnWorkflowService');
+
+// Get overdue RMA analysis
+router.get('/analytics/overdue', async (req, res) => {
+  try {
+    console.log('📊 Analyzing overdue RMAs...');
+    
+    const { days = 30, status = 'all' } = req.query;
+    const overdueDays = parseInt(days);
+    
+    // Calculate the cutoff date
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - overdueDays);
+    
+    console.log(`📅 Analyzing RMAs raised before: ${cutoffDate.toISOString()}`);
+    
+    // Build query conditions
+    const queryConditions = {
+      ascompRaisedDate: { $lt: cutoffDate },
+      caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } // Exclude completed/closed RMAs
+    };
+    
+    // Add status filter if specified
+    if (status !== 'all') {
+      queryConditions.caseStatus = status;
+    }
+    
+    // Find overdue RMAs
+    const overdueRMAs = await RMA.find(queryConditions)
+      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes')
+      .sort({ ascompRaisedDate: 1 }); // Oldest first
+    
+    // Calculate statistics
+    const totalOverdue = overdueRMAs.length;
+    const overdueByStatus = {};
+    const overdueByPriority = {};
+    const overdueBySite = {};
+    const totalEstimatedCost = 0;
+    
+    overdueRMAs.forEach(rma => {
+      // Count by status
+      const status = rma.caseStatus || 'Unknown';
+      overdueByStatus[status] = (overdueByStatus[status] || 0) + 1;
+      
+      // Count by priority
+      const priority = rma.priority || 'Unknown';
+      overdueByPriority[priority] = (overdueByPriority[priority] || 0) + 1;
+      
+      // Count by site
+      const site = rma.siteName || 'Unknown';
+      overdueBySite[site] = (overdueBySite[site] || 0) + 1;
+    });
+    
+    // Calculate days overdue for each RMA
+    const overdueWithDetails = overdueRMAs.map(rma => {
+      const raisedDate = new Date(rma.ascompRaisedDate);
+      const daysOverdue = Math.floor((new Date() - raisedDate) / (1000 * 60 * 60 * 24));
+      
+      return {
+        ...rma.toObject(),
+        daysOverdue,
+        raisedDate: raisedDate.toISOString().split('T')[0],
+        isCritical: daysOverdue >= 60, // Critical if 60+ days overdue
+        isUrgent: daysOverdue >= 45 && daysOverdue < 60 // Urgent if 45-59 days overdue
+      };
+    });
+    
+    // Sort by days overdue (most overdue first)
+    overdueWithDetails.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    
+    // Calculate summary statistics
+    const criticalCount = overdueWithDetails.filter(rma => rma.isCritical).length;
+    const urgentCount = overdueWithDetails.filter(rma => rma.isUrgent).length;
+    const averageDaysOverdue = totalOverdue > 0 ? 
+      Math.round(overdueWithDetails.reduce((sum, rma) => sum + rma.daysOverdue, 0) / totalOverdue) : 0;
+    
+    const analysis = {
+      summary: {
+        totalOverdue,
+        criticalCount,
+        urgentCount,
+        averageDaysOverdue,
+        cutoffDate: cutoffDate.toISOString().split('T')[0],
+        analysisDate: new Date().toISOString().split('T')[0]
+      },
+      breakdown: {
+        byStatus: overdueByStatus,
+        byPriority: overdueByPriority,
+        bySite: overdueBySite
+      },
+      overdueRMAs: overdueWithDetails,
+      recommendations: generateOverdueRecommendations(overdueWithDetails, overdueByStatus, overdueByPriority)
+    };
+    
+    console.log(`📊 Found ${totalOverdue} overdue RMAs (${criticalCount} critical, ${urgentCount} urgent)`);
+    
+    res.json(analysis);
+    
+  } catch (error) {
+    console.error('❌ Error analyzing overdue RMAs:', error);
+    res.status(500).json({ 
+      error: 'Failed to analyze overdue RMAs', 
+      details: error.message 
+    });
+  }
+});
+
+// Helper function to generate recommendations
+function generateOverdueRecommendations(overdueRMAs, overdueByStatus, overdueByPriority) {
+  const recommendations = [];
+  
+  // Check for critical overdue items
+  const criticalCount = overdueRMAs.filter(rma => rma.isCritical).length;
+  if (criticalCount > 0) {
+    recommendations.push({
+      type: 'critical',
+      message: `${criticalCount} RMAs are critically overdue (60+ days). Immediate action required.`,
+      action: 'Prioritize these RMAs for immediate resolution'
+    });
+  }
+  
+  // Check for urgent overdue items
+  const urgentCount = overdueRMAs.filter(rma => rma.isUrgent).length;
+  if (urgentCount > 0) {
+    recommendations.push({
+      type: 'urgent',
+      message: `${urgentCount} RMAs are urgently overdue (45-59 days). Action needed within 1 week.`,
+      action: 'Review and expedite these RMAs'
+    });
+  }
+  
+  // Check for status patterns
+  if (overdueByStatus['Under Review'] > 5) {
+    recommendations.push({
+      type: 'process',
+      message: `${overdueByStatus['Under Review']} RMAs stuck in 'Under Review' status.`,
+      action: 'Review approval process and assign reviewers'
+    });
+  }
+  
+  if (overdueByStatus['RMA Raised Yet to Deliver'] > 3) {
+    recommendations.push({
+      type: 'logistics',
+      message: `${overdueByStatus['RMA Raised Yet to Deliver']} RMAs waiting for delivery.`,
+      action: 'Check shipping status and expedite delivery'
+    });
+  }
+  
+  // Check for priority patterns
+  if (overdueByPriority['High'] > 0) {
+    recommendations.push({
+      type: 'priority',
+      message: `${overdueByPriority['High']} high-priority RMAs are overdue.`,
+      action: 'Escalate high-priority overdue RMAs to management'
+    });
+  }
+  
+  if (overdueByPriority['Critical'] > 0) {
+    recommendations.push({
+      type: 'escalation',
+      message: `${overdueByPriority['Critical']} critical-priority RMAs are overdue.`,
+      action: 'Immediate escalation to senior management required'
+    });
+  }
+  
+  return recommendations;
+}
 
 // Get all RMA records
 router.get('/', async (req, res) => {
@@ -767,6 +934,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const updateData = req.body;
+    const rmaId = req.params.id;
+    
+    console.log(`Updating RMA ${rmaId} with data:`, updateData);
+    
+    // Validate RMA ID
+    if (!rmaId || !mongoose.Types.ObjectId.isValid(rmaId)) {
+      return res.status(400).json({ error: 'Invalid RMA ID provided' });
+    }
     
     // If siteId is provided, validate it exists and populate siteName
     if (updateData.siteId) {
@@ -778,8 +953,17 @@ router.put('/:id', async (req, res) => {
       updateData.siteName = site.name;
     }
     
+    // Validate status fields if provided
+    if (updateData.caseStatus && !['Open', 'Under Review', 'RMA Raised Yet to Deliver', 'Sent to CDS', 'Faulty Transit to CDS', 'CDS Approved', 'Replacement Shipped', 'Replacement Received', 'Installation Complete', 'Faulty Part Returned', 'CDS Confirmed Return', 'Completed', 'Closed', 'Rejected'].includes(updateData.caseStatus)) {
+      return res.status(400).json({ error: 'Invalid case status provided' });
+    }
+    
+    if (updateData.approvalStatus && !['Pending Review', 'Approved', 'Rejected', 'Under Investigation'].includes(updateData.approvalStatus)) {
+      return res.status(400).json({ error: 'Invalid approval status provided' });
+    }
+    
     const rma = await RMA.findByIdAndUpdate(
-      req.params.id,
+      rmaId,
       updateData,
       { new: true, runValidators: true }
     );
@@ -788,9 +972,33 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'RMA record not found' });
     }
     
+    console.log(`RMA ${rmaId} updated successfully:`, {
+      rmaNumber: rma.rmaNumber,
+      caseStatus: rma.caseStatus,
+      approvalStatus: rma.approvalStatus
+    });
+    
     res.json(rma);
   } catch (error) {
     console.error('Error updating RMA:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validationErrors.join(', ') 
+      });
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        error: 'Duplicate field value', 
+        details: 'A record with this value already exists' 
+      });
+    }
+    
     res.status(500).json({ error: 'Failed to update RMA', details: error.message });
   }
 });
@@ -2276,7 +2484,7 @@ router.get('/search/part-analytics', async (req, res) => {
 // Debug endpoint to check RMA data structure
 router.get('/debug/part-numbers', async (req, res) => {
   try {
-    const sampleRMAs = await RMA.find({}).limit(5).select('rmaNumber serialNumber productPartNumber defectivePartNumber productName defectivePartName');
+    const sampleRMAs = await RMA.find({}).limit(5).select('rmaNumber serialNumber productPartNumber defectivePartNumber productName defectivePartName replacedPartName symptoms');
     
     res.json({
       message: 'Sample RMA records with part number fields',
@@ -2286,6 +2494,169 @@ router.get('/debug/part-numbers', async (req, res) => {
   } catch (error) {
     console.error('Error in debug endpoint:', error);
     res.status(500).json({ error: 'Failed to fetch debug data' });
+  }
+});
+
+// Fix data mapping issues in existing RMA records
+router.post('/fix-data-mapping', async (req, res) => {
+  try {
+    console.log('🔧 Starting RMA data mapping fix...');
+    
+    // Find RMAs with potential field mapping issues
+    const rmAsWithIssues = await RMA.find({
+      $or: [
+        // Defective part number contains descriptive text (likely swapped)
+        { 
+          defectivePartNumber: { 
+            $regex: /kit|harn|temps|component|part/i 
+          } 
+        },
+        // Defective part name contains numeric patterns (likely swapped)
+        { 
+          defectivePartName: { 
+            $regex: /^\d{3}-\d{6}-\d{2}$/ 
+          } 
+        },
+        // Replacement part name contains symptoms
+        { 
+          replacedPartName: { 
+            $regex: /chipped|marriage|error|sensor|failure/i 
+          } 
+        }
+      ]
+    });
+    
+    console.log(`🔍 Found ${rmAsWithIssues.length} RMAs with potential mapping issues`);
+    
+    let fixedCount = 0;
+    const fixResults = [];
+    
+    for (const rma of rmAsWithIssues) {
+      const originalData = {
+        rmaNumber: rma.rmaNumber,
+        defectivePartNumber: rma.defectivePartNumber,
+        defectivePartName: rma.defectivePartName,
+        replacedPartName: rma.replacedPartName
+      };
+      
+      let needsUpdate = false;
+      const updateData = {};
+      
+      // Check if defective part fields are swapped
+      const isNumberFieldDescriptive = rma.defectivePartNumber && 
+        (rma.defectivePartNumber.toLowerCase().includes('kit') || 
+         rma.defectivePartNumber.toLowerCase().includes('harn') ||
+         rma.defectivePartNumber.toLowerCase().includes('temps') ||
+         rma.defectivePartNumber.toLowerCase().includes('assy') ||
+         rma.defectivePartNumber.toLowerCase().includes('assembly') ||
+         rma.defectivePartNumber.toLowerCase().includes('tpc') ||
+         rma.defectivePartNumber.toLowerCase().includes('light engine') ||
+         rma.defectivePartNumber.toLowerCase().includes('ballast') ||
+         rma.defectivePartNumber.length > 10);
+      
+      const isNameFieldNumeric = rma.defectivePartName && 
+        (/^\d{3}-\d{6}-\d{2}$/.test(rma.defectivePartName) || // Pattern like "003-005682-01"
+         /^\d{3}-\d{6}-\d{2}$/.test(rma.defectivePartName) || // Pattern like "000-101329-03"
+         /^\d{3}-\d{6}-\d{2}$/.test(rma.defectivePartName)); // Pattern like "004-102075-02"
+      
+      if (isNumberFieldDescriptive && isNameFieldNumeric) {
+        // Swap the fields
+        updateData.defectivePartNumber = rma.defectivePartName;
+        updateData.defectivePartName = rma.defectivePartNumber;
+        needsUpdate = true;
+        console.log(`🔄 Swapping fields for RMA ${rma.rmaNumber}:`, {
+          originalNumber: rma.defectivePartNumber,
+          originalName: rma.defectivePartName,
+          newNumber: rma.defectivePartName,
+          newName: rma.defectivePartNumber
+        });
+      }
+      
+      // Check if replacement part name contains symptoms
+      const symptomPatterns = [
+        'integrator rod chipped',
+        'prism chipped', 
+        'segmen prism',
+        'connection lost',
+        'power cycle',
+        'marriage failure',
+        'imb marriage',
+        'imb marriage failure',
+        'red dmd temperature sensor error',
+        'temperature sensor error',
+        'dmd error',
+        'chipped',
+        'marriage'
+      ];
+      
+      const isSymptomDescription = rma.replacedPartName && 
+        symptomPatterns.some(pattern => rma.replacedPartName.toLowerCase().includes(pattern.toLowerCase()));
+      
+      if (isSymptomDescription) {
+        // Replace with defective part name
+        updateData.replacedPartName = rma.defectivePartName || 'Projector Component';
+        needsUpdate = true;
+        console.log(`🔄 Fixing replacement part name for RMA ${rma.rmaNumber}:`, {
+          originalReplacedName: rma.replacedPartName,
+          newReplacedName: rma.defectivePartName || 'Projector Component'
+        });
+      }
+      
+      // Also check if replacement part name is a part number (should be part name)
+      const isReplacementPartNumber = rma.replacedPartName && 
+        /^\d{3}-\d{6}-\d{2}$/.test(rma.replacedPartName);
+      
+      if (isReplacementPartNumber && rma.defectivePartName) {
+        // Replace part number with defective part name
+        updateData.replacedPartName = rma.defectivePartName;
+        needsUpdate = true;
+        console.log(`🔄 Fixing replacement part name (number to name) for RMA ${rma.rmaNumber}:`, {
+          originalReplacedName: rma.replacedPartName,
+          newReplacedName: rma.defectivePartName
+        });
+      }
+      
+      if (needsUpdate) {
+        try {
+          await RMA.findByIdAndUpdate(rma._id, updateData);
+          fixedCount++;
+          fixResults.push({
+            rmaNumber: rma.rmaNumber,
+            originalData,
+            fixedData: {
+              ...originalData,
+              ...updateData
+            },
+            status: 'fixed'
+          });
+        } catch (updateError) {
+          console.error(`❌ Error updating RMA ${rma.rmaNumber}:`, updateError);
+          fixResults.push({
+            rmaNumber: rma.rmaNumber,
+            originalData,
+            status: 'error',
+            error: updateError.message
+          });
+        }
+      }
+    }
+    
+    console.log(`✅ Fixed ${fixedCount} out of ${rmAsWithIssues.length} RMAs`);
+    
+    res.json({
+      success: true,
+      message: `Fixed ${fixedCount} out of ${rmAsWithIssues.length} RMAs with mapping issues`,
+      totalFound: rmAsWithIssues.length,
+      totalFixed: fixedCount,
+      results: fixResults
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fixing RMA data mapping:', error);
+    res.status(500).json({ 
+      error: 'Failed to fix RMA data mapping', 
+      details: error.message 
+    });
   }
 });
 

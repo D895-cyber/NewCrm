@@ -32,6 +32,14 @@ class ApiClient {
     delete this.headers['Authorization'];
   }
 
+  // Method to clear all caches
+  clearCache() {
+    this.cache.clear();
+    if (isDevelopment()) {
+      console.log('🧹 API Client cache cleared');
+    }
+  }
+
   // Cache management methods
   private getCacheKey(endpoint: string, options: RequestInit = {}): string {
     return `${endpoint}_${JSON.stringify(options)}`;
@@ -352,6 +360,14 @@ class ApiClient {
 
   async getRMAHistoryByProjector(projectorSerial: string) {
     return this.get(`/rma/projector/${encodeURIComponent(projectorSerial)}/details`);
+  }
+
+  // RMA Analytics methods
+  async getOverdueRMAAnalysis(days: number = 30, status: string = 'all') {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    params.append('status', status);
+    return this.get(`/rma/analytics/overdue?${params.toString()}`);
   }
 
   // Service Visit methods

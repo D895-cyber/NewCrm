@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { 
   RotateCcw, 
   Plus, 
@@ -36,6 +37,7 @@ import RMAImport from "../RMAImport";
 import { AdvancedRMASearch } from "../AdvancedRMASearch";
 import { AssignDTRToTechnicalHeadDialog } from "../dialogs/AssignDTRToTechnicalHeadDialog";
 import { useAuth } from "../../contexts/AuthContext";
+import { RMAOverdueAnalysis } from "../analytics/RMAOverdueAnalysis";
 
 
 
@@ -47,11 +49,58 @@ export function RMAPage() {
   
   // Map backend data to frontend display format
   const mapBackendDataToFrontend = (backendRMA: any) => {
+    // Debug logging for field mapping issues
+    if (backendRMA.rmaNumber === '705313' || backendRMA.defectivePartNumber || backendRMA.defectivePartName) {
+      console.log('🔍 DEBUG - RMA field mapping analysis:', {
+        rmaNumber: backendRMA.rmaNumber,
+        originalDefectivePartNumber: backendRMA.defectivePartNumber,
+        originalDefectivePartName: backendRMA.defectivePartName,
+        originalReplacedPartName: backendRMA.replacedPartName,
+        symptoms: backendRMA.symptoms
+      });
+    }
+    
+    // Fix field mapping issues - swap defective part number and name if they appear to be swapped
+    let correctedDefectivePartNumber = backendRMA.defectivePartNumber || 'N/A';
+    let correctedDefectivePartName = backendRMA.defectivePartName || 'Projector Component';
+    
+    // Check if the fields appear to be swapped (number field contains descriptive text, name field contains numbers)
+    const isNumberFieldDescriptive = correctedDefectivePartNumber && 
+      (correctedDefectivePartNumber.toLowerCase().includes('kit') || 
+       correctedDefectivePartNumber.toLowerCase().includes('harn') ||
+       correctedDefectivePartNumber.toLowerCase().includes('temps') ||
+       correctedDefectivePartNumber.toLowerCase().includes('assy') ||
+       correctedDefectivePartNumber.toLowerCase().includes('assembly') ||
+       correctedDefectivePartNumber.toLowerCase().includes('tpc') ||
+       correctedDefectivePartNumber.toLowerCase().includes('light engine') ||
+       correctedDefectivePartNumber.toLowerCase().includes('ballast') ||
+       correctedDefectivePartNumber.length > 10);
+    
+    const isNameFieldNumeric = correctedDefectivePartName && 
+      (/^\d{3}-\d{6}-\d{2}$/.test(correctedDefectivePartName) || // Pattern like "003-005682-01"
+       /^\d{3}-\d{6}-\d{2}$/.test(correctedDefectivePartName) || // Pattern like "000-101329-03"
+       /^\d{3}-\d{6}-\d{2}$/.test(correctedDefectivePartName)); // Pattern like "004-102075-02"
+    
+    // If fields appear swapped, swap them back
+    if (isNumberFieldDescriptive && isNameFieldNumeric) {
+      console.log('🔄 DEBUG - Swapping defective part fields:', {
+        rmaNumber: backendRMA.rmaNumber,
+        originalNumber: correctedDefectivePartNumber,
+        originalName: correctedDefectivePartName,
+        swappedNumber: correctedDefectivePartName,
+        swappedName: correctedDefectivePartNumber
+      });
+      
+      const temp = correctedDefectivePartNumber;
+      correctedDefectivePartNumber = correctedDefectivePartName;
+      correctedDefectivePartName = temp;
+    }
+    
     return {
       _id: backendRMA._id,
-      rmaNumber: backendRMA.rmaNumber || backendRMA.rmaNumber || 'N/A', 
-      callLogNumber: backendRMA.callLogNumber || backendRMA.callLogNumber || 'N/A',
-      rmaOrderNumber: backendRMA.rmaOrderNumber || backendRMA.rmaOrderNumber || 'N/A',
+      rmaNumber: backendRMA.rmaNumber || 'N/A', 
+      callLogNumber: backendRMA.callLogNumber || 'N/A',
+      rmaOrderNumber: backendRMA.rmaOrderNumber || 'N/A',
       ascompRaisedDate: backendRMA.ascompRaisedDate ? new Date(backendRMA.ascompRaisedDate).toLocaleDateString() : 
                         backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
       customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
@@ -60,17 +109,76 @@ export function RMAPage() {
       productName: backendRMA.productPartNumber || backendRMA.productName || backendRMA.projectorModel || 'N/A',
       productPartNumber: backendRMA.serialNumber || backendRMA.productPartNumber || backendRMA.partNumber || 'N/A',
       serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
-      defectivePartNumber: backendRMA.defectivePartNumber || backendRMA.partNumber || 'N/A',
-      defectivePartName: backendRMA.defectivePartName || backendRMA.partName || 'Projector Component',
+      defectivePartNumber: correctedDefectivePartNumber,
+      defectivePartName: correctedDefectivePartName,
       defectiveSerialNumber: backendRMA.defectiveSerialNumber || backendRMA.projectorSerial || 'N/A',
       symptoms: backendRMA.symptoms || backendRMA.failureDescription || backendRMA.reason || 'N/A',
       replacedPartNumber: backendRMA.replacedPartNumber || 'N/A',
-      replacedPartName: backendRMA.replacedPartName || 'N/A',
+      replacedPartName: (() => {
+        const replacedName = backendRMA.replacedPartName || 'N/A';
+        const defectiveName = correctedDefectivePartName;
+        
+        // Check if replacement part name contains symptoms instead of part name
+        const symptomPatterns = [
+          'integrator rod chipped',
+          'prism chipped', 
+          'segmen prism',
+          'connection lost',
+          'power cycle',
+          'marriage failure',
+          'imb marriage',
+          'imb marriage failure',
+          'red dmd temperature sensor error',
+          'temperature sensor error',
+          'dmd error',
+          'chipped',
+          'marriage',
+          'tpc touchpanel faulty',
+          'tpc booting failure',
+          'cyan horizontal lines',
+          'cyan vertical lines',
+          'green color missing',
+          'horizontal lines',
+          'vertical lines',
+          'lines noticed',
+          'booting failure',
+          'touchpanel faulty',
+          'faulty',
+          'failure',
+          'error',
+          'missing',
+          'noticed'
+        ];
+        
+        // Check if it's a symptom description or a part number (should be part name)
+        const isSymptomDescription = replacedName === 'N/A' || 
+          symptomPatterns.some(pattern => replacedName.toLowerCase().includes(pattern.toLowerCase())) ||
+          (replacedName.toLowerCase().includes('error') && replacedName.toLowerCase().includes('sensor')) ||
+          (replacedName.toLowerCase().includes('chipped') && replacedName.toLowerCase().includes('rod')) ||
+          (replacedName.toLowerCase().includes('marriage') && replacedName.toLowerCase().includes('failure'));
+        
+        // Also check if replacement part name is a part number (should be part name)
+        const isReplacementPartNumber = replacedName && /^\d{3}-\d{6}-\d{2}$/.test(replacedName);
+        
+        if (isSymptomDescription || isReplacementPartNumber) {
+          console.log('🔄 DEBUG - Replacing replacement part name with defective part name:', {
+            rmaNumber: backendRMA.rmaNumber,
+            originalReplacedName: replacedName,
+            newReplacedName: defectiveName,
+            reason: isSymptomDescription ? 'Symptom pattern detected' : 'Part number detected, should be part name'
+          });
+          return defectiveName;
+        }
+        
+        return replacedName;
+      })(),
       replacedPartSerialNumber: backendRMA.replacedPartSerialNumber || 'N/A',
       replacementNotes: backendRMA.replacementNotes || 'N/A',
       shippedDate: backendRMA.shippedDate ? new Date(backendRMA.shippedDate).toLocaleDateString() : 'N/A',
       trackingNumber: backendRMA.trackingNumber || 'N/A',
       shippedThru: backendRMA.shippedThru || 'N/A',
+      // Include shipping data for proper tracking display
+      shipping: backendRMA.shipping || null,
       remarks: backendRMA.remarks || backendRMA.notes || 'N/A',
       createdBy: backendRMA.createdBy || backendRMA.technician || 'System',
       caseStatus: backendRMA.caseStatus || backendRMA.status || 'Under Review',
@@ -102,6 +210,25 @@ export function RMAPage() {
       const mappedData = rmaItems.map(mapBackendDataToFrontend);
       setLocalRMAItems(mappedData);
       console.log('Mapped RMA data:', mappedData);
+      
+      // Debug: Check for specific RMA with integrator rod issue
+      const integratorRodRMAs = mappedData.filter(rma => 
+        (rma.replacedPartName || '').toLowerCase().includes('integrator rod')
+      );
+      if (integratorRodRMAs.length > 0) {
+        console.log('🔍 Found RMAs with integrator rod:', integratorRodRMAs);
+      }
+      
+      // Debug: Check for RMA 705313 specifically
+      const rma705313 = mappedData.find(rma => rma.rmaNumber === '705313');
+      if (rma705313) {
+        console.log('🔍 DEBUG - RMA 705313 details:', {
+          rmaNumber: rma705313.rmaNumber,
+          defectivePartName: rma705313.defectivePartName,
+          replacedPartName: rma705313.replacedPartName,
+          symptoms: rma705313.symptoms
+        });
+      }
     } else {
       setLocalRMAItems([]);
     }
@@ -568,10 +695,14 @@ export function RMAPage() {
         throw new Error('RMA ID is missing. Cannot update RMA.');
       }
       
-      // Convert "unassigned" back to empty string for API
+      // Prepare update data with proper field mapping
       const updateData = {
         ...editingRMA,
-        assignedTo: editingRMA.assignedTo === "unassigned" ? "" : editingRMA.assignedTo
+        assignedTo: editingRMA.assignedTo === "unassigned" ? "" : editingRMA.assignedTo,
+        // Ensure we have proper status fields
+        caseStatus: editingRMA.caseStatus || editingRMA.status || 'Under Review',
+        approvalStatus: editingRMA.approvalStatus || 'Pending Review',
+        priority: editingRMA.priority || 'Medium'
       };
       
       // Update RMA via API
@@ -744,6 +875,13 @@ export function RMAPage() {
                 await refreshRMA();
                 console.log('Current RMA count after refresh:', rmaItems?.length || 0);
                 setForceUpdate(prev => prev + 1);
+                
+                // Force a complete re-render by clearing and reloading data
+                setTimeout(async () => {
+                  console.log('Force reloading data...');
+                  await refreshData();
+                  setForceUpdate(prev => prev + 1);
+                }, 1000);
               }}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-blue-400/30 hover:shadow-lg"
             >
@@ -995,16 +1133,23 @@ export function RMAPage() {
           </div>
         )}
 
-              {/* RMA Table */}
-      <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-dark-bg to-dark-tag border-b border-dark-color">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-white">RMA Records</h2>
-              <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
-            </div>
-          </div>
-        </div>
+        {/* RMA Management Tabs */}
+        <Tabs defaultValue="rma-list" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="rma-list">RMA Records</TabsTrigger>
+            <TabsTrigger value="overdue-analysis">Overdue Analysis</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="rma-list">
+            <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
+              <div className="px-6 py-4 bg-gradient-to-r from-dark-bg to-dark-tag border-b border-dark-color">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-white">RMA Records</h2>
+                    <p className="text-sm text-gray-300 mt-1">Showing {filteredRMAs.length} RMA records</p>
+                  </div>
+                </div>
+              </div>
         <div className="overflow-x-auto">
           {filteredRMAs.length === 0 ? (
             <div className="text-center py-12">
@@ -1089,7 +1234,39 @@ export function RMAPage() {
                     <td className="py-4 px-4 border-r border-dark-color">
                       <div className="space-y-1">
                         <div className="text-gray-300 text-sm">
-                          {rma.replacedPartName || 'N/A'}
+                          {(() => {
+                            const replacedName = rma.replacedPartName || 'N/A';
+                            const defectiveName = rma.defectivePartName || 'N/A';
+                            
+                            // Only replace if the replacement part name is clearly a symptom description
+                            const clearSymptomPatterns = [
+                              'integrator rod chipped',
+                              'prism chipped', 
+                              'segmen prism',
+                              'connection lost',
+                              'power cycle',
+                              'marriage failure',
+                              'imb marriage',
+                              'imb marriage failure'
+                            ];
+                            
+                            // Check if it's exactly a symptom pattern or contains clear symptom indicators
+                            const isSymptomDescription = replacedName === 'N/A' || 
+                              clearSymptomPatterns.some(pattern => replacedName.toLowerCase().includes(pattern.toLowerCase())) ||
+                              (replacedName.toLowerCase().includes('chipped') && replacedName.toLowerCase().includes('rod')) ||
+                              (replacedName.toLowerCase().includes('marriage') && replacedName.toLowerCase().includes('failure'));
+                            
+                            if (isSymptomDescription) {
+                              console.log('🔄 DEBUG - Table display: Replacing symptom name with defective part name:', {
+                                rmaNumber: rma.rmaNumber,
+                                originalReplacedName: replacedName,
+                                newReplacedName: defectiveName,
+                                reason: 'Clear symptom pattern detected'
+                              });
+                              return defectiveName;
+                            }
+                            return replacedName;
+                          })()}
                         </div>
                         <div className="text-xs text-gray-300">
                           Part: {rma.replacedPartNumber || 'N/A'}
@@ -1127,21 +1304,81 @@ export function RMAPage() {
                         <div className="text-gray-300">
                           <span className="font-medium">Error:</span> {rma.customerErrorDate || 'N/A'}
                         </div>
-                        {rma.shippedDate && rma.shippedDate !== 'N/A' && (
-                          <div className="text-green-600">
-                            <span className="font-medium">Shipped:</span> {rma.shippedDate}
+                        
+                        {/* Replacement Part Tracking */}
+                        {(rma.shipping?.outbound?.trackingNumber || rma.trackingNumber) && (
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <div className="text-xs text-green-400 font-semibold">Replacement Shipped:</div>
+                            <div className="text-xs text-gray-300">
+                              {(rma.shipping?.outbound?.shippedDate ? new Date(rma.shipping.outbound.shippedDate).toLocaleDateString() : rma.shippedDate) || 'N/A'}
+                            </div>
+                            <div className="text-xs text-blue-600 font-mono">
+                              <span className="font-medium">Track:</span> {rma.shipping?.outbound?.trackingNumber || rma.trackingNumber}
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              <span className="font-medium">Via:</span> {rma.shipping?.outbound?.carrier || rma.shippedThru || 'N/A'}
+                            </div>
+                            {(rma.shipping?.outbound?.status || rma.trackingNumber) && (
+                              <div className="text-xs text-gray-300">
+                                <span className="font-medium">Status:</span> <span className={`px-1 py-0.5 rounded text-xs ${
+                                  // If RMA is completed and has tracking details, show delivered
+                                  (rma.caseStatus === 'Completed' && (rma.shipping?.outbound?.trackingNumber || rma.trackingNumber)) ? 'bg-green-600' :
+                                  (rma.shipping?.outbound?.status === 'delivered') ? 'bg-green-600' :
+                                  (rma.shipping?.outbound?.status === 'in_transit') ? 'bg-blue-600' :
+                                  (rma.shipping?.outbound?.status === 'exception') ? 'bg-red-600' :
+                                  rma.trackingNumber ? 'bg-blue-600' :
+                                  'bg-gray-600'
+                                }`}>
+                                  {(() => {
+                                    // If RMA is completed and has tracking details, show delivered
+                                    if (rma.caseStatus === 'Completed' && (rma.shipping?.outbound?.trackingNumber || rma.trackingNumber)) {
+                                      return 'delivered';
+                                    }
+                                    return rma.shipping?.outbound?.status ? rma.shipping.outbound.status.replace('_', ' ') : 'Shipped';
+                                  })()}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
-                        {rma.trackingNumber && rma.trackingNumber !== 'N/A' && (
-                          <div className="text-blue-600 font-mono">
-                            <span className="font-medium">Track:</span> {rma.trackingNumber}
+                        
+                        {/* Defective Part Return Tracking */}
+                        {(rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber) && (
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <div className="text-xs text-orange-400 font-semibold">Defective Return:</div>
+                            <div className="text-xs text-gray-300">
+                              {(rma.shipping?.return?.shippedDate ? new Date(rma.shipping.return.shippedDate).toLocaleDateString() : rma.rmaReturnShippedDate) || 'N/A'}
+                            </div>
+                            <div className="text-xs text-blue-600 font-mono">
+                              <span className="font-medium">Track:</span> {rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber}
+                            </div>
+                            <div className="text-xs text-gray-300">
+                              <span className="font-medium">Via:</span> {rma.shipping?.return?.carrier || rma.rmaReturnShippedThru || 'N/A'}
+                            </div>
+                            {(rma.shipping?.return?.status || rma.rmaReturnTrackingNumber) && (
+                              <div className="text-xs text-gray-300">
+                                <span className="font-medium">Status:</span> <span className={`px-1 py-0.5 rounded text-xs ${
+                                  // If RMA is completed and has return tracking details, show delivered
+                                  (rma.caseStatus === 'Completed' && (rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber)) ? 'bg-green-600' :
+                                  (rma.shipping?.return?.status === 'delivered') ? 'bg-green-600' :
+                                  (rma.shipping?.return?.status === 'in_transit') ? 'bg-blue-600' :
+                                  (rma.shipping?.return?.status === 'exception') ? 'bg-red-600' :
+                                  rma.rmaReturnTrackingNumber ? 'bg-blue-600' :
+                                  'bg-gray-600'
+                                }`}>
+                                  {(() => {
+                                    // If RMA is completed and has return tracking details, show delivered
+                                    if (rma.caseStatus === 'Completed' && (rma.shipping?.return?.trackingNumber || rma.rmaReturnTrackingNumber)) {
+                                      return 'delivered';
+                                    }
+                                    return rma.shipping?.return?.status ? rma.shipping.return.status.replace('_', ' ') : 'Shipped';
+                                  })()}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
-                        {rma.shippedThru && rma.shippedThru !== 'N/A' && (
-                          <div className="text-gray-300">
-                            <span className="font-medium">Via:</span> {rma.shippedThru}
-                          </div>
-                        )}
+                        
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -1174,7 +1411,13 @@ export function RMAPage() {
             </table>
           )}
         </div>
-      </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overdue-analysis">
+            <RMAOverdueAnalysis />
+          </TabsContent>
+        </Tabs>
 
         {/* RMA Detail Modal */}
         {selectedRMA && (
@@ -1337,7 +1580,6 @@ export function RMAPage() {
             </div>
           </div>
         )}
-      </main>
 
       {/* Create RMA Modal */}
       {showAddModal && (
@@ -2549,6 +2791,7 @@ export function RMAPage() {
           onAssigned={handleDTRAssigned}
         />
       )}
+      </main>
     </>
   );
 }

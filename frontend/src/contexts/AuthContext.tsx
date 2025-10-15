@@ -41,6 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
+    console.error('useAuth called outside of AuthProvider');
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
@@ -55,19 +56,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Check for existing token on app load
   useEffect(() => {
-    const storedToken = localStorage.getItem('authToken');
-    if (storedToken) {
-      setToken(storedToken);
-      // Set token in API client
-      apiClient.setAuthToken(storedToken);
-      // Verify token and get user profile
-      verifyToken(storedToken);
-    } else {
-      setIsLoading(false);
-    }
+    const initializeAuth = async () => {
+      try {
+        const storedToken = localStorage.getItem('authToken');
+        if (storedToken) {
+          setToken(storedToken);
+          // Set token in API client
+          apiClient.setAuthToken(storedToken);
+          // Verify token and get user profile
+          await verifyToken(storedToken);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setIsLoading(false);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const verifyToken = async (authToken: string) => {
@@ -235,6 +248,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isImpersonating,
     stopImpersonation
   };
+
+  // Don't render children until the provider is initialized
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>

@@ -367,13 +367,32 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       apiCache.delete('data-fse');
       apiCache.delete('data-service-visits');
       apiCache.delete('data-spare-parts');
+      
+      // Clear all API client caches
+      if (apiClient.clearCache) {
+        apiClient.clearCache();
+      }
+      
       // Add a longer delay to ensure cache is cleared
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Force fresh data by calling API directly without any caching
       const data = await apiClient.getAllRMA();
       console.log('RMA data refreshed:', data.length, 'items');
       console.log('First RMA item:', data[0]);
       console.log('RMA statuses:', data.map(r => ({ rmaNumber: r.rmaNumber, status: r.status })));
+      
+      // Check for RMA 705313 specifically
+      const rma705313 = data.find(rma => rma.rmaNumber === '705313');
+      if (rma705313) {
+        console.log('🔍 DEBUG - RMA 705313 in refreshed data:', {
+          rmaNumber: rma705313.rmaNumber,
+          defectivePartName: rma705313.defectivePartName,
+          replacedPartName: rma705313.replacedPartName,
+          symptoms: rma705313.symptoms
+        });
+      }
+      
       console.log('Setting RMA state with', data.length, 'items');
       setRMA([...data]); // Force a new array reference
     } catch (err: any) {
