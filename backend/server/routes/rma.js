@@ -21,23 +21,110 @@ router.get('/analytics/overdue', async (req, res) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - overdueDays);
     
-    console.log(`📅 Analyzing RMAs raised before: ${cutoffDate.toISOString()}`);
+    console.log(`📅 Analyzing RMAs with replacement parts shipped before: ${cutoffDate.toISOString()}`);
+
+    // Debug: Check total RMAs and date field distribution
+    const totalRMAs = await RMA.countDocuments();
+    const rmAsWithShippedDate = await RMA.countDocuments({ 'shipping.outbound.shippedDate': { $exists: true, $ne: null } });
+    const rmAsWithRaisedDate = await RMA.countDocuments({ 'ascompRaisedDate': { $exists: true, $ne: null } });
+    const rmAsWithFutureShippedDate = await RMA.countDocuments({ 
+      'shipping.outbound.shippedDate': { $exists: true, $ne: null },
+      $expr: { $gt: [ { $toDate: '$shipping.outbound.shippedDate' }, new Date() ] }
+    });
+    const rmAsWithPastShippedDate = await RMA.countDocuments({ 
+      'shipping.outbound.shippedDate': { $exists: true, $ne: null },
+      $expr: { $lt: [ { $toDate: '$shipping.outbound.shippedDate' }, new Date() ] }
+    });
     
-    // Build query conditions
-    const queryConditions = {
-      ascompRaisedDate: { $lt: cutoffDate },
-      caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } // Exclude completed/closed RMAs
-    };
+    // Check if shipped dates are stored in root field instead
+    const rmAsWithRootShippedDate = await RMA.countDocuments({ 'shippedDate': { $exists: true, $ne: null } });
     
+    console.log(`🔍 Debug - Total RMAs: ${totalRMAs}`);
+    console.log(`🔍 Debug - RMAs with shipping.outbound.shippedDate: ${rmAsWithShippedDate}`);
+    console.log(`🔍 Debug - RMAs with ascompRaisedDate: ${rmAsWithRaisedDate}`);
+    console.log(`🔍 Debug - RMAs with root shippedDate: ${rmAsWithRootShippedDate}`);
+    console.log(`🔍 Debug - RMAs with future shipped date: ${rmAsWithFutureShippedDate}`);
+    console.log(`🔍 Debug - RMAs with past shipped date: ${rmAsWithPastShippedDate}`);
+
+    // Check if we should include future dates for testing (temporary)
+    const includeFutureDates = req.query.includeFuture === 'true';
+    
+    // Try different field locations for shipped date
+    let queryConditions;
+    
+    if (rmAsWithShippedDate > 0) {
+      // Use shipping.outbound.shippedDate
+      console.log('🔍 Debug - Using shipping.outbound.shippedDate field');
+      queryConditions = {
+        $and: [
+          { 'shipping.outbound.shippedDate': { $exists: true, $ne: null } },
+          { caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } }
+        ]
+      };
+      
+      if (!includeFutureDates) {
+        queryConditions.$and.push({ 
+          $expr: { $lt: [ { $toDate: '$shipping.outbound.shippedDate' }, cutoffDate ] } 
+        });
+      }
+    } else if (rmAsWithRootShippedDate > 0) {
+      // Fallback to root shippedDate field
+      console.log('🔍 Debug - Using root shippedDate field as fallback');
+      queryConditions = {
+        $and: [
+          { 'shippedDate': { $exists: true, $ne: null } },
+          { caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } }
+        ]
+      };
+      
+      if (!includeFutureDates) {
+        queryConditions.$and.push({ 
+          $expr: { $lt: [ { $toDate: '$shippedDate' }, cutoffDate ] } 
+        });
+      }
+    } else {
+      // No shipped dates found
+      console.log('🔍 Debug - No shipped dates found in any field');
+      queryConditions = {
+        $and: [
+          { 'shipping.outbound.shippedDate': { $exists: false } },
+          { caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } }
+        ]
+      };
+    }
+
     // Add status filter if specified
     if (status !== 'all') {
-      queryConditions.caseStatus = status;
+      // Inject status filter into $and
+      queryConditions.$and = queryConditions.$and || [];
+      // Replace generic caseStatus condition with exact match
+      // Remove previous $nin condition and apply exact if provided
+      queryConditions.$and = queryConditions.$and.filter(c => !('caseStatus' in c));
+      queryConditions.$and.push({ caseStatus: status });
     }
     
     // Find overdue RMAs
+    const selectFields = 'rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate shipping.outbound.shippedDate shippedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate';
+    const sortField = rmAsWithShippedDate > 0 ? 'shipping.outbound.shippedDate' : 'shippedDate';
+    
     const overdueRMAs = await RMA.find(queryConditions)
-      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate')
-      .sort({ ascompRaisedDate: 1 }); // Oldest first
+      .select(selectFields)
+      .sort({ [sortField]: 1 }); // Oldest shipped date first
+    
+    console.log(`🔍 Debug - Found ${overdueRMAs.length} overdue RMAs`);
+    if (overdueRMAs.length > 0) {
+      console.log(`🔍 Debug - Sample overdue RMA: ${overdueRMAs[0].rmaNumber}, shipped: ${overdueRMAs[0].shipping?.outbound?.shippedDate}, status: ${overdueRMAs[0].caseStatus}`);
+    }
+    
+    // Show sample RMA for comparison
+    const sampleRMA = await RMA.findOne().select('rmaNumber ascompRaisedDate shipping.outbound.shippedDate shippedDate caseStatus');
+    if (sampleRMA) {
+      console.log(`🔍 Debug - Sample RMA structure: ${sampleRMA.rmaNumber}`);
+      console.log(`🔍 Debug -   ascompRaisedDate: ${sampleRMA.ascompRaisedDate}`);
+      console.log(`🔍 Debug -   shipping.outbound.shippedDate: ${sampleRMA.shipping?.outbound?.shippedDate}`);
+      console.log(`🔍 Debug -   root shippedDate: ${sampleRMA.shippedDate}`);
+      console.log(`🔍 Debug -   caseStatus: ${sampleRMA.caseStatus}`);
+    }
     
     // Calculate statistics
     const totalOverdue = overdueRMAs.length;
@@ -60,10 +147,12 @@ router.get('/analytics/overdue', async (req, res) => {
       overdueBySite[site] = (overdueBySite[site] || 0) + 1;
     });
     
-    // Calculate days overdue for each RMA
+    // Calculate days overdue for each RMA based on replacement part shipped date ONLY
     const overdueWithDetails = overdueRMAs.map(rma => {
-      const raisedDate = new Date(rma.ascompRaisedDate);
-      const daysOverdue = Math.floor((new Date() - raisedDate) / (1000 * 60 * 60 * 24));
+      // Use the appropriate shipped date field
+      const shippedDateValue = rma.shipping?.outbound?.shippedDate || rma.shippedDate;
+      const shippedDate = new Date(shippedDateValue);
+      const daysOverdue = Math.floor((new Date() - shippedDate) / (1000 * 60 * 60 * 24));
       
       // Safely handle comment fields that might not exist in older documents
       const comments = rma.comments || [];
@@ -72,7 +161,7 @@ router.get('/analytics/overdue', async (req, res) => {
       return {
         ...rma.toObject(),
         daysOverdue,
-        raisedDate: raisedDate.toISOString().split('T')[0],
+        shippedDate: shippedDate.toISOString().split('T')[0],
         isCritical: daysOverdue >= 60, // Critical if 60+ days overdue
         isUrgent: daysOverdue >= 45 && daysOverdue < 60, // Urgent if 45-59 days overdue
         // Include comment information
@@ -131,22 +220,34 @@ router.get('/overdue-with-comments', async (req, res) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - overdueDays);
     
-    const queryConditions = {
-      ascompRaisedDate: { $lt: cutoffDate },
-      caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] }
-    };
+    console.log(`📅 Second endpoint - Analyzing RMAs with replacement parts shipped before: ${cutoffDate.toISOString()}`);
     
+    const queryConditions = {
+      $and: [
+        { 'shipping.outbound.shippedDate': { $exists: true, $ne: null } },
+        { caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] } },
+        { $expr: { $lt: [ { $toDate: '$shipping.outbound.shippedDate' }, cutoffDate ] } }
+      ]
+    };
+
     if (status !== 'all') {
-      queryConditions.caseStatus = status;
+      queryConditions.$and = queryConditions.$and || [];
+      queryConditions.$and = queryConditions.$and.filter(c => !('caseStatus' in c));
+      queryConditions.$and.push({ caseStatus: status });
     }
     
     const overdueRMAs = await RMA.find(queryConditions)
-      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate')
-      .sort({ ascompRaisedDate: 1 });
+      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate shipping.outbound.shippedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate')
+      .sort({ 'shipping.outbound.shippedDate': 1 });
+
+    console.log(`🔍 Debug - Second endpoint found ${overdueRMAs.length} overdue RMAs`);
+    if (overdueRMAs.length > 0) {
+      console.log(`🔍 Debug - Sample overdue RMA: ${overdueRMAs[0].rmaNumber}, shipped: ${overdueRMAs[0].shipping?.outbound?.shippedDate}, status: ${overdueRMAs[0].caseStatus}`);
+    }
 
     const overdueWithDetails = overdueRMAs.map(rma => {
-      const raisedDate = new Date(rma.ascompRaisedDate);
-      const daysOverdue = Math.floor((new Date() - raisedDate) / (1000 * 60 * 60 * 24));
+      const shippedDate = new Date(rma.shipping?.outbound?.shippedDate);
+      const daysOverdue = Math.floor((new Date() - shippedDate) / (1000 * 60 * 60 * 24));
       
       // Safely handle comment fields that might not exist in older documents
       const comments = rma.comments || [];
@@ -155,7 +256,7 @@ router.get('/overdue-with-comments', async (req, res) => {
       return {
         ...rma.toObject(),
         daysOverdue,
-        raisedDate: raisedDate.toISOString().split('T')[0],
+        shippedDate: shippedDate.toISOString().split('T')[0],
         isCritical: daysOverdue >= 60,
         isUrgent: daysOverdue >= 45 && daysOverdue < 60,
         // Include comment information

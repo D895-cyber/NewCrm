@@ -421,10 +421,13 @@ class ApiClient {
   }
 
   // RMA Analytics methods
-  async getOverdueRMAAnalysis(days: number = 30, status: string = 'all') {
+  async getOverdueRMAAnalysis(days: number = 30, status: string = 'all', includeFuture: boolean = false) {
     const params = new URLSearchParams();
     params.append('days', days.toString());
     params.append('status', status);
+    if (includeFuture) {
+      params.append('includeFuture', 'true');
+    }
     return this.get(`/rma/analytics/overdue?${params.toString()}`);
   }
 

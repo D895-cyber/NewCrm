@@ -405,11 +405,30 @@ export function RMAPage() {
   }, [localRMAItems]);
 
   const filteredRMAs = (localRMAItems || []).filter(rma => {
-    const matchesSearch = (rma.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (rma.rmaNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (rma.siteName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (rma.serialNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (rma.defectivePartName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    // Normalize search term - handle case-insensitive and special characters
+    const normalizedSearch = searchTerm.toLowerCase().trim();
+    
+    if (!normalizedSearch) {
+      // If search is empty, match all (subject to filters)
+      const matchesStatus = filterStatus === "All" || rma.caseStatus === filterStatus;
+      const matchesPriority = filterPriority === "All" || rma.priority === filterPriority;
+      return matchesStatus && matchesPriority;
+    }
+    
+    // Search across all relevant fields including replaced part name
+    const matchesSearch = 
+      (rma.productName || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.rmaNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.siteName || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.serialNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.defectivePartName || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.replacedPartName || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.productPartNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.defectivePartNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.replacedPartNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.replacedPartSerialNumber || '').toLowerCase().includes(normalizedSearch) ||
+      (rma.defectiveSerialNumber || '').toLowerCase().includes(normalizedSearch);
+    
     const matchesStatus = filterStatus === "All" || rma.caseStatus === filterStatus;
     const matchesPriority = filterPriority === "All" || rma.priority === filterPriority;
     return matchesSearch && matchesStatus && matchesPriority;

@@ -39,13 +39,14 @@ interface OverdueRMA {
   replacedPartNumber: string;
   replacedPartName: string;
   ascompRaisedDate: string;
+  shippedDate: string; // Replacement part shipped date
   caseStatus: string;
   priority: string;
   warrantyStatus: string;
   estimatedCost: number;
   notes: string;
   daysOverdue: number;
-  raisedDate: string;
+  raisedDate: string; // Keep for backward compatibility
   isCritical: boolean;
   isUrgent: boolean;
   // Comment fields will be added later when the backend is updated
@@ -88,16 +89,59 @@ export function RMAOverdueAnalysis() {
   const [selectedRMA, setSelectedRMA] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
 
+  const loadAnalysisWithFutureDates = async () => {
+    try {
+      console.log('🧪 Testing with future dates included...');
+      setLoading(true);
+      setError(null);
+      
+      const apiResponse = await apiClient.getOverdueRMAAnalysis(daysFilter, statusFilter, true);
+      console.log('📊 API Response (with future dates):', apiResponse);
+      
+      // Use the same transformation logic as loadAnalysis
+      const transformedData = {
+        summary: {
+          totalOverdue: apiResponse.summary?.totalOverdue || apiResponse.overdueRMAs?.length || 0,
+          criticalCount: apiResponse.summary?.criticalCount || apiResponse.overdueRMAs?.filter((rma: OverdueRMA) => rma.isCritical).length || 0,
+          urgentCount: apiResponse.summary?.urgentCount || apiResponse.overdueRMAs?.filter((rma: OverdueRMA) => rma.isUrgent).length || 0,
+          averageDaysOverdue: apiResponse.summary?.averageDaysOverdue || (apiResponse.overdueRMAs?.length > 0 ? 
+            Math.round(apiResponse.overdueRMAs.reduce((sum: number, rma: OverdueRMA) => sum + rma.daysOverdue, 0) / apiResponse.overdueRMAs.length) : 0)
+        },
+        breakdown: {
+          byStatus: apiResponse.overdueByStatus || {},
+          byPriority: apiResponse.overdueByPriority || {},
+          bySite: apiResponse.overdueBySite || {}
+        },
+        overdueByStatus: apiResponse.overdueByStatus || {},
+        overdueByPriority: apiResponse.overdueByPriority || {},
+        overdueBySite: apiResponse.overdueBySite || {},
+        overdueRMAs: apiResponse.overdueRMAs || [],
+        recommendations: apiResponse.recommendations || []
+      };
+      
+      console.log('✅ Test analysis data updated:', transformedData.overdueRMAs?.length || 0, 'RMAs');
+      setAnalysis(transformedData);
+    } catch (err: any) {
+      console.error('❌ Error testing with future dates:', err);
+      setError(err.message || 'Failed to test with future dates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadAnalysis = async () => {
     try {
       console.log('🔄 loadAnalysis called - refreshing overdue analysis...');
+      console.log(`🔍 Filter params: days=${daysFilter}, status=${statusFilter}`);
       setLoading(true);
       setError(null);
       
       // Try the new endpoint with comments first, fallback to original if it fails
       let data;
       // Use the working analytics endpoint directly
-      data = await apiClient.getOverdueRMAAnalysis(daysFilter, statusFilter);
+      const apiResponse = await apiClient.getOverdueRMAAnalysis(daysFilter, statusFilter);
+      console.log('📊 API Response:', apiResponse);
+      data = apiResponse;
       
       // Transform the data to match the expected format
       const transformedData = {
@@ -152,7 +196,13 @@ export function RMAOverdueAnalysis() {
       setAnalysis(transformedData);
     } catch (err: any) {
       console.error('❌ Error loading overdue analysis:', err);
-      setError(err.message || 'Failed to load overdue analysis');
+      console.error('❌ Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        stack: err.stack
+      });
+      setError(err.message || 'Failed to load overdue analysis. Please check backend console for details.');
     } finally {
       setLoading(false);
     }
@@ -315,7 +365,7 @@ export function RMAOverdueAnalysis() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white">RMA Overdue Analysis</h2>
-          <p className="text-gray-400">Analysis of RMAs overdue for {daysFilter}+ days from raised date</p>
+          <p className="text-gray-400">Analysis of RMAs overdue for {daysFilter}+ days from replacement part shipped date</p>
         </div>
         <div className="flex gap-4">
           <Select value={daysFilter.toString()} onValueChange={(value) => setDaysFilter(parseInt(value))}>
@@ -344,6 +394,14 @@ export function RMAOverdueAnalysis() {
           <Button onClick={loadAnalysis} variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
+          </Button>
+          <Button 
+            onClick={loadAnalysisWithFutureDates} 
+            variant="outline" 
+            size="sm"
+            className="bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+          >
+            Test Future Dates
           </Button>
         </div>
       </div>
@@ -514,6 +572,10 @@ export function RMAOverdueAnalysis() {
                             <div>
                               <span className="text-gray-400">Days Overdue:</span>
                               <div className={`font-bold ${severity.color}`}>{rma.daysOverdue}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-400">Shipped Date:</span>
+                              <div className="text-white">{rma.shippedDate ? new Date(rma.shippedDate).toLocaleDateString() : 'N/A'}</div>
                             </div>
                           </div>
                           {rma.notes && (
@@ -718,6 +780,10 @@ export function RMAOverdueAnalysis() {
                                 <div>
                                   <span className="text-gray-400">Days Overdue:</span>
                                   <div className={`font-bold text-lg ${severity.color}`}>{rma.daysOverdue}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400">Shipped Date:</span>
+                                  <div className="text-white">{rma.shippedDate ? new Date(rma.shippedDate).toLocaleDateString() : 'N/A'}</div>
                                 </div>
                               </div>
                               
