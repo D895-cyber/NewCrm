@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Animated Status Filter - Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        
+        .demo-section {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .demo-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #f1f5f9;
+        }
+        
+        .status-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .status-card.clicked {
+            border-color: #10b981;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+        }
+        
+        .status-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .status-badge.under-review { background: #3b82f6; }
+        .status-badge.raised { background: #f59e0b; }
+        .status-badge.sent-cds { background: #8b5cf6; }
+        .status-badge.shipped { background: #10b981; }
+        .status-badge.completed { background: #059669; }
+        
+        .status-count {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f1f5f9;
+        }
+        
+        .status-description {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        
+        .rma-list {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .rma-list.show {
+            display: grid;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        .rma-card {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            animation: fadeInScale 0.4s ease-out;
+        }
+        
+        .rma-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .rma-number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+        
+        .rma-details {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .rma-detail {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+        
+        .rma-detail-label {
+            color: #94a3b8;
+        }
+        
+        .rma-detail-value {
+            color: #f1f5f9;
+            font-weight: 500;
+        }
+        
+        .priority-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .priority-critical { background: #dc2626; }
+        .priority-high { background: #ea580c; }
+        .priority-medium { background: #d97706; }
+        .priority-low { background: #16a34a; }
+        
+        .back-button {
+            background: rgba(71, 85, 105, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .back-button:hover {
+            background: rgba(71, 85, 105, 0.8);
+            border-color: #3b82f6;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .shimmer {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .status-card:hover .shimmer {
+            left: 100%;
+        }
+        
+        .pulse-dot {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 RMA Animated Status Filter</h1>
+            <p>Click on any status to see all RMAs with elaborate animations</p>
+        </div>
+        
+        <div class="demo-section">
+            <h2 class="demo-title">📊 Status Breakdown</h2>
+            <div class="status-grid">
+                <div class="status-card" onclick="showRMAs('Under Review', this)">
+                    <div class="pulse-dot"></div>
+                    <div class="status-header">
+                        <span class="status-badge under-review">Under Review</span>
+                        <span class="status-count">12</span>
+                    </div>
+                    <div class="status-description">RMAs currently being reviewed by technical team</div>
+                    <div class="shimmer"></div>
+                </div>
+                
+                <div class="status-card" onclick="showRMAs('RMA Raised Yet to Deliver', this)">
+                    <div class="pulse-dot"></div>
+                    <div class="status-header">
+                        <span class="status-badge raised">RMA Raised Yet to Deliver</span>
+                        <span class="status-count">8</span>
+                    </div>
+                    <div class="status-description">RMAs raised but not yet delivered to customer</div>
+                    <div class="shimmer"></div>
+                </div>
+                
+                <div class="status-card" onclick="showRMAs('Sent to CDS', this)">
+                    <div class="pulse-dot"></div>
+                    <div class="status-header">
+                        <span class="status-badge sent-cds">Sent to CDS</span>
+                        <span class="status-count">15</span>
+                    </div>
+                    <div class="status-description">RMAs sent to Customer Data Services</div>
+                    <div class="shimmer"></div>
+                </div>
+                
+                <div class="status-card" onclick="showRMAs('Replacement Shipped', this)">
+                    <div class="pulse-dot"></div>
+                    <div class="status-header">
+                        <span class="status-badge shipped">Replacement Shipped</span>
+                        <span class="status-count">6</span>
+                    </div>
+                    <div class="status-description">Replacement parts have been shipped</div>
+                    <div class="shimmer"></div>
+                </div>
+                
+                <div class="status-card" onclick="showRMAs('Completed', this)">
+                    <div class="pulse-dot"></div>
+                    <div class="status-header">
+                        <span class="status-badge completed">Completed</span>
+                        <span class="status-count">23</span>
+                    </div>
+                    <div class="status-description">RMAs that have been completed</div>
+                    <div class="shimmer"></div>
+                </div>
+            </div>
+            
+            <button class="back-button" onclick="hideRMAs()" style="display: none;">← Back to Status List</button>
+            
+            <div id="rmaList" class="rma-list"></div>
+        </div>
+        
+        <div class="demo-section">
+            <h2 class="demo-title">✨ Animation Features</h2>
+            <ul style="color: #94a3b8; line-height: 1.8;">
+                <li><strong>Staggered Entry:</strong> Status cards animate in with a 100ms delay between each</li>
+                <li><strong>Hover Effects:</strong> Cards lift up with colored shadows and shimmer effects</li>
+                <li><strong>Click Animation:</strong> Selected status gets highlighted with green accent</li>
+                <li><strong>RMA Cards:</strong> Individual RMA cards slide in from bottom with scale animation</li>
+                <li><strong>Smooth Transitions:</strong> All animations use CSS transitions for smooth performance</li>
+                <li><strong>Visual Feedback:</strong> Pulsing dots and color-coded badges for better UX</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Sample RMA data
+        const rmaData = {
+            'Under Review': [
+                { number: 'RMA-2024-001', site: 'TechCorp HQ', product: 'Projector X1', priority: 'High', daysOverdue: 15 },
+                { number: 'RMA-2024-002', site: 'Innovation Lab', product: 'Projector X2', priority: 'Critical', daysOverdue: 25 },
+                { number: 'RMA-2024-003', site: 'Research Center', product: 'Projector X3', priority: 'Medium', daysOverdue: 8 },
+                { number: 'RMA-2024-004', site: 'Development Hub', product: 'Projector X1', priority: 'Low', daysOverdue: 5 },
+                { number: 'RMA-2024-005', site: 'Testing Facility', product: 'Projector X2', priority: 'High', daysOverdue: 18 },
+                { number: 'RMA-2024-006', site: 'Production Site', product: 'Projector X3', priority: 'Medium', daysOverdue: 12 },
+                { number: 'RMA-2024-007', site: 'Quality Center', product: 'Projector X1', priority: 'Critical', daysOverdue: 30 },
+                { number: 'RMA-2024-008', site: 'Support Office', product: 'Projector X2', priority: 'Low', daysOverdue: 3 },
+                { number: 'RMA-2024-009', site: 'Main Office', product: 'Projector X3', priority: 'High', daysOverdue: 20 },
+                { number: 'RMA-2024-010', site: 'Branch Office', product: 'Projector X1', priority: 'Medium', daysOverdue: 10 },
+                { number: 'RMA-2024-011', site: 'Remote Site', product: 'Projector X2', priority: 'Low', daysOverdue: 7 },
+                { number: 'RMA-2024-012', site: 'Field Office', product: 'Projector X3', priority: 'High', daysOverdue: 22 }
+            ],
+            'RMA Raised Yet to Deliver': [
+                { number: 'RMA-2024-013', site: 'TechCorp HQ', product: 'Projector X1', priority: 'High', daysOverdue: 35 },
+                { number: 'RMA-2024-014', site: 'Innovation Lab', product: 'Projector X2', priority: 'Critical', daysOverdue: 45 },
+                { number: 'RMA-2024-015', site: 'Research Center', product: 'Projector X3', priority: 'Medium', daysOverdue: 28 },
+                { number: 'RMA-2024-016', site: 'Development Hub', product: 'Projector X1', priority: 'Low', daysOverdue: 15 },
+                { number: 'RMA-2024-017', site: 'Testing Facility', product: 'Projector X2', priority: 'High', daysOverdue: 38 },
+                { number: 'RMA-2024-018', site: 'Production Site', product: 'Projector X3', priority: 'Medium', daysOverdue: 32 },
+                { number: 'RMA-2024-019', site: 'Quality Center', product: 'Projector X1', priority: 'Critical', daysOverdue: 50 },
+                { number: 'RMA-2024-020', site: 'Support Office', product: 'Projector X2', priority: 'Low', daysOverdue: 13 }
+            ],
+            'Sent to CDS': [
+                { number: 'RMA-2024-021', site: 'TechCorp HQ', product: 'Projector X1', priority: 'High', daysOverdue: 40 },
+                { number: 'RMA-2024-022', site: 'Innovation Lab', product: 'Projector X2', priority: 'Critical', daysOverdue: 55 },
+                { number: 'RMA-2024-023', site: 'Research Center', product: 'Projector X3', priority: 'Medium', daysOverdue: 33 },
+                { number: 'RMA-2024-024', site: 'Development Hub', product: 'Projector X1', priority: 'Low', daysOverdue: 20 },
+                { number: 'RMA-2024-025', site: 'Testing Facility', product: 'Projector X2', priority: 'High', daysOverdue: 43 },
+                { number: 'RMA-2024-026', site: 'Production Site', product: 'Projector X3', priority: 'Medium', daysOverdue: 37 },
+                { number: 'RMA-2024-027', site: 'Quality Center', product: 'Projector X1', priority: 'Critical', daysOverdue: 60 },
+                { number: 'RMA-2024-028', site: 'Support Office', product: 'Projector X2', priority: 'Low', daysOverdue: 18 },
+                { number: 'RMA-2024-029', site: 'Main Office', product: 'Projector X3', priority: 'High', daysOverdue: 47 },
+                { number: 'RMA-2024-030', site: 'Branch Office', product: 'Projector X1', priority: 'Medium', daysOverdue: 25 },
+                { number: 'RMA-2024-031', site: 'Remote Site', product: 'Projector X2', priority: 'Low', daysOverdue: 22 },
+                { number: 'RMA-2024-032', site: 'Field Office', product: 'Projector X3', priority: 'High', daysOverdue: 52 },
+                { number: 'RMA-2024-033', site: 'TechCorp HQ', product: 'Projector X1', priority: 'Critical', daysOverdue: 65 },
+                { number: 'RMA-2024-034', site: 'Innovation Lab', product: 'Projector X2', priority: 'Medium', daysOverdue: 30 },
+                { number: 'RMA-2024-035', site: 'Research Center', product: 'Projector X3', priority: 'Low', daysOverdue: 16 }
+            ],
+            'Replacement Shipped': [
+                { number: 'RMA-2024-036', site: 'TechCorp HQ', product: 'Projector X1', priority: 'High', daysOverdue: 12 },
+                { number: 'RMA-2024-037', site: 'Innovation Lab', product: 'Projector X2', priority: 'Critical', daysOverdue: 8 },
+                { number: 'RMA-2024-038', site: 'Research Center', product: 'Projector X3', priority: 'Medium', daysOverdue: 15 },
+                { number: 'RMA-2024-039', site: 'Development Hub', product: 'Projector X1', priority: 'Low', daysOverdue: 5 },
+                { number: 'RMA-2024-040', site: 'Testing Facility', product: 'Projector X2', priority: 'High', daysOverdue: 18 },
+                { number: 'RMA-2024-041', site: 'Production Site', product: 'Projector X3', priority: 'Medium', daysOverdue: 10 }
+            ],
+            'Completed': [
+                { number: 'RMA-2024-042', site: 'TechCorp HQ', product: 'Projector X1', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-043', site: 'Innovation Lab', product: 'Projector X2', priority: 'Critical', daysOverdue: 0 },
+                { number: 'RMA-2024-044', site: 'Research Center', product: 'Projector X3', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-045', site: 'Development Hub', product: 'Projector X1', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-046', site: 'Testing Facility', product: 'Projector X2', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-047', site: 'Production Site', product: 'Projector X3', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-048', site: 'Quality Center', product: 'Projector X1', priority: 'Critical', daysOverdue: 0 },
+                { number: 'RMA-2024-049', site: 'Support Office', product: 'Projector X2', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-050', site: 'Main Office', product: 'Projector X3', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-051', site: 'Branch Office', product: 'Projector X1', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-052', site: 'Remote Site', product: 'Projector X2', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-053', site: 'Field Office', product: 'Projector X3', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-054', site: 'TechCorp HQ', product: 'Projector X1', priority: 'Critical', daysOverdue: 0 },
+                { number: 'RMA-2024-055', site: 'Innovation Lab', product: 'Projector X2', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-056', site: 'Research Center', product: 'Projector X3', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-057', site: 'Development Hub', product: 'Projector X1', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-058', site: 'Testing Facility', product: 'Projector X2', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-059', site: 'Production Site', product: 'Projector X3', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-060', site: 'Quality Center', product: 'Projector X1', priority: 'Critical', daysOverdue: 0 },
+                { number: 'RMA-2024-061', site: 'Support Office', product: 'Projector X2', priority: 'High', daysOverdue: 0 },
+                { number: 'RMA-2024-062', site: 'Main Office', product: 'Projector X3', priority: 'Medium', daysOverdue: 0 },
+                { number: 'RMA-2024-063', site: 'Branch Office', product: 'Projector X1', priority: 'Low', daysOverdue: 0 },
+                { number: 'RMA-2024-064', site: 'Remote Site', product: 'Projector X2', priority: 'High', daysOverdue: 0 }
+            ]
+        };
+        
+        function showRMAs(status, clickedCard) {
+            // Remove clicked class from all cards
+            document.querySelectorAll('.status-card').forEach(card => {
+                card.classList.remove('clicked');
+            });
+            
+            // Add clicked class to the clicked card
+            clickedCard.classList.add('clicked');
+            
+            // Show back button
+            document.querySelector('.back-button').style.display = 'block';
+            
+            // Get RMA list container
+            const rmaList = document.getElementById('rmaList');
+            
+            // Clear existing content
+            rmaList.innerHTML = '';
+            
+            // Get RMAs for the selected status
+            const rmas = rmaData[status] || [];
+            
+            // Create RMA cards with staggered animation
+            rmas.forEach((rma, index) => {
+                setTimeout(() => {
+                    const rmaCard = document.createElement('div');
+                    rmaCard.className = 'rma-card';
+                    rmaCard.style.animationDelay = `${index * 100}ms`;
+                    
+                    rmaCard.innerHTML = `
+                        <div class="rma-number">${rma.number}</div>
+                        <div class="rma-details">
+                            <div class="rma-detail">
+                                <span class="rma-detail-label">Site:</span>
+                                <span class="rma-detail-value">${rma.site}</span>
+                            </div>
+                            <div class="rma-detail">
+                                <span class="rma-detail-label">Product:</span>
+                                <span class="rma-detail-value">${rma.product}</span>
+                            </div>
+                            <div class="rma-detail">
+                                <span class="rma-detail-label">Priority:</span>
+                                <span class="rma-detail-value">
+                                    <span class="priority-badge priority-${rma.priority.toLowerCase()}">${rma.priority}</span>
+                                </span>
+                            </div>
+                            <div class="rma-detail">
+                                <span class="rma-detail-label">Days Overdue:</span>
+                                <span class="rma-detail-value" style="color: ${rma.daysOverdue > 30 ? '#ef4444' : rma.daysOverdue > 15 ? '#f59e0b' : '#10b981'}">
+                                    ${rma.daysOverdue}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    rmaList.appendChild(rmaCard);
+                }, index * 100);
+            });
+            
+            // Show the RMA list with animation
+            setTimeout(() => {
+                rmaList.classList.add('show');
+            }, 100);
+        }
+        
+        function hideRMAs() {
+            // Hide back button
+            document.querySelector('.back-button').style.display = 'none';
+            
+            // Remove clicked class from all cards
+            document.querySelectorAll('.status-card').forEach(card => {
+                card.classList.remove('clicked');
+            });
+            
+            // Hide RMA list
+            const rmaList = document.getElementById('rmaList');
+            rmaList.classList.remove('show');
+            
+            // Clear content after animation
+            setTimeout(() => {
+                rmaList.innerHTML = '';
+            }, 500);
+        }
+        
+        // Add staggered animation to status cards on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusCards = document.querySelectorAll('.status-card');
+            statusCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 100}ms`;
+                card.style.animation = 'fadeInScale 0.5s ease-out forwards';
+                card.style.opacity = '0';
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

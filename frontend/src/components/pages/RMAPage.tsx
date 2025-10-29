@@ -38,6 +38,8 @@ import { AdvancedRMASearch } from "../AdvancedRMASearch";
 import { AssignDTRToTechnicalHeadDialog } from "../dialogs/AssignDTRToTechnicalHeadDialog";
 import { useAuth } from "../../contexts/AuthContext";
 import { RMAOverdueAnalysis } from "../analytics/RMAOverdueAnalysis";
+import { SimpleRMAAnalytics } from "../analytics/SimpleRMAAnalytics";
+import { DiagnosticComponent } from "../DiagnosticComponent";
 
 
 
@@ -46,6 +48,10 @@ export function RMAPage() {
   const { user } = useAuth();
   const [forceUpdate, setForceUpdate] = useState(0);
   const [localRMAItems, setLocalRMAItems] = useState<any[]>([]);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterPriority, setFilterPriority] = useState("All");
   
   // Map backend data to frontend display format
   const mapBackendDataToFrontend = (backendRMA: any) => {
@@ -106,9 +112,9 @@ export function RMAPage() {
       customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
                          backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
       siteName: backendRMA.siteName || backendRMA.customerSite || 'N/A',
-      productName: backendRMA.productPartNumber || backendRMA.productName || backendRMA.projectorModel || 'N/A',
-      productPartNumber: backendRMA.serialNumber || backendRMA.productPartNumber || backendRMA.partNumber || 'N/A',
-      serialNumber: backendRMA.projectorSerial || backendRMA.defectiveSerialNumber || 'N/A',
+      productName: backendRMA.productName || backendRMA.projectorModel || 'N/A',
+      productPartNumber: backendRMA.productPartNumber || backendRMA.partNumber || 'N/A',
+      serialNumber: backendRMA.serialNumber || backendRMA.projectorSerial || 'N/A',
       defectivePartNumber: correctedDefectivePartNumber,
       defectivePartName: correctedDefectivePartName,
       defectiveSerialNumber: backendRMA.defectiveSerialNumber || backendRMA.projectorSerial || 'N/A',
@@ -209,6 +215,7 @@ export function RMAPage() {
     if (rmaItems && rmaItems.length > 0) {
       const mappedData = rmaItems.map(mapBackendDataToFrontend);
       setLocalRMAItems(mappedData);
+      setHasLoadedData(true);
       console.log('Mapped RMA data:', mappedData);
       
       // Debug: Check for specific RMA with integrator rod issue
@@ -231,6 +238,7 @@ export function RMAPage() {
       }
     } else {
       setLocalRMAItems([]);
+      setHasLoadedData(false);
     }
   }, [rmaItems]);
 
@@ -239,6 +247,14 @@ export function RMAPage() {
     loadTechnicalHeads();
     loadReadyForRMADTRs();
   }, []);
+
+  // Load data when component mounts
+  useEffect(() => {
+    if (!hasLoadedData) {
+      console.log('Loading RMA data on component mount');
+      refreshRMA();
+    }
+  }, [hasLoadedData, refreshRMA]);
   
   // Debug: Log component render
   console.log('RMAPage rendered with', rmaItems?.length || 0, 'items');
@@ -260,9 +276,6 @@ export function RMAPage() {
     }
   }, [rmaItems]);
   
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [filterPriority, setFilterPriority] = useState("All");
   const [selectedRMA, setSelectedRMA] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -889,6 +902,13 @@ export function RMAPage() {
               Refresh
             </button>
             <button 
+              onClick={() => window.location.hash = '#rma-reports'}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-purple-400/30 hover:shadow-lg"
+            >
+              <FileText className="w-4 h-4" />
+              Reports & Analytics
+            </button>
+            <button 
               onClick={async () => {
                 console.log('Force refresh clicked - clearing all caches');
                 console.log('Current RMA count before force refresh:', rmaItems?.length || 0);
@@ -1135,12 +1155,46 @@ export function RMAPage() {
 
         {/* RMA Management Tabs */}
         <Tabs defaultValue="rma-list" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="rma-list">RMA Records</TabsTrigger>
             <TabsTrigger value="overdue-analysis">Overdue Analysis</TabsTrigger>
+            <TabsTrigger value="simple-analytics">Simple Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rma-list">
+            {/* Diagnostic Component - Remove this after fixing the issue */}
+            <div className="mb-6">
+              <DiagnosticComponent />
+            </div>
+            
+            {/* Error Display */}
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+                  <span className="text-red-800 font-medium">Error</span>
+                </div>
+                <p className="text-red-700 mt-1">{error}</p>
+                <div className="mt-2 flex gap-2">
+                  <button 
+                    onClick={() => setError(null)}
+                    className="text-sm text-red-600 hover:text-red-800 underline"
+                  >
+                    Dismiss
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      setError(null);
+                      await refreshRMA();
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-dark-card rounded-xl shadow-xl border border-dark-color overflow-hidden">
               <div className="px-6 py-4 bg-gradient-to-r from-dark-bg to-dark-tag border-b border-dark-color">
                 <div className="flex items-center justify-between">
@@ -1156,8 +1210,17 @@ export function RMAPage() {
               <div className="mx-auto w-24 h-24 bg-dark-tag rounded-full flex items-center justify-center mb-4">
                 <Package className="w-12 h-12 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No RMAs Found</h3>
-              <p className="text-gray-300 mb-4">No RMA records match your current filters.</p>
+              {filterStatus === "All" && localRMAItems.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-medium text-white mb-2">No RMAs Found</h3>
+                  <p className="text-gray-300 mb-4">No RMA records are available. Try selecting a specific status to filter the results.</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-medium text-white mb-2">No RMAs Found</h3>
+                  <p className="text-gray-300 mb-4">No RMA records match your current filters.</p>
+                </>
+              )}
               <Button 
                 onClick={() => setShowAddModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1416,6 +1479,10 @@ export function RMAPage() {
 
           <TabsContent value="overdue-analysis">
             <RMAOverdueAnalysis />
+          </TabsContent>
+
+          <TabsContent value="simple-analytics">
+            <SimpleRMAAnalytics />
           </TabsContent>
         </Tabs>
 

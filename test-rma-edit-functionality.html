@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Edit Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>RMA Edit Functionality Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Instructions</h3>
+        <p>This page tests the RMA edit functionality. Make sure your backend server is running on localhost:4000.</p>
+        <ol>
+            <li>Click "Test RMA Edit API" to test the backend API directly</li>
+            <li>Click "Test Frontend Integration" to test the full frontend integration</li>
+            <li>Check the console for detailed logs</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>Backend API Test</h3>
+        <button onclick="testRMAApi()">Test RMA Edit API</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Frontend Integration Test</h3>
+        <button onclick="testFrontendIntegration()">Test Frontend Integration</button>
+        <div id="frontend-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const resultsDiv = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testRMAApi() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                // First, get a sample RMA
+                log('Fetching sample RMA...', 'info');
+                const response = await fetch(`${API_BASE}/rma?limit=1`);
+                const data = await response.json();
+                
+                if (!data || data.length === 0) {
+                    throw new Error('No RMAs found in database');
+                }
+                
+                const sampleRMA = data[0];
+                log(`Found sample RMA: ${sampleRMA.rmaNumber}`, 'success');
+                
+                // Test update
+                const updateData = {
+                    caseStatus: 'Under Review',
+                    approvalStatus: 'Pending Review',
+                    notes: 'Test update from functionality test - ' + new Date().toISOString()
+                };
+                
+                log(`Updating RMA ${sampleRMA._id} with data: ${JSON.stringify(updateData)}`, 'info');
+                
+                const updateResponse = await fetch(`${API_BASE}/rma/${sampleRMA._id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(`API Error: ${errorData.error || updateResponse.statusText}`);
+                }
+                
+                const updatedRMA = await updateResponse.json();
+                log(`RMA updated successfully: ${updatedRMA.rmaNumber}`, 'success');
+                log(`New case status: ${updatedRMA.caseStatus}`, 'success');
+                log(`New approval status: ${updatedRMA.approvalStatus}`, 'success');
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ API Test Passed</h4>
+                        <p>RMA ${updatedRMA.rmaNumber} updated successfully</p>
+                        <pre>${JSON.stringify(updatedRMA, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`API Test Failed: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ API Test Failed</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testFrontendIntegration() {
+            const resultDiv = document.getElementById('frontend-result');
+            resultDiv.innerHTML = '<p>Testing frontend integration...</p>';
+            
+            try {
+                // Test the API client functionality
+                log('Testing API client functionality...', 'info');
+                
+                // Simulate the frontend API client
+                const apiClient = {
+                    async updateRMA(id, updates) {
+                        const response = await fetch(`${API_BASE}/rma/${id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(updates)
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Update failed');
+                        }
+                        
+                        return await response.json();
+                    }
+                };
+                
+                // Get a sample RMA
+                const response = await fetch(`${API_BASE}/rma?limit=1`);
+                const data = await response.json();
+                
+                if (!data || data.length === 0) {
+                    throw new Error('No RMAs found in database');
+                }
+                
+                const sampleRMA = data[0];
+                log(`Testing with RMA: ${sampleRMA.rmaNumber}`, 'info');
+                
+                // Test the update process as the frontend would do it
+                const updateData = {
+                    ...sampleRMA,
+                    caseStatus: 'Under Review',
+                    approvalStatus: 'Pending Review',
+                    priority: 'Medium',
+                    notes: 'Frontend integration test - ' + new Date().toISOString()
+                };
+                
+                log('Calling apiClient.updateRMA...', 'info');
+                const updatedRMA = await apiClient.updateRMA(sampleRMA._id, updateData);
+                
+                log(`Frontend integration test successful!`, 'success');
+                log(`Updated RMA: ${updatedRMA.rmaNumber}`, 'success');
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Frontend Integration Test Passed</h4>
+                        <p>RMA ${updatedRMA.rmaNumber} updated successfully via API client</p>
+                        <pre>${JSON.stringify(updatedRMA, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Frontend Integration Test Failed: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Frontend Integration Test Failed</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run basic connectivity test on page load
+        window.addEventListener('load', async () => {
+            log('Page loaded, testing basic connectivity...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/rma?limit=1`);
+                if (response.ok) {
+                    log('✅ Backend server is accessible', 'success');
+                } else {
+                    log('❌ Backend server returned error', 'error');
+                }
+            } catch (error) {
+                log(`❌ Cannot connect to backend server: ${error.message}`, 'error');
+                log('Make sure your backend server is running on localhost:4000', 'info');
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

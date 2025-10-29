@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Replacement Name Logic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-case {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .before {
+            border-left: 4px solid #dc3545;
+        }
+        .after {
+            border-left: 4px solid #28a745;
+        }
+        .result {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .success {
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Replacement Name Logic</h1>
+    <p>This page tests the replacement part name fix logic to see if it's working correctly.</p>
+    
+    <div id="test-results"></div>
+
+    <script>
+        function testReplacementNameLogic() {
+            const testCases = [
+                {
+                    name: "Integrator rod chipped",
+                    backendData: {
+                        defectivePartName: "Assy. Integrator rod",
+                        replacedPartName: "Integrator rod chipped"
+                    },
+                    expected: "Assy. Integrator rod"
+                },
+                {
+                    name: "Two segmen prism chipped",
+                    backendData: {
+                        defectivePartName: "Assy. Light Engine",
+                        replacedPartName: "Two segmen prism chipped"
+                    },
+                    expected: "Assy. Light Engine"
+                },
+                {
+                    name: "IMB Marriage Failure",
+                    backendData: {
+                        defectivePartName: "Assy. PIB",
+                        replacedPartName: "IMB Marriage Failure"
+                    },
+                    expected: "Assy. PIB"
+                },
+                {
+                    name: "Valid replacement part name",
+                    backendData: {
+                        defectivePartName: "Old Component",
+                        replacedPartName: "New Component (Replacement)"
+                    },
+                    expected: "New Component (Replacement)"
+                }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            testCases.forEach((testCase, index) => {
+                const result = (() => {
+                    const replacedName = testCase.backendData.replacedPartName || 'N/A';
+                    const defectiveName = testCase.backendData.defectivePartName || 'Projector Component';
+                    
+                    // Check if the replacement part name contains symptom keywords
+                    const symptomKeywords = [
+                        'chipped', 'broken', 'faulty', 'defect', 'failure', 'marriage',
+                        'rod chipped', 'integrator rod', 'prism chipped', 'segmen prism',
+                        'connection lost', 'power cycle', 'marriage failure', 'imb marriage',
+                        'cracked', 'damaged', 'malfunction', 'error', 'issue', 'problem'
+                    ];
+                    
+                    if (replacedName === 'N/A' || 
+                        symptomKeywords.some(keyword => replacedName.toLowerCase().includes(keyword.toLowerCase()))) {
+                        return defectiveName;
+                    }
+                    return replacedName;
+                })();
+                
+                const isCorrect = result === testCase.expected;
+                const testDiv = document.createElement('div');
+                testDiv.className = `test-case ${isCorrect ? 'after' : 'before'}`;
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.name}</h3>
+                    <p><strong>Input:</strong> "${testCase.backendData.replacedPartName}"</p>
+                    <p><strong>Defective Part Name:</strong> "${testCase.backendData.defectivePartName}"</p>
+                    <p><strong>Expected:</strong> "${testCase.expected}"</p>
+                    <p><strong>Result:</strong> "${result}"</p>
+                    <div class="result ${isCorrect ? 'success' : 'error'}">
+                        ${isCorrect ? '✅ PASS' : '❌ FAIL'}
+                    </div>
+                `;
+                resultsContainer.appendChild(testDiv);
+            });
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testReplacementNameLogic);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

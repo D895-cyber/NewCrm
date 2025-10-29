@@ -36,7 +36,7 @@ router.get('/analytics/overdue', async (req, res) => {
     
     // Find overdue RMAs
     const overdueRMAs = await RMA.find(queryConditions)
-      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes')
+      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate')
       .sort({ ascompRaisedDate: 1 }); // Oldest first
     
     // Calculate statistics
@@ -65,12 +65,20 @@ router.get('/analytics/overdue', async (req, res) => {
       const raisedDate = new Date(rma.ascompRaisedDate);
       const daysOverdue = Math.floor((new Date() - raisedDate) / (1000 * 60 * 60 * 24));
       
+      // Safely handle comment fields that might not exist in older documents
+      const comments = rma.comments || [];
+      const lastUpdate = rma.lastUpdate || null;
+      
       return {
         ...rma.toObject(),
         daysOverdue,
         raisedDate: raisedDate.toISOString().split('T')[0],
         isCritical: daysOverdue >= 60, // Critical if 60+ days overdue
-        isUrgent: daysOverdue >= 45 && daysOverdue < 60 // Urgent if 45-59 days overdue
+        isUrgent: daysOverdue >= 45 && daysOverdue < 60, // Urgent if 45-59 days overdue
+        // Include comment information
+        publicComments: comments.filter(comment => !comment.isInternal).slice(0, 3), // Show last 3 public comments
+        totalComments: comments.length,
+        lastUpdate: lastUpdate
       };
     });
     
@@ -109,6 +117,64 @@ router.get('/analytics/overdue', async (req, res) => {
     console.error('❌ Error analyzing overdue RMAs:', error);
     res.status(500).json({ 
       error: 'Failed to analyze overdue RMAs', 
+      details: error.message 
+    });
+  }
+});
+
+// Get RMA with comments for overdue analysis
+router.get('/overdue-with-comments', async (req, res) => {
+  try {
+    const { days = 30, status = 'all' } = req.query;
+    const overdueDays = parseInt(days);
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - overdueDays);
+    
+    const queryConditions = {
+      ascompRaisedDate: { $lt: cutoffDate },
+      caseStatus: { $nin: ['Completed', 'Closed', 'Rejected'] }
+    };
+    
+    if (status !== 'all') {
+      queryConditions.caseStatus = status;
+    }
+    
+    const overdueRMAs = await RMA.find(queryConditions)
+      .select('rmaNumber siteName productName productPartNumber defectivePartNumber defectivePartName replacedPartNumber replacedPartName ascompRaisedDate caseStatus priority warrantyStatus estimatedCost notes comments lastUpdate')
+      .sort({ ascompRaisedDate: 1 });
+
+    const overdueWithDetails = overdueRMAs.map(rma => {
+      const raisedDate = new Date(rma.ascompRaisedDate);
+      const daysOverdue = Math.floor((new Date() - raisedDate) / (1000 * 60 * 60 * 24));
+      
+      // Safely handle comment fields that might not exist in older documents
+      const comments = rma.comments || [];
+      const lastUpdate = rma.lastUpdate || null;
+      
+      return {
+        ...rma.toObject(),
+        daysOverdue,
+        raisedDate: raisedDate.toISOString().split('T')[0],
+        isCritical: daysOverdue >= 60,
+        isUrgent: daysOverdue >= 45 && daysOverdue < 60,
+        // Include comment information
+        publicComments: comments.filter(comment => !comment.isInternal).slice(0, 3), // Show last 3 public comments
+        totalComments: comments.length,
+        lastUpdate: lastUpdate
+      };
+    });
+
+    res.json({
+      success: true,
+      overdueRMAs: overdueWithDetails,
+      totalCount: overdueWithDetails.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching overdue RMAs with comments:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch overdue RMAs with comments', 
       details: error.message 
     });
   }
@@ -2330,7 +2396,7 @@ router.get('/workflow/stats', async (req, res) => {
 // Advanced search by part name, part number, model number, or serial number with analytics
 router.get('/search/part-analytics', async (req, res) => {
   try {
-    const { partName, partNumber, modelNumber, serialNumber } = req.query;
+    const { partName, partNumber, modelNumber, serialNumber, startDate, endDate } = req.query;
     
     // Determine search type and value
     let searchType = 'partName';
@@ -2391,7 +2457,23 @@ router.get('/search/part-analytics', async (req, res) => {
       return res.status(400).json({ error: 'Search parameter is required (partName, partNumber, modelNumber, or serialNumber)' });
     }
 
+    // Add date range filtering if provided
+    if (startDate || endDate) {
+      searchQuery.ascompRaisedDate = {};
+      if (startDate) {
+        searchQuery.ascompRaisedDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        searchQuery.ascompRaisedDate.$lte = end;
+      }
+    }
+
     console.log(`🔍 Searching for ${searchType}: "${searchTerm}"`);
+    if (startDate || endDate) {
+      console.log(`📅 Date range: ${startDate || 'no start'} to ${endDate || 'no end'}`);
+    }
     console.log('Search query:', JSON.stringify(searchQuery, null, 2));
 
     // Get all matching RMA records
@@ -2466,7 +2548,12 @@ router.get('/search/part-analytics', async (req, res) => {
       priorityDistribution,
       warrantyDistribution,
       rmaRecords: rmaRecords.slice(0, 50), // Limit to first 50 records for performance
-      searchTimestamp: new Date()
+      searchTimestamp: new Date(),
+      dateRange: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        hasDateFilter: !!(startDate || endDate)
+      }
     };
 
     console.log(`✅ Found ${totalCases} cases for ${searchType}: "${searchTerm}"`);
@@ -2477,6 +2564,422 @@ router.get('/search/part-analytics', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to search part analytics', 
       details: error.message 
+    });
+  }
+});
+
+// Simple RMA Analytics Endpoint
+router.get('/analytics/simple', async (req, res) => {
+  try {
+    console.log('📊 Generating simple RMA analytics...');
+    
+    const { partName, startDate, endDate } = req.query;
+    
+    if (!partName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Part name is required' 
+      });
+    }
+    
+    // Build filter query - focus on descriptive part names
+    // Escape special regex characters and handle common variations
+    const escapedPartName = partName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const flexiblePartName = partName.replace(/\./g, '\\.?'); // Make dots optional
+    
+    const filter = {
+      $or: [
+        { defectivePartName: { $regex: escapedPartName, $options: 'i' } },
+        { replacedPartName: { $regex: escapedPartName, $options: 'i' } },
+        { defectivePartName: { $regex: flexiblePartName, $options: 'i' } },
+        { replacedPartName: { $regex: flexiblePartName, $options: 'i' } },
+        // Handle common abbreviations and variations
+        { defectivePartName: { $regex: partName.replace(/assy\.?/gi, 'assembly'), $options: 'i' } },
+        { replacedPartName: { $regex: partName.replace(/assy\.?/gi, 'assembly'), $options: 'i' } }
+      ]
+    };
+    
+    // Date range filter
+    if (startDate || endDate) {
+      filter.ascompRaisedDate = {};
+      if (startDate) filter.ascompRaisedDate.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.ascompRaisedDate.$lte = end;
+      }
+    }
+    
+    console.log('Simple analytics filter:', JSON.stringify(filter, null, 2));
+    
+    // Get filtered RMA records
+    const rmaRecords = await RMA.find(filter)
+      .select('rmaNumber siteName defectivePartName defectivePartNumber ascompRaisedDate caseStatus priority warrantyStatus')
+      .sort({ ascompRaisedDate: -1 });
+    
+    // Calculate summary
+    const totalRMAs = rmaRecords.length;
+    const dateRange = startDate && endDate ? 
+      `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}` :
+      startDate ? `From ${new Date(startDate).toLocaleDateString()}` :
+      endDate ? `Until ${new Date(endDate).toLocaleDateString()}` :
+      'All time';
+    
+    // Calculate average per day
+    let averagePerDay = 0;
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      averagePerDay = totalRMAs / daysDiff;
+    }
+    
+    // Process records for display
+    const processedRecords = rmaRecords.map(rma => {
+      const raisedDate = new Date(rma.ascompRaisedDate);
+      const today = new Date();
+      const daysSinceRaised = Math.ceil((today - raisedDate) / (1000 * 60 * 60 * 24));
+      
+      return {
+        rmaNumber: rma.rmaNumber || 'N/A',
+        siteName: rma.siteName || 'N/A',
+        defectivePartName: rma.defectivePartName || rma.productName || 'N/A',
+        defectivePartNumber: rma.defectivePartNumber || 'N/A',
+        ascompRaisedDate: rma.ascompRaisedDate,
+        caseStatus: rma.caseStatus || 'Unknown',
+        priority: rma.priority || 'Medium',
+        warrantyStatus: rma.warrantyStatus || 'Unknown',
+        daysSinceRaised
+      };
+    });
+    
+    const analytics = {
+      summary: {
+        totalRMAs,
+        partName,
+        dateRange,
+        averagePerDay
+      },
+      rmaRecords: processedRecords,
+      generatedAt: new Date().toISOString()
+    };
+    
+    console.log(`✅ Simple analytics generated: ${totalRMAs} RMAs found`);
+    res.json(analytics);
+    
+  } catch (error) {
+    console.error('❌ Error generating simple analytics:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate analytics',
+      details: error.message 
+    });
+  }
+});
+
+// Comprehensive RMA Report Endpoint
+router.get('/reports/comprehensive', async (req, res) => {
+  try {
+    console.log('📊 Generating comprehensive RMA report...');
+    
+    const {
+      partName,
+      partNumber,
+      serialNumber,
+      startDate,
+      endDate,
+      status,
+      priority,
+      siteName
+    } = req.query;
+    
+    // Build filter query
+    const filter = {};
+    
+    // Part filters
+    if (partName) {
+      const regex = new RegExp(partName, 'i');
+      filter.$or = [
+        { defectivePartName: regex },
+        { productName: regex },
+        { replacedPartName: regex }
+      ];
+    }
+    
+    if (partNumber) {
+      const regex = new RegExp(partNumber, 'i');
+      filter.$or = [
+        { defectivePartNumber: regex },
+        { productPartNumber: regex },
+        { replacedPartNumber: regex },
+        { serialNumber: regex },
+        { defectiveSerialNumber: regex },
+        { replacedPartSerialNumber: regex }
+      ];
+    }
+    
+    if (serialNumber) {
+      const regex = new RegExp(serialNumber, 'i');
+      if (!filter.$or) filter.$or = [];
+      filter.$or.push(
+        { projectorSerial: regex },
+        { serialNumber: regex },
+        { defectiveSerialNumber: regex },
+        { replacedPartSerialNumber: regex }
+      );
+    }
+    
+    if (siteName) {
+      filter.siteName = { $regex: siteName, $options: 'i' };
+    }
+    
+    if (status && status !== 'all') {
+      filter.caseStatus = status;
+    }
+    
+    if (priority && priority !== 'all') {
+      filter.priority = priority;
+    }
+    
+    // Date range filter
+    if (startDate || endDate) {
+      filter.ascompRaisedDate = {};
+      if (startDate) filter.ascompRaisedDate.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.ascompRaisedDate.$lte = end;
+      }
+    }
+    
+    console.log('RMA Filter applied:', JSON.stringify(filter, null, 2));
+    
+    // Get filtered RMA records
+    const rmaRecords = await RMA.find(filter).sort({ ascompRaisedDate: -1 });
+    
+    const totalCases = rmaRecords.length;
+    
+    // If no RMAs found, return empty analytics
+    if (totalCases === 0) {
+      console.log('No RMA records found with current filters');
+      const emptyAnalytics = {
+        summary: {
+          totalCases: 0,
+          activeCases: 0,
+          completedCases: 0,
+          avgResolutionTime: 0,
+          totalCost: 0,
+          costPerRMA: 0
+        },
+        partAnalysis: [],
+        serialNumberAnalysis: [],
+        timeBasedDistribution: [],
+        statusDistribution: {},
+        priorityDistribution: {},
+        siteDistribution: [],
+        costTrends: [],
+        rmaRecords: [],
+        filters: {
+          partName: partName || 'all',
+          partNumber: partNumber || 'all',
+          serialNumber: serialNumber || 'all',
+          startDate: startDate || 'all',
+          endDate: endDate || 'all',
+          status: status || 'all',
+          priority: priority || 'all',
+          siteName: siteName || 'all'
+        },
+        generatedAt: new Date()
+      };
+      return res.json(emptyAnalytics);
+    }
+    const activeCases = rmaRecords.filter(rma => 
+      !['Completed', 'Closed', 'Rejected'].includes(rma.caseStatus)
+    ).length;
+    const completedCases = rmaRecords.filter(rma => 
+      ['Completed', 'Closed'].includes(rma.caseStatus)
+    ).length;
+    
+    // Calculate total cost
+    const totalCost = rmaRecords.reduce((sum, rma) => sum + (rma.estimatedCost || 0), 0);
+    
+    // Calculate average resolution time
+    const resolvedRMAs = rmaRecords.filter(rma => 
+      rma.resolvedAt && rma.createdAt
+    );
+    let avgResolutionTime = 0;
+    if (resolvedRMAs.length > 0) {
+      const totalDays = resolvedRMAs.reduce((sum, rma) => {
+        const days = Math.ceil((new Date(rma.resolvedAt) - new Date(rma.createdAt)) / (1000 * 60 * 60 * 24));
+        return sum + days;
+      }, 0);
+      avgResolutionTime = (totalDays / resolvedRMAs.length).toFixed(1);
+    }
+    
+    // Part analysis
+    const partMap = {};
+    rmaRecords.forEach(rma => {
+      const pName = rma.defectivePartName || 'Unknown';
+      const pNumber = rma.defectivePartNumber || 'Unknown';
+      const key = `${pName}|${pNumber}`;
+      
+      if (!partMap[key]) {
+        partMap[key] = {
+          partName: pName,
+          partNumber: pNumber,
+          count: 0,
+          totalCost: 0,
+          resolutionDays: []
+        };
+      }
+      
+      partMap[key].count++;
+      partMap[key].totalCost += rma.estimatedCost || 0;
+      
+      if (rma.resolvedAt && rma.createdAt) {
+        const days = Math.ceil((new Date(rma.resolvedAt) - new Date(rma.createdAt)) / (1000 * 60 * 60 * 24));
+        partMap[key].resolutionDays.push(days);
+      }
+    });
+    
+    const partAnalysis = Object.values(partMap).map(part => ({
+      partName: part.partName,
+      partNumber: part.partNumber,
+      count: part.count,
+      totalCost: part.totalCost,
+      avgResolutionDays: part.resolutionDays.length > 0 
+        ? (part.resolutionDays.reduce((a, b) => a + b, 0) / part.resolutionDays.length).toFixed(1)
+        : 0
+    })).sort((a, b) => b.count - a.count);
+    
+    // Serial number analysis
+    const serialMap = {};
+    rmaRecords.forEach(rma => {
+      const sn = rma.projectorSerial || rma.serialNumber || 'Unknown';
+      if (!serialMap[sn]) {
+        serialMap[sn] = {
+          serialNumber: sn,
+          siteName: rma.siteName,
+          count: 0,
+          issues: []
+        };
+      }
+      serialMap[sn].count++;
+      serialMap[sn].issues.push({
+        rmaNumber: rma.rmaNumber,
+        defectivePartName: rma.defectivePartName,
+        ascompRaisedDate: rma.ascompRaisedDate,
+        status: rma.caseStatus
+      });
+    });
+    
+    const serialNumberAnalysis = Object.values(serialMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+    
+    // Time-based distribution
+    const dateMap = {};
+    rmaRecords.forEach(rma => {
+      const date = rma.ascompRaisedDate 
+        ? new Date(rma.ascompRaisedDate).toISOString().split('T')[0]
+        : 'Unknown';
+      
+      if (!dateMap[date]) {
+        dateMap[date] = {
+          date,
+          count: 0,
+          cost: 0
+        };
+      }
+      dateMap[date].count++;
+      dateMap[date].cost += rma.estimatedCost || 0;
+    });
+    
+    const timeBasedDistribution = Object.values(dateMap).sort((a, b) => 
+      a.date.localeCompare(b.date)
+    );
+    
+    // Status distribution
+    const statusDistribution = {};
+    rmaRecords.forEach(rma => {
+      const s = rma.caseStatus || 'Unknown';
+      statusDistribution[s] = (statusDistribution[s] || 0) + 1;
+    });
+    
+    // Priority distribution
+    const priorityDistribution = {};
+    rmaRecords.forEach(rma => {
+      const p = rma.priority || 'Medium';
+      priorityDistribution[p] = (priorityDistribution[p] || 0) + 1;
+    });
+    
+    // Site distribution
+    const siteMap = {};
+    rmaRecords.forEach(rma => {
+      const site = rma.siteName || 'Unknown';
+      siteMap[site] = (siteMap[site] || 0) + 1;
+    });
+    const siteDistribution = Object.keys(siteMap).map(site => ({
+      siteName: site,
+      count: siteMap[site]
+    })).sort((a, b) => b.count - a.count).slice(0, 20);
+    
+    // Cost trends over time (weekly aggregation)
+    const weeklyMap = {};
+    rmaRecords.forEach(rma => {
+      if (rma.ascompRaisedDate) {
+        const date = new Date(rma.ascompRaisedDate);
+        const weekStart = new Date(date.setDate(date.getDate() - date.getDay()));
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!weeklyMap[weekKey]) {
+          weeklyMap[weekKey] = { week: weekKey, count: 0, totalCost: 0 };
+        }
+        weeklyMap[weekKey].count++;
+        weeklyMap[weekKey].totalCost += rma.estimatedCost || 0;
+      }
+    });
+    const costTrends = Object.values(weeklyMap).sort((a, b) => a.week.localeCompare(b.week));
+    
+    const comprehensiveReport = {
+      summary: {
+        totalCases,
+        activeCases,
+        completedCases,
+        avgResolutionTime: parseFloat(avgResolutionTime),
+        totalCost,
+        costPerRMA: totalCases > 0 ? (totalCost / totalCases).toFixed(2) : 0
+      },
+      partAnalysis: partAnalysis.slice(0, 20), // Top 20 parts
+      serialNumberAnalysis,
+      timeBasedDistribution,
+      statusDistribution,
+      priorityDistribution,
+      siteDistribution,
+      costTrends,
+      rmaRecords: rmaRecords.slice(0, 100), // Limit for performance
+      filters: {
+        partName: partName || 'all',
+        partNumber: partNumber || 'all',
+        serialNumber: serialNumber || 'all',
+        startDate: startDate || 'all',
+        endDate: endDate || 'all',
+        status: status || 'all',
+        priority: priority || 'all',
+        siteName: siteName || 'all'
+      },
+      generatedAt: new Date()
+    };
+    
+    console.log(`✅ Comprehensive RMA report generated: ${totalCases} cases found`);
+    res.json(comprehensiveReport);
+    
+  } catch (error) {
+    console.error('❌ Error generating comprehensive RMA report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating comprehensive RMA report',
+      error: error.message
     });
   }
 });
@@ -2659,5 +3162,238 @@ router.post('/fix-data-mapping', async (req, res) => {
     });
   }
 });
+
+// ==================== RMA COMMENT SYSTEM ====================
+
+// Add comment to RMA
+router.post('/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comment, commentType = 'update', isInternal = false, attachments = [], userInfo } = req.body;
+    
+    // Use userInfo from request body if available, otherwise fallback to req.user or defaults
+    const userId = userInfo?.userId || req.user?.id || req.user?.userId || 'anonymous';
+    const userName = userInfo?.name || req.user?.name || req.user?.username || 'Anonymous User';
+    const userEmail = userInfo?.email || req.user?.email || '';
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment is required' });
+    }
+
+    const rma = await RMA.findById(id);
+    if (!rma) {
+      return res.status(404).json({ error: 'RMA not found' });
+    }
+
+    const newComment = {
+      comment: comment.trim(),
+      commentedBy: {
+        userId,
+        name: userName,
+        email: userEmail
+      },
+      commentType,
+      isInternal,
+      attachments,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    rma.comments.push(newComment);
+    
+    // Update lastUpdate field
+    rma.lastUpdate = {
+      comment: comment.trim(),
+      updatedBy: {
+        userId,
+        name: userName
+      },
+      updatedAt: new Date()
+    };
+
+    await rma.save();
+
+    console.log(`💬 Added comment to RMA ${rma.rmaNumber} by ${userName}`);
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      comment: newComment,
+      lastUpdate: rma.lastUpdate
+    });
+
+  } catch (error) {
+    console.error('❌ Error adding comment to RMA:', error);
+    res.status(500).json({ 
+      error: 'Failed to add comment', 
+      details: error.message 
+    });
+  }
+});
+
+// Get comments for RMA
+router.get('/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { includeInternal = false } = req.query;
+
+    const rma = await RMA.findById(id).select('comments lastUpdate');
+    if (!rma) {
+      return res.status(404).json({ error: 'RMA not found' });
+    }
+
+    let comments = rma.comments || [];
+    
+    // Filter out internal comments if not requested
+    if (!includeInternal) {
+      comments = comments.filter(comment => !comment.isInternal);
+    }
+
+    // Sort by creation date (newest first)
+    comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      comments,
+      lastUpdate: rma.lastUpdate,
+      totalComments: comments.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching RMA comments:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch comments', 
+      details: error.message 
+    });
+  }
+});
+
+// Update comment
+router.put('/:id/comments/:commentId', async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { comment, userInfo } = req.body;
+    const userId = userInfo?.userId || req.user?.id || req.user?.userId || 'anonymous';
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment is required' });
+    }
+
+    const rma = await RMA.findById(id);
+    if (!rma) {
+      return res.status(404).json({ error: 'RMA not found' });
+    }
+
+    const commentIndex = rma.comments.findIndex(c => c._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    const existingComment = rma.comments[commentIndex];
+    
+    // Check if user can edit this comment (only the author or admin)
+    if (existingComment.commentedBy.userId !== userId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to edit this comment' });
+    }
+
+    // Update comment
+    rma.comments[commentIndex].comment = comment.trim();
+    rma.comments[commentIndex].updatedAt = new Date();
+
+    // Update lastUpdate if this is the most recent comment
+    const mostRecentComment = rma.comments.reduce((latest, current) => 
+      new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
+    );
+
+    if (rma.comments[commentIndex]._id.toString() === mostRecentComment._id.toString()) {
+      rma.lastUpdate = {
+        comment: comment.trim(),
+        updatedBy: {
+          userId,
+          name: req.user?.name || req.user?.username || 'Anonymous User'
+        },
+        updatedAt: new Date()
+      };
+    }
+
+    await rma.save();
+
+    console.log(`💬 Updated comment in RMA ${rma.rmaNumber}`);
+
+    res.json({
+      success: true,
+      message: 'Comment updated successfully',
+      comment: rma.comments[commentIndex]
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating comment:', error);
+    res.status(500).json({ 
+      error: 'Failed to update comment', 
+      details: error.message 
+    });
+  }
+});
+
+// Delete comment
+router.delete('/:id/comments/:commentId', async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { userInfo } = req.body;
+    const userId = userInfo?.userId || req.user?.id || req.user?.userId || 'anonymous';
+
+    const rma = await RMA.findById(id);
+    if (!rma) {
+      return res.status(404).json({ error: 'RMA not found' });
+    }
+
+    const commentIndex = rma.comments.findIndex(c => c._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    const existingComment = rma.comments[commentIndex];
+    
+    // Check if user can delete this comment (only the author or admin)
+    if (existingComment.commentedBy.userId !== userId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+
+    // Remove comment
+    rma.comments.splice(commentIndex, 1);
+
+    // Update lastUpdate if this was the most recent comment
+    if (rma.comments.length > 0) {
+      const mostRecentComment = rma.comments.reduce((latest, current) => 
+        new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
+      );
+      
+      rma.lastUpdate = {
+        comment: mostRecentComment.comment,
+        updatedBy: mostRecentComment.commentedBy,
+        updatedAt: mostRecentComment.createdAt
+      };
+    } else {
+      rma.lastUpdate = null;
+    }
+
+    await rma.save();
+
+    console.log(`💬 Deleted comment from RMA ${rma.rmaNumber}`);
+
+    res.json({
+      success: true,
+      message: 'Comment deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting comment:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete comment', 
+      details: error.message 
+    });
+  }
+});
+
 
 module.exports = router;

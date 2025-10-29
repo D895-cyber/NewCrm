@@ -155,8 +155,12 @@ class ApiClient {
     });
   }
 
-  async delete(endpoint: string) {
-    return this.request(endpoint, { method: 'DELETE' });
+  async delete(endpoint: string, data?: any) {
+    const options: RequestInit = { method: 'DELETE' };
+    if (data) {
+      options.body = JSON.stringify(data);
+    }
+    return this.request(endpoint, options);
   }
 
   // Method to clear cache (useful after data updates)
@@ -310,6 +314,53 @@ class ApiClient {
     return this.delete(`/services/${encodeURIComponent(id)}`);
   }
 
+  // DTR methods
+  async getAllDTRs(page: number = 1, limit: number = 10, filters: any = {}) {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== 'all') {
+        params.append(key, value.toString());
+      }
+    });
+    
+    return this.get(`/dtr?${params.toString()}`);
+  }
+
+  async getDTR(id: string) {
+    return this.get(`/dtr/${encodeURIComponent(id)}`);
+  }
+
+  async createDTR(dtrData: any) {
+    return this.post('/dtr', dtrData);
+  }
+
+  async updateDTR(id: string, updates: any) {
+    return this.put(`/dtr/${encodeURIComponent(id)}`, updates);
+  }
+
+  async deleteDTR(id: string) {
+    return this.delete(`/dtr/${encodeURIComponent(id)}`);
+  }
+
+  async convertDTRToRMA(id: string, conversionData: any) {
+    return this.post(`/dtr/${encodeURIComponent(id)}/convert-to-rma`, conversionData);
+  }
+
+  async assignDTRToTechnicalHead(id: string, assignmentData: any) {
+    return this.post(`/dtr/${encodeURIComponent(id)}/assign-technical-head`, assignmentData);
+  }
+
+  async finalizeDTRByTechnicalHead(id: string, finalizationData: any) {
+    return this.post(`/dtr/${encodeURIComponent(id)}/finalize-by-technical-head`, finalizationData);
+  }
+
+  async getDTRStats() {
+    return this.get('/dtr/stats/overview');
+  }
+
   // Purchase Orders methods
   async getAllPurchaseOrders() {
     return this.get('/purchase-orders');
@@ -333,11 +384,18 @@ class ApiClient {
 
   // RMA methods
   async getAllRMA() {
-    console.log('API Client: Getting all RMA data');
-    const data = await this.get('/rma');
-    console.log('API Client: Received RMA data:', data.length, 'items');
-    console.log('API Client: First RMA:', data[0]);
-    return data;
+    try {
+      console.log('API Client: Getting all RMA data');
+      const data = await this.get('/rma');
+      console.log('API Client: Received RMA data:', data.length, 'items');
+      if (data.length > 0) {
+        console.log('API Client: First RMA:', data[0]);
+      }
+      return data;
+    } catch (error) {
+      console.error('API Client: Error fetching RMA data:', error);
+      throw new Error(`Failed to fetch RMA records: ${error.message}`);
+    }
   }
 
   async getRMA(id: string) {
@@ -368,6 +426,81 @@ class ApiClient {
     params.append('days', days.toString());
     params.append('status', status);
     return this.get(`/rma/analytics/overdue?${params.toString()}`);
+  }
+
+  async getOverdueRMAWithComments(days: number = 30, status: string = 'all') {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    params.append('status', status);
+    return this.get(`/rma/overdue-with-comments?${params.toString()}`);
+  }
+
+  // RMA Comment methods
+  async addRMAComment(rmaId: string, comment: string, commentType: string = 'update', isInternal: boolean = false, userInfo?: any) {
+    const payload: any = {
+      comment,
+      commentType,
+      isInternal
+    };
+    
+    // Add user information if provided
+    if (userInfo) {
+      console.log('🔍 Raw userInfo received:', userInfo);
+      
+      // Simple fallback logic for user name
+      let userName = userInfo.name || userInfo.username;
+      if (!userName && userInfo.profile?.firstName && userInfo.profile?.lastName) {
+        userName = `${userInfo.profile.firstName} ${userInfo.profile.lastName}`;
+      }
+      if (!userName) {
+        userName = userInfo.username || 'Anonymous User';
+      }
+      
+      const constructedUserInfo = {
+        userId: userInfo.userId || userInfo.id || 'anonymous',
+        name: userName,
+        email: userInfo.email || ''
+      };
+      console.log('🔍 Constructed userInfo:', constructedUserInfo);
+      payload.userInfo = constructedUserInfo;
+    }
+    
+    return this.post(`/rma/${rmaId}/comments`, payload);
+  }
+
+  async getRMAComments(rmaId: string, includeInternal: boolean = false) {
+    const params = new URLSearchParams();
+    params.append('includeInternal', includeInternal.toString());
+    console.log('🔍 Getting comments for RMA:', rmaId, 'includeInternal:', includeInternal);
+    const response = await this.get(`/rma/${rmaId}/comments?${params.toString()}`);
+    console.log('📥 getRMAComments response:', response);
+    return response;
+  }
+
+  async updateRMAComment(rmaId: string, commentId: string, comment: string, userInfo?: any) {
+    const payload: any = { comment };
+    if (userInfo) {
+      payload.userInfo = {
+        userId: userInfo.userId || userInfo.id,
+        name: userInfo.name || userInfo.username || (userInfo.profile?.firstName && userInfo.profile?.lastName ? 
+          `${userInfo.profile.firstName} ${userInfo.profile.lastName}` : userInfo.username),
+        email: userInfo.email
+      };
+    }
+    return this.put(`/rma/${rmaId}/comments/${commentId}`, payload);
+  }
+
+  async deleteRMAComment(rmaId: string, commentId: string, userInfo?: any) {
+    const payload: any = {};
+    if (userInfo) {
+      payload.userInfo = {
+        userId: userInfo.userId || userInfo.id,
+        name: userInfo.name || userInfo.username || (userInfo.profile?.firstName && userInfo.profile?.lastName ? 
+          `${userInfo.profile.firstName} ${userInfo.profile.lastName}` : userInfo.username),
+        email: userInfo.email
+      };
+    }
+    return this.delete(`/rma/${rmaId}/comments/${commentId}`, payload);
   }
 
   // Service Visit methods

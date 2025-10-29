@@ -1,0 +1,747 @@
+/* ========================================
+   CONSOLIDATED CRM STYLING SYSTEM
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   CSS CUSTOM PROPERTIES (VARIABLES)
+   ======================================== */
+:root {
+  /* Font Configuration */
+  --font-size: 14px;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Dark Theme Color Palette */
+  --dark-bg: #0F172A;
+  --dark-card: #1E293B;
+  --dark-primary-text: #FFFFFF;
+  --dark-secondary-text: #94A3B8;
+  --dark-positive: #22C55E;
+  --dark-negative: #EF4444;
+  --dark-cta: #3B82F6;
+  --dark-tag: #334155;
+  --dark-hover: #1E2535;
+  --dark-table-hover: #1C2A3A;
+  --dark-border: #374151;
+  
+  /* Light Theme Color Palette */
+  --light-bg: #FFFFFF;
+  --light-card: #F8FAFC;
+  --light-primary-text: #1F2937;
+  --light-secondary-text: #6B7280;
+  --light-positive: #059669;
+  --light-negative: #DC2626;
+  --light-cta: #2563EB;
+  --light-tag: #E5E7EB;
+  --light-hover: #F3F4F6;
+  --light-table-hover: #F9FAFB;
+  --light-border: #D1D5DB;
+  
+  /* Universal Theme Variables */
+  --background: var(--dark-bg);
+  --foreground: var(--dark-primary-text);
+  --card: var(--dark-card);
+  --card-foreground: var(--dark-primary-text);
+  --popover: var(--dark-card);
+  --popover-foreground: var(--dark-primary-text);
+  --primary: var(--dark-cta);
+  --primary-foreground: var(--dark-primary-text);
+  --secondary: var(--dark-tag);
+  --secondary-foreground: var(--dark-primary-text);
+  --muted: var(--dark-card);
+  --muted-foreground: var(--dark-secondary-text);
+  --accent: var(--dark-cta);
+  --accent-foreground: var(--dark-primary-text);
+  --destructive: var(--dark-negative);
+  --destructive-foreground: var(--dark-primary-text);
+  --border: var(--dark-border);
+  --input: var(--dark-card);
+  --input-background: var(--dark-card);
+  --input-foreground: var(--dark-primary-text);
+  --input-text-color: var(--dark-primary-text);
+  --ring: var(--dark-cta);
+  
+  /* Chart Colors */
+  --chart-1: #3B82F6;
+  --chart-2: #22C55E;
+  --chart-3: #94A3B8;
+  --chart-4: #F59E0B;
+  --chart-5: #EF4444;
+  
+  /* Border Radius */
+  --radius: 0.75rem;
+  
+  /* Sidebar Colors */
+  --sidebar: var(--dark-bg);
+  --sidebar-foreground: var(--dark-primary-text);
+  --sidebar-primary: var(--dark-primary-text);
+  --sidebar-primary-foreground: var(--dark-bg);
+  --sidebar-accent: var(--dark-cta);
+  --sidebar-accent-foreground: var(--dark-primary-text);
+  --sidebar-border: var(--dark-border);
+  --sidebar-ring: var(--dark-cta);
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: var(--font-size);
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family);
+    font-weight: 400;
+    overflow-x: hidden;
+    line-height: 1.5;
+  }
+
+  /* Touch-friendly tap targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Mobile-optimized scrolling */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ========================================
+   TYPOGRAPHY SYSTEM
+   ======================================== */
+@layer base {
+  /* Headings */
+  h1, .h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--foreground);
+  }
+
+  h2, .h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--foreground);
+  }
+
+  h3, .h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--foreground);
+  }
+
+  h4, .h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--foreground);
+  }
+
+  /* Body Text */
+  p, .text-body {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  /* Labels */
+  label, .label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--foreground);
+  }
+
+  /* Buttons */
+  button, .btn {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  /* Inputs */
+  input, textarea, select {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+}
+
+/* ========================================
+   UNIVERSAL TEXT VISIBILITY SYSTEM
+   ======================================== */
+@layer utilities {
+  /* Primary Text */
+  .text-visible {
+    color: var(--foreground) !important;
+  }
+
+  /* Secondary Text */
+  .text-visible-secondary {
+    color: var(--muted-foreground) !important;
+  }
+
+  /* Positive Text */
+  .text-visible-positive {
+    color: var(--dark-positive) !important;
+  }
+
+  /* Negative Text */
+  .text-visible-negative {
+    color: var(--dark-negative) !important;
+  }
+
+  /* CTA Text */
+  .text-visible-cta {
+    color: var(--dark-cta) !important;
+  }
+}
+
+/* ========================================
+   INPUT FIELD SYSTEM
+   ======================================== */
+@layer components {
+  /* Universal Input Styling */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  textarea,
+  select {
+    color: var(--input-foreground) !important;
+    background-color: var(--input-background) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+  }
+
+  /* Input Focus States */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--ring) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  }
+
+  /* Placeholder Text */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted-foreground) !important;
+    opacity: 1 !important;
+  }
+
+  /* Disabled States */
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    color: var(--muted-foreground) !important;
+    background-color: var(--muted) !important;
+    border-color: var(--border) !important;
+    opacity: 0.6;
+  }
+}
+
+/* ========================================
+   COMPONENT SYSTEM
+   ======================================== */
+@layer components {
+  /* Card Component */
+  .card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .card-header {
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 0.5rem;
+  }
+
+  .card-content {
+    color: var(--muted-foreground);
+  }
+
+  /* Button Components */
+  .btn-primary {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .btn-primary:hover {
+    background-color: #2563eb;
+    box-shadow: 0 0 0 1px var(--primary), 0 0 8px rgba(59, 130, 246, 0.4);
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+
+  /* Badge Components */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .badge-primary {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .badge-success {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .badge-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .badge-info {
+    background-color: #e9d5ff;
+    color: #6b21a8;
+  }
+
+  .badge-neutral {
+    background-color: #f3f4f6;
+    color: #1f2937;
+  }
+
+  /* Dark Theme Badge Overrides */
+  .dark .badge-primary {
+    background-color: #1e3a8a;
+    color: #dbeafe;
+  }
+
+  .dark .badge-success {
+    background-color: #14532d;
+    color: #dcfce7;
+  }
+
+  .dark .badge-warning {
+    background-color: #713f12;
+    color: #fef3c7;
+  }
+
+  .dark .badge-danger {
+    background-color: #991b1b;
+    color: #fee2e2;
+  }
+
+  .dark .badge-info {
+    background-color: #6b21a8;
+    color: #e9d5ff;
+  }
+
+  .dark .badge-neutral {
+    background-color: #374151;
+    color: #f3f4f6;
+  }
+}
+
+/* ========================================
+   NAVIGATION SYSTEM
+   ======================================== */
+@layer components {
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: var(--muted-foreground);
+    min-height: 44px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .nav-item:hover {
+    background-color: var(--muted);
+    color: var(--foreground);
+  }
+
+  .nav-item-active {
+    background-color: var(--muted);
+    color: var(--foreground);
+    border: 1px solid var(--primary);
+  }
+}
+
+/* ========================================
+   TABLE SYSTEM
+   ======================================== */
+@layer components {
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th {
+    background-color: var(--muted);
+    color: var(--foreground);
+    font-weight: 600;
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted-foreground);
+  }
+
+  .table tr:hover {
+    background-color: var(--muted);
+  }
+
+  .table tr:hover td {
+    color: var(--foreground);
+  }
+}
+
+/* ========================================
+   RESPONSIVE SYSTEM
+   ======================================== */
+@layer utilities {
+  /* Mobile-first responsive design */
+  .mobile-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .mobile-container {
+      max-width: 640px;
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .mobile-container {
+      max-width: 768px;
+      padding: 0 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-container {
+      max-width: 1024px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .mobile-container {
+      max-width: 1280px;
+    }
+  }
+
+  /* Mobile-first grid system */
+  .mobile-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .mobile-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+  }
+
+  /* Mobile-first text sizing */
+  .mobile-text-xs { font-size: 0.75rem; }
+  .mobile-text-sm { font-size: 0.875rem; }
+  .mobile-text-base { font-size: 1rem; }
+  .mobile-text-lg { font-size: 1.125rem; }
+  .mobile-text-xl { font-size: 1.25rem; }
+
+  @media (min-width: 640px) {
+    .mobile-text-xs { font-size: 0.75rem; }
+    .mobile-text-sm { font-size: 0.875rem; }
+    .mobile-text-base { font-size: 1rem; }
+    .mobile-text-lg { font-size: 1.25rem; }
+    .mobile-text-xl { font-size: 1.5rem; }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-text-lg { font-size: 1.5rem; }
+    .mobile-text-xl { font-size: 1.875rem; }
+  }
+
+  /* Mobile-first spacing */
+  .mobile-p-2 { padding: 0.5rem; }
+  .mobile-p-4 { padding: 1rem; }
+  .mobile-p-6 { padding: 1.5rem; }
+  .mobile-p-8 { padding: 2rem; }
+
+  @media (min-width: 640px) {
+    .mobile-p-2 { padding: 0.75rem; }
+    .mobile-p-4 { padding: 1.25rem; }
+    .mobile-p-6 { padding: 2rem; }
+    .mobile-p-8 { padding: 2.5rem; }
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-p-4 { padding: 1.5rem; }
+    .mobile-p-6 { padding: 2.5rem; }
+    .mobile-p-8 { padding: 3rem; }
+  }
+}
+
+/* ========================================
+   ANIMATION SYSTEM
+   ======================================== */
+@layer utilities {
+  @keyframes slideInFromLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-50px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInFromBottom {
+    0% {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInScale {
+    0% {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-slide-in-left {
+    animation: slideInFromLeft 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-in-bottom {
+    animation: slideInFromBottom 0.6s ease-out forwards;
+  }
+  
+  .animate-fade-in-scale {
+    animation: fadeInScale 0.4s ease-out forwards;
+  }
+}
+
+/* ========================================
+   DARK MODE COMPATIBILITY
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--dark-bg);
+    --foreground: var(--dark-primary-text);
+    --card: var(--dark-card);
+    --card-foreground: var(--dark-primary-text);
+    --popover: var(--dark-card);
+    --popover-foreground: var(--dark-primary-text);
+    --primary: var(--dark-cta);
+    --primary-foreground: var(--dark-primary-text);
+    --secondary: var(--dark-tag);
+    --secondary-foreground: var(--dark-primary-text);
+    --muted: var(--dark-card);
+    --muted-foreground: var(--dark-secondary-text);
+    --accent: var(--dark-cta);
+    --accent-foreground: var(--dark-primary-text);
+    --destructive: var(--dark-negative);
+    --destructive-foreground: var(--dark-primary-text);
+    --border: var(--dark-border);
+    --input: var(--dark-card);
+    --input-background: var(--dark-card);
+    --input-foreground: var(--dark-primary-text);
+    --input-text-color: var(--dark-primary-text);
+    --ring: var(--dark-cta);
+  }
+}
+
+/* ========================================
+   LEGACY COMPATIBILITY
+   ======================================== */
+@layer utilities {
+  /* Maintain compatibility with existing classes */
+  .bg-dark-bg { background-color: var(--dark-bg); }
+  .bg-dark-card { background-color: var(--dark-card); }
+  .bg-dark-tag { background-color: var(--dark-tag); }
+  .bg-dark-hover { background-color: var(--dark-hover); }
+  .bg-dark-table-hover { background-color: var(--dark-table-hover); }
+  
+  .text-dark-primary { color: var(--dark-primary-text); }
+  .text-dark-secondary { color: var(--dark-secondary-text); }
+  .text-dark-positive { color: var(--dark-positive); }
+  .text-dark-negative { color: var(--dark-negative); }
+  .text-dark-cta { color: var(--dark-cta); }
+  
+  .border-dark-color { border-color: var(--dark-border); }
+}
+
+/* ========================================
+   CRITICAL FIXES
+   ======================================== */
+@layer utilities {
+  /* Light surface overrides: ensure text is dark on white/light backgrounds */
+  .bg-white,
+  .bg-gray-50,
+  .bg-slate-50,
+  .bg-light,
+  .bg-light-card {
+    /* Swap to light theme variables within these containers */
+    --background: var(--light-bg);
+    --foreground: var(--light-primary-text);
+    --muted-foreground: var(--light-secondary-text);
+    --border: var(--light-border);
+    --input-background: #ffffff;
+    --input-foreground: var(--light-primary-text);
+    --input-text-color: var(--light-primary-text);
+  }
+
+  /* Dark surface overrides: ensure nested dark sections inside light containers use dark variables */
+  .bg-dark-bg,
+  .bg-dark-card,
+  .dark-surface {
+    --background: var(--dark-bg);
+    --foreground: var(--dark-primary-text);
+    --muted-foreground: var(--dark-secondary-text);
+    --border: var(--dark-border);
+    --input-background: var(--dark-card);
+    --input-foreground: var(--dark-primary-text);
+    --input-text-color: var(--dark-primary-text);
+  }
+
+  /* Ensure all text is visible */
+  * {
+    color: inherit;
+  }
+
+  /* Override any problematic text colors */
+  .text-gray-800,
+  .text-gray-900,
+  .text-slate-800,
+  .text-slate-900 {
+    color: var(--foreground) !important;
+  }
+
+  /* Ensure form elements are visible */
+  input, textarea, select {
+    color: var(--input-foreground) !important;
+    background-color: var(--input-background) !important;
+  }
+
+  /* Ensure all text in cards and surfaces is visible */
+  .card *,
+  .bg-dark-card *,
+  .bg-white *,
+  .bg-gray-50 *,
+  .bg-slate-50 * {
+    color: var(--foreground) !important;
+  }
+
+  /* Override any light text on dark backgrounds */
+  .bg-dark-bg .text-gray-600,
+  .bg-dark-bg .text-gray-500,
+  .bg-dark-bg .text-gray-400,
+  .bg-dark-card .text-gray-600,
+  .bg-dark-card .text-gray-500,
+  .bg-dark-card .text-gray-400 {
+    color: var(--muted-foreground) !important;
+  }
+}
+
+
+
+

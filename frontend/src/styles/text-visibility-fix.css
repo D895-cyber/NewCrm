@@ -1,0 +1,247 @@
+/* Text Visibility Fix for RMA Analytics Components */
+
+/* Input field text visibility - respect dark theme */
+input[type="text"],
+input[type="date"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea {
+  color: #111827 !important; /* text-gray-900 */
+  background-color: white !important;
+}
+
+/* Dark theme inputs - override for dark backgrounds */
+.bg-dark-bg input[type="text"],
+.bg-dark-bg input[type="date"],
+.bg-dark-bg input[type="email"],
+.bg-dark-bg input[type="password"],
+.bg-dark-bg input[type="search"],
+.bg-dark-bg textarea,
+.bg-dark-card input[type="text"],
+.bg-dark-card input[type="date"],
+.bg-dark-card input[type="email"],
+.bg-dark-card input[type="password"],
+.bg-dark-card input[type="search"],
+.bg-dark-card textarea {
+  color: #f9fafb !important; /* text-gray-50 - white text */
+  background-color: #1f2937 !important; /* bg-gray-800 - dark background */
+}
+
+/* Dark theme select elements */
+.bg-dark-bg select,
+.bg-dark-card select {
+  color: #f9fafb !important; /* text-gray-50 - white text */
+  background-color: #1f2937 !important; /* bg-gray-800 - dark background */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important; /* text-gray-500 */
+  opacity: 1 !important;
+}
+
+/* Dark theme placeholder text */
+.bg-dark-bg input::placeholder,
+.bg-dark-bg textarea::placeholder,
+.bg-dark-card input::placeholder,
+.bg-dark-card textarea::placeholder {
+  color: #9ca3af !important; /* text-gray-400 - lighter gray for dark theme */
+  opacity: 1 !important;
+}
+
+/* Select component text visibility */
+[data-radix-select-trigger] {
+  color: #111827 !important; /* text-gray-900 */
+  background-color: white !important;
+}
+
+[data-radix-select-content] {
+  background-color: white !important;
+}
+
+[data-radix-select-item] {
+  color: #111827 !important; /* text-gray-900 */
+}
+
+[data-radix-select-item]:hover {
+  background-color: #f3f4f6 !important; /* bg-gray-100 */
+  color: #111827 !important;
+}
+
+/* Label text visibility */
+label {
+  color: #374151 !important; /* text-gray-700 */
+  font-weight: 500 !important;
+}
+
+/* Button text visibility */
+button {
+  color: inherit !important;
+}
+
+/* Specific fixes for RMA Analytics components */
+.rma-analytics-input {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+.rma-analytics-input::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+.rma-analytics-label {
+  color: #374151 !important;
+  font-weight: 500 !important;
+}
+
+.rma-analytics-select {
+  color: #111827 !important;
+  background-color: white !important;
+}
+
+/* RMA Management System specific fixes */
+.rma-management input,
+.rma-management textarea,
+.rma-management select {
+  color: #f9fafb !important; /* white text for dark theme */
+  background-color: #1f2937 !important; /* dark background */
+}
+
+.rma-management input::placeholder,
+.rma-management textarea::placeholder {
+  color: #9ca3af !important; /* light gray placeholder */
+}
+
+/* Fix for RMA edit modal inputs */
+.bg-dark-card input,
+.bg-dark-card textarea,
+.bg-dark-card select {
+  color: #f9fafb !important;
+  background-color: #1f2937 !important;
+}
+
+.bg-dark-card input::placeholder,
+.bg-dark-card textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Fix for RMA search and filter inputs */
+.bg-dark-bg input[type="text"],
+.bg-dark-bg input[type="search"],
+.bg-dark-bg select {
+  color: #f9fafb !important;
+  background-color: #1f2937 !important;
+}
+
+.bg-dark-bg input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+  input[type="text"],
+  input[type="date"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  textarea {
+    color: #f9fafb !important; /* text-gray-50 */
+    background-color: #1f2937 !important; /* bg-gray-800 */
+  }
+  
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af !important; /* text-gray-400 */
+  }
+  
+  [data-radix-select-trigger] {
+    color: #f9fafb !important;
+    background-color: #1f2937 !important;
+  }
+  
+  [data-radix-select-content] {
+    background-color: #1f2937 !important;
+  }
+  
+  [data-radix-select-item] {
+    color: #f9fafb !important;
+  }
+  
+  label {
+    color: #d1d5db !important; /* text-gray-300 */
+  }
+}
+
+/* Badge text visibility fixes for dark themes */
+.bg-blue-100.text-blue-800 {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+.bg-green-100.text-green-800 {
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.bg-yellow-100.text-yellow-800 {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.bg-orange-100.text-orange-800 {
+  background-color: #fed7aa !important;
+  color: #9a3412 !important;
+}
+
+.bg-red-100.text-red-800 {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.bg-purple-100.text-purple-800 {
+  background-color: #e9d5ff !important;
+  color: #6b21a8 !important;
+}
+
+.bg-gray-100.text-gray-800 {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+}
+
+/* Dark mode badge overrides */
+.dark .bg-blue-100.text-blue-800 {
+  background-color: #1e3a8a !important;
+  color: #dbeafe !important;
+}
+
+.dark .bg-green-100.text-green-800 {
+  background-color: #14532d !important;
+  color: #dcfce7 !important;
+}
+
+.dark .bg-yellow-100.text-yellow-800 {
+  background-color: #713f12 !important;
+  color: #fef3c7 !important;
+}
+
+.dark .bg-orange-100.text-orange-800 {
+  background-color: #9a3412 !important;
+  color: #fed7aa !important;
+}
+
+.dark .bg-red-100.text-red-800 {
+  background-color: #991b1b !important;
+  color: #fee2e2 !important;
+}
+
+.dark .bg-purple-100.text-purple-800 {
+  background-color: #6b21a8 !important;
+  color: #e9d5ff !important;
+}
+
+.dark .bg-gray-100.text-gray-800 {
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+}

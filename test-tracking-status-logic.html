@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Status Logic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .rma-display {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .tracking-section {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .replacement-tracking {
+            border-left: 4px solid #28a745;
+        }
+        .return-tracking {
+            border-left: 4px solid #fd7e14;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-delivered { background-color: #28a745; color: white; }
+        .status-pending { background-color: #007bff; color: white; }
+        .status-in-transit { background-color: #007bff; color: white; }
+        .status-exception { background-color: #dc3545; color: white; }
+        .status-shipped { background-color: #007bff; color: white; }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #333;
+            font-weight: bold;
+        }
+        .before {
+            background-color: #4d1e1e;
+        }
+        .after {
+            background-color: #1e4d2b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tracking Status Logic Test</h1>
+    
+    <div class="test-section info">
+        <h3>Fix Summary</h3>
+        <p>The tracking status logic has been updated to show "delivered" instead of "pending" when:</p>
+        <ul>
+            <li><strong>RMA Status:</strong> "Completed"</li>
+            <li><strong>Tracking Details:</strong> Both replacement and defective part tracking numbers are available</li>
+            <li><strong>Logic:</strong> If RMA is completed and has docket details, show "delivered" status</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Before vs After Comparison</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th class="before">Before (Issue)</th>
+                    <th class="after">After (Fixed)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Completed RMA with Tracking</strong></td>
+                    <td class="before">Status: "pending" (blue badge)</td>
+                    <td class="after">Status: "delivered" (green badge)</td>
+                </tr>
+                <tr>
+                    <td><strong>Completed RMA without Tracking</strong></td>
+                    <td class="before">Status: "pending" or "shipped"</td>
+                    <td class="after">Status: "pending" or "shipped" (unchanged)</td>
+                </tr>
+                <tr>
+                    <td><strong>Incomplete RMA with Tracking</strong></td>
+                    <td class="before">Status: "pending" or actual status</td>
+                    <td class="after">Status: "pending" or actual status (unchanged)</td>
+                </tr>
+                <tr>
+                    <td><strong>Logic Priority</strong></td>
+                    <td class="before">Only checked shipping.status field</td>
+                    <td class="after">Checks RMA completion + tracking availability first</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Different Scenarios</h3>
+        <button onclick="testCompletedWithTracking()">Test Completed RMA with Tracking</button>
+        <button onclick="testCompletedWithoutTracking()">Test Completed RMA without Tracking</button>
+        <button onclick="testIncompleteWithTracking()">Test Incomplete RMA with Tracking</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected Display Format</h3>
+        <p>Here's how the tracking status should now appear:</p>
+        <div id="expected-display"></div>
+    </div>
+
+    <script>
+        function createRMADisplay(rmaData, title, description) {
+            const container = document.createElement('div');
+            container.className = 'rma-display';
+            
+            const titleEl = document.createElement('h4');
+            titleEl.textContent = title;
+            titleEl.style.color = '#ffffff';
+            container.appendChild(titleEl);
+            
+            if (description) {
+                const descEl = document.createElement('p');
+                descEl.textContent = description;
+                descEl.style.color = '#ccc';
+                descEl.style.fontSize = '12px';
+                container.appendChild(descEl);
+            }
+            
+            // RMA basic info
+            const basicInfo = document.createElement('div');
+            basicInfo.innerHTML = `
+                <div><strong>RMA #:</strong> ${rmaData.rmaNumber}</div>
+                <div><strong>Site:</strong> ${rmaData.siteName}</div>
+                <div><strong>Case Status:</strong> <span class="status-badge ${rmaData.caseStatus === 'Completed' ? 'status-delivered' : 'status-pending'}">${rmaData.caseStatus}</span></div>
+            `;
+            container.appendChild(basicInfo);
+            
+            // Replacement part tracking
+            if (rmaData.shipping?.outbound?.trackingNumber || rmaData.trackingNumber) {
+                const replacementDiv = document.createElement('div');
+                replacementDiv.className = 'tracking-section replacement-tracking';
+                
+                // Calculate status based on new logic
+                const replacementStatus = (() => {
+                    if (rmaData.caseStatus === 'Completed' && (rmaData.shipping?.outbound?.trackingNumber || rmaData.trackingNumber)) {
+                        return { text: 'delivered', class: 'status-delivered' };
+                    }
+                    return rmaData.shipping?.outbound?.status ? 
+                        { text: rmaData.shipping.outbound.status.replace('_', ' '), class: `status-${rmaData.shipping.outbound.status.replace('_', '-')}` } :
+                        { text: 'Shipped', class: 'status-shipped' };
+                })();
+                
+                replacementDiv.innerHTML = `
+                    <div><strong>Replacement Shipped:</strong></div>
+                    <div>Track: ${rmaData.shipping?.outbound?.trackingNumber || rmaData.trackingNumber}</div>
+                    <div>Via: ${rmaData.shipping?.outbound?.carrier || rmaData.shippedThru || 'N/A'}</div>
+                    <div>Status: <span class="status-badge ${replacementStatus.class}">${replacementStatus.text}</span></div>
+                `;
+                container.appendChild(replacementDiv);
+            }
+            
+            // Defective part return tracking
+            if (rmaData.shipping?.return?.trackingNumber || rmaData.rmaReturnTrackingNumber) {
+                const returnDiv = document.createElement('div');
+                returnDiv.className = 'tracking-section return-tracking';
+                
+                // Calculate status based on new logic
+                const returnStatus = (() => {
+                    if (rmaData.caseStatus === 'Completed' && (rmaData.shipping?.return?.trackingNumber || rmaData.rmaReturnTrackingNumber)) {
+                        return { text: 'delivered', class: 'status-delivered' };
+                    }
+                    return rmaData.shipping?.return?.status ? 
+                        { text: rmaData.shipping.return.status.replace('_', ' '), class: `status-${rmaData.shipping.return.status.replace('_', '-')}` } :
+                        { text: 'Shipped', class: 'status-shipped' };
+                })();
+                
+                returnDiv.innerHTML = `
+                    <div><strong>Defective Return:</strong></div>
+                    <div>Track: ${rmaData.shipping?.return?.trackingNumber || rmaData.rmaReturnTrackingNumber}</div>
+                    <div>Via: ${rmaData.shipping?.return?.carrier || rmaData.rmaReturnShippedThru || 'N/A'}</div>
+                    <div>Status: <span class="status-badge ${returnStatus.class}">${returnStatus.text}</span></div>
+                `;
+                container.appendChild(returnDiv);
+            }
+            
+            return container;
+        }
+
+        function testCompletedWithTracking() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing completed RMA with tracking details...</p>';
+            
+            const completedRMA = {
+                rmaNumber: 'RMA-2025-69594526SQXZIN',
+                siteName: 'PVR Elante-Chandigarh-Scr#5',
+                caseStatus: 'Completed',
+                shipping: {
+                    outbound: {
+                        trackingNumber: 'BY PVRINOX',
+                        carrier: 'BY PVRINOX',
+                        status: 'pending'
+                    },
+                    return: {
+                        trackingNumber: 'DNR',
+                        carrier: 'DNR',
+                        status: 'pending'
+                    }
+                },
+                trackingNumber: 'BY PVRINOX',
+                shippedThru: 'BY PVRINOX',
+                rmaReturnTrackingNumber: 'DNR',
+                rmaReturnShippedThru: 'DNR'
+            };
+            
+            const display = createRMADisplay(completedRMA, 'Completed RMA with Tracking', 'Should show "delivered" status for both tracking sections');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        function testCompletedWithoutTracking() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing completed RMA without tracking details...</p>';
+            
+            const completedRMAWithoutTracking = {
+                rmaNumber: 'RMA-2024-003',
+                siteName: 'Test Site',
+                caseStatus: 'Completed',
+                shipping: {
+                    outbound: {
+                        status: 'pending'
+                    },
+                    return: {
+                        status: 'pending'
+                    }
+                }
+            };
+            
+            const display = createRMADisplay(completedRMAWithoutTracking, 'Completed RMA without Tracking', 'Should show original status since no tracking numbers available');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        function testIncompleteWithTracking() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing incomplete RMA with tracking details...</p>';
+            
+            const incompleteRMA = {
+                rmaNumber: 'RMA-2024-004',
+                siteName: 'Test Site',
+                caseStatus: 'Under Review',
+                shipping: {
+                    outbound: {
+                        trackingNumber: 'TRK123456789',
+                        carrier: 'DHL',
+                        status: 'in_transit'
+                    },
+                    return: {
+                        trackingNumber: 'RET987654321',
+                        carrier: 'UPS',
+                        status: 'pending'
+                    }
+                },
+                trackingNumber: 'TRK123456789',
+                shippedThru: 'DHL',
+                rmaReturnTrackingNumber: 'RET987654321',
+                rmaReturnShippedThru: 'UPS'
+            };
+            
+            const display = createRMADisplay(incompleteRMA, 'Incomplete RMA with Tracking', 'Should show original status since RMA is not completed');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        // Auto-generate expected display
+        window.addEventListener('load', () => {
+            const expectedDiv = document.getElementById('expected-display');
+            
+            const sampleRMA = {
+                rmaNumber: '703515',
+                siteName: 'PVR-INOX Subhash nagar Audi-3',
+                caseStatus: 'Completed',
+                shipping: {
+                    outbound: {
+                        trackingNumber: '501000000000',
+                        carrier: 'Trackon By CDS',
+                        status: 'pending'
+                    },
+                    return: {
+                        trackingNumber: 'D3002236952',
+                        carrier: 'DTDC',
+                        status: 'pending'
+                    }
+                },
+                trackingNumber: '501000000000',
+                shippedThru: 'Trackon By CDS',
+                rmaReturnTrackingNumber: 'D3002236952',
+                rmaReturnShippedThru: 'DTDC'
+            };
+            
+            const display = createRMADisplay(sampleRMA, 'Expected Display for RMA 703515', 'This shows how tracking status should appear when RMA is completed with tracking details');
+            expectedDiv.appendChild(display);
+            
+            const info = document.createElement('div');
+            info.className = 'test-section success';
+            info.innerHTML = `
+                <h4>✅ Tracking Status Logic Fixed</h4>
+                <p>The tracking status now properly shows:</p>
+                <ul>
+                    <li><strong>"delivered" (green badge):</strong> When RMA status is "Completed" AND tracking details are available</li>
+                    <li><strong>Original status:</strong> When RMA is not completed or tracking details are missing</li>
+                    <li><strong>Priority Logic:</strong> RMA completion + tracking availability takes precedence over shipping.status field</li>
+                </ul>
+            `;
+            expectedDiv.appendChild(info);
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

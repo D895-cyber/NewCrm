@@ -67,6 +67,9 @@ import { exportServiceReportToPDF } from '../utils/export';
 import { apiClient } from '../utils/api/client';
 import { EnvironmentalField, TechnicalField, ValidationSummary } from './ui/ValidationField';
 import { validateServiceReport, validateEnvironmentalConditions, validateTechnicalParameters, ValidationError } from '../utils/validation/reportValidation';
+import { transformFormDataToTemplate, validateTransformedData } from '../utils/ascompDataMapper';
+import PhotoCapture, { PhotoData } from './PhotoCapture';
+import SignaturePad from './SignaturePad';
 
 // Service Report Data Interface - Updated to match exact ASCOMP specification
 interface ServiceReportData {
@@ -484,6 +487,11 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [availableSpareParts, setAvailableSpareParts] = useState<any[]>([]);
   const [loadingSpareParts, setLoadingSpareParts] = useState(false);
+  
+  // Photo and signature state
+  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [clientSignature, setClientSignature] = useState<string | null>(null);
+  const [engineerSignature, setEngineerSignature] = useState<string | null>(null);
 
   const totalSteps = 13;
 
@@ -628,7 +636,10 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
       
       // Validate required fields
       const requiredFields = ['reportNumber', 'siteName', 'projectorSerial', 'projectorModel', 'brand'];
-      const missingFields = requiredFields.filter(field => !formData[field] || formData[field].trim() === '');
+      const missingFields = requiredFields.filter(field => {
+        const value = (formData as any)[field];
+        return !value || (typeof value === 'string' && value.trim() === '');
+      });
       
       if (missingFields.length > 0) {
         console.error('❌ Missing required fields:', missingFields);
@@ -669,15 +680,57 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
         throw new Error('Projector brand is required');
       }
       
-      console.log('✅ All validations passed, submitting report...');
+      console.log('✅ All validations passed, transforming data...');
       
-      // Submit the report
-      onSubmit(formData);
+      // Transform data to match template structure
+      const transformedData = transformFormDataToTemplate(formData as any);
+      
+      // Validate transformed data
+      const validation = validateTransformedData(transformedData);
+      if (!validation.valid) {
+        console.error('❌ Transformed data validation failed:', validation.errors);
+        throw new Error(`Data validation failed: ${validation.errors.join(', ')}`);
+      }
+      
+      // Merge original form data with transformed data for backward compatibility
+      const submissionData = {
+        ...formData,
+        // Add transformed data under a special key for PDF generation
+        templateData: transformedData,
+        // Add photos and signatures
+        photos: photos.map(photo => ({
+          filename: photo.file.name,
+          originalName: photo.file.name,
+          path: photo.preview,
+          dataURI: photo.preview,
+          description: photo.description,
+          category: photo.category,
+          beforeAfter: photo.category,
+          uploadedAt: photo.timestamp,
+          fileSize: photo.file.size,
+          mimeType: photo.file.type
+        })),
+        signatures: {
+          customer: clientSignature,
+          engineer: engineerSignature
+        },
+        clientSignature: clientSignature,
+        engineerSignature: engineerSignature
+      };
+      
+      console.log('🔄 Submitting report with transformed data:', {
+        hasOriginalData: !!submissionData.reportNumber,
+        hasTransformedData: !!submissionData.templateData,
+        transformedFields: Object.keys(transformedData).length
+      });
+      
+      // Submit the report with both original and transformed data
+      onSubmit(submissionData);
       
       // Set success state
       setIsSubmitted(true);
-      setSubmittedReport(formData);
-      console.log('✅ Report submission initiated successfully');
+      setSubmittedReport(submissionData);
+      console.log('✅ Report submission initiated successfully with transformed data');
       
     } catch (error: any) {
       console.error('❌ Error submitting report:', error);
@@ -2213,52 +2266,55 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
             </Card>
           )}
 
-          {/* Step 10: Photos & Documentation */}
+          {/* Step 10: Photos & Signatures */}
           {currentStep === 10 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Camera className="h-5 w-5" />
-                  Photos & Documentation
+                  Photos & Signatures
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Photo Upload */}
+                {/* Photo Capture */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Photo Documentation</h3>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <div className="text-sm text-gray-600 mb-4">
-                      <p className="font-medium">Upload Photos</p>
-                      <p>Drag and drop photos here, or click to browse</p>
-                    </div>
-                    <Button variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose Files
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Note: The ODD file number is BEFORE and EVEN file number is AFTER, PM
-                    </p>
-                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Service Photos</h3>
+                  <PhotoCapture
+                    onPhotosChange={setPhotos}
+                    initialPhotos={photos}
+                    maxPhotos={10}
+                    disabled={readonly}
+                  />
                 </div>
 
                 <Separator />
 
-                {/* Review Photos Link */}
+                {/* Client Signature */}
                 <div>
-                  <Label htmlFor="reviewPhotos">Review Photos</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="reviewPhotos"
-                      value="Click Here"
-                      readOnly
-                      className="bg-blue-50 text-blue-600 cursor-pointer hover:bg-blue-100"
-                    />
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Client Signature</h3>
+                  <SignaturePad
+                    onSignatureChange={setClientSignature}
+                    initialSignature={clientSignature}
+                    title="Site In-charge Signature"
+                    placeholder="Site in-charge, please sign here"
+                    disabled={readonly}
+                    required={true}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Engineer Signature */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Engineer Signature</h3>
+                  <SignaturePad
+                    onSignatureChange={setEngineerSignature}
+                    initialSignature={engineerSignature}
+                    title="Engineer Signature"
+                    placeholder="Engineer, please sign here"
+                    disabled={readonly}
+                    required={true}
+                  />
                 </div>
 
                 <Separator />
@@ -2272,6 +2328,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     placeholder="Enter any additional notes or comments..."
                     className="min-h-[100px]"
+                    disabled={readonly}
                   />
                 </div>
               </CardContent>
@@ -2345,6 +2402,42 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                             <span>{item.description}: {item.result}</span>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Photos & Signatures Summary */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Documentation Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Photos</h4>
+                      <div className="flex items-center gap-2">
+                        <Camera className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">
+                          {photos.length} photo{photos.length !== 1 ? 's' : ''} captured
+                        </span>
+                        {photos.length > 0 && (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            Complete
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Signatures</h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className={`h-4 w-4 ${clientSignature ? 'text-green-500' : 'text-red-500'}`} />
+                          <span>Client: {clientSignature ? 'Signed' : 'Not signed'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className={`h-4 w-4 ${engineerSignature ? 'text-green-500' : 'text-red-500'}`} />
+                          <span>Engineer: {engineerSignature ? 'Signed' : 'Not signed'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

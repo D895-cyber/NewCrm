@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Replacement Part Tracking Display Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        .tracking-display {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .replacement-tracking {
+            border-left: 3px solid #28a745;
+            padding-left: 10px;
+        }
+        .return-tracking {
+            border-left: 3px solid #fd7e14;
+            padding-left: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-delivered { background-color: #28a745; color: white; }
+        .status-in-transit { background-color: #007bff; color: white; }
+        .status-exception { background-color: #dc3545; color: white; }
+        .status-pending { background-color: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Replacement Part Tracking Display Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This test verifies that replacement part tracking information is now properly displayed in the RMA table. The improvements include:</p>
+        <ul>
+            <li>Separate tracking sections for replacement parts (outbound) and defective part returns</li>
+            <li>Clear visual distinction with color coding</li>
+            <li>Status badges for tracking states</li>
+            <li>Fallback to legacy tracking fields when new structure is not available</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Test RMA Data with Shipping Information</h3>
+        <button onclick="testRMADataWithShipping()">Test RMA with Shipping Data</button>
+        <div id="shipping-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Legacy RMA Data (Fallback)</h3>
+        <button onclick="testLegacyRMAData()">Test Legacy RMA Data</button>
+        <div id="legacy-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Visual Preview</h3>
+        <p>Here's how the tracking information will appear in the RMA table:</p>
+        <div id="visual-preview"></div>
+    </div>
+
+    <script>
+        function createTrackingDisplay(rmaData, title) {
+            const container = document.createElement('div');
+            container.className = 'tracking-display';
+            
+            const titleEl = document.createElement('h4');
+            titleEl.textContent = title;
+            titleEl.style.color = '#ffffff';
+            container.appendChild(titleEl);
+            
+            // Basic RMA info
+            const basicInfo = document.createElement('div');
+            basicInfo.innerHTML = `
+                <div><strong>RMA #:</strong> ${rmaData.rmaNumber || 'N/A'}</div>
+                <div><strong>Site:</strong> ${rmaData.siteName || 'N/A'}</div>
+                <div><strong>Product:</strong> ${rmaData.productName || 'N/A'}</div>
+                <div><strong>Raised:</strong> ${rmaData.ascompRaisedDate || 'N/A'}</div>
+                <div><strong>Error:</strong> ${rmaData.customerErrorDate || 'N/A'}</div>
+            `;
+            container.appendChild(basicInfo);
+            
+            // Replacement part tracking
+            if (rmaData.shipping?.outbound?.trackingNumber) {
+                const replacementDiv = document.createElement('div');
+                replacementDiv.className = 'replacement-tracking';
+                replacementDiv.innerHTML = `
+                    <div style="color: #28a745; font-weight: bold; font-size: 12px;">Replacement Shipped:</div>
+                    <div style="font-size: 11px; color: #ccc;">${rmaData.shipping.outbound.shippedDate ? new Date(rmaData.shipping.outbound.shippedDate).toLocaleDateString() : 'N/A'}</div>
+                    <div style="font-size: 11px; color: #007bff; font-family: monospace;">Track: ${rmaData.shipping.outbound.trackingNumber}</div>
+                    <div style="font-size: 11px; color: #ccc;">Via: ${rmaData.shipping.outbound.carrier || 'N/A'}</div>
+                    ${rmaData.shipping.outbound.status ? `
+                        <div style="font-size: 11px; color: #ccc;">
+                            Status: <span class="status-badge status-${rmaData.shipping.outbound.status.replace('_', '-')}">${rmaData.shipping.outbound.status.replace('_', ' ')}</span>
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(replacementDiv);
+            }
+            
+            // Defective part return tracking
+            if (rmaData.shipping?.return?.trackingNumber) {
+                const returnDiv = document.createElement('div');
+                returnDiv.className = 'return-tracking';
+                returnDiv.innerHTML = `
+                    <div style="color: #fd7e14; font-weight: bold; font-size: 12px;">Defective Return:</div>
+                    <div style="font-size: 11px; color: #ccc;">${rmaData.shipping.return.shippedDate ? new Date(rmaData.shipping.return.shippedDate).toLocaleDateString() : 'N/A'}</div>
+                    <div style="font-size: 11px; color: #007bff; font-family: monospace;">Track: ${rmaData.shipping.return.trackingNumber}</div>
+                    <div style="font-size: 11px; color: #ccc;">Via: ${rmaData.shipping.return.carrier || 'N/A'}</div>
+                    ${rmaData.shipping.return.status ? `
+                        <div style="font-size: 11px; color: #ccc;">
+                            Status: <span class="status-badge status-${rmaData.shipping.return.status.replace('_', '-')}">${rmaData.shipping.return.status.replace('_', ' ')}</span>
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(returnDiv);
+            }
+            
+            // Fallback to legacy tracking
+            if (!rmaData.shipping?.outbound?.trackingNumber && !rmaData.shipping?.return?.trackingNumber && rmaData.trackingNumber) {
+                const legacyDiv = document.createElement('div');
+                legacyDiv.style.borderTop = '1px solid #444';
+                legacyDiv.style.paddingTop = '10px';
+                legacyDiv.style.marginTop = '10px';
+                legacyDiv.innerHTML = `
+                    <div style="font-size: 11px; color: #ccc;">Shipped: ${rmaData.shippedDate || 'N/A'}</div>
+                    <div style="font-size: 11px; color: #007bff; font-family: monospace;">Track: ${rmaData.trackingNumber}</div>
+                    <div style="font-size: 11px; color: #ccc;">Via: ${rmaData.shippedThru || 'N/A'}</div>
+                `;
+                container.appendChild(legacyDiv);
+            }
+            
+            return container;
+        }
+
+        function testRMADataWithShipping() {
+            const resultDiv = document.getElementById('shipping-test-result');
+            resultDiv.innerHTML = '<p>Testing RMA with shipping data...</p>';
+            
+            // Sample RMA data with new shipping structure
+            const rmaWithShipping = {
+                _id: '507f1f77bcf86cd799439011',
+                rmaNumber: 'RMA-2024-001',
+                siteName: 'Cinema Complex Downtown',
+                productName: 'Christie CP4450-RGB',
+                ascompRaisedDate: '2024-01-15',
+                customerErrorDate: '2024-01-14',
+                shipping: {
+                    outbound: {
+                        trackingNumber: '1Z999AA1234567890',
+                        carrier: 'UPS',
+                        shippedDate: '2024-01-16T10:30:00Z',
+                        status: 'in_transit'
+                    },
+                    return: {
+                        trackingNumber: '1Z999BB9876543210',
+                        carrier: 'FedEx',
+                        shippedDate: '2024-01-20T14:15:00Z',
+                        status: 'delivered'
+                    }
+                }
+            };
+            
+            const display = createTrackingDisplay(rmaWithShipping, 'RMA with New Shipping Structure');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+            
+            // Show the raw data
+            const rawData = document.createElement('pre');
+            rawData.textContent = JSON.stringify(rmaWithShipping, null, 2);
+            resultDiv.appendChild(rawData);
+        }
+
+        function testLegacyRMAData() {
+            const resultDiv = document.getElementById('legacy-test-result');
+            resultDiv.innerHTML = '<p>Testing legacy RMA data...</p>';
+            
+            // Sample legacy RMA data
+            const legacyRMA = {
+                _id: '507f1f77bcf86cd799439012',
+                rmaNumber: 'RMA-2024-002',
+                siteName: 'Mall Theater Complex',
+                productName: 'Christie CP4450-RGB',
+                ascompRaisedDate: '2024-01-10',
+                customerErrorDate: '2024-01-09',
+                shippedDate: '2024-01-12',
+                trackingNumber: '100000000000',
+                shippedThru: 'DTDC'
+            };
+            
+            const display = createTrackingDisplay(legacyRMA, 'Legacy RMA Data (Fallback)');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+            
+            // Show the raw data
+            const rawData = document.createElement('pre');
+            rawData.textContent = JSON.stringify(legacyRMA, null, 2);
+            resultDiv.appendChild(rawData);
+        }
+
+        // Auto-generate visual preview
+        window.addEventListener('load', () => {
+            const previewDiv = document.getElementById('visual-preview');
+            
+            // Create a sample with both tracking types
+            const sampleRMA = {
+                _id: '507f1f77bcf86cd799439013',
+                rmaNumber: 'RMA-2024-003',
+                siteName: 'Test Cinema',
+                productName: 'Christie Projector',
+                ascompRaisedDate: '2024-01-20',
+                customerErrorDate: '2024-01-19',
+                shipping: {
+                    outbound: {
+                        trackingNumber: 'TRK123456789',
+                        carrier: 'DHL',
+                        shippedDate: '2024-01-21T09:00:00Z',
+                        status: 'delivered'
+                    }
+                }
+            };
+            
+            const display = createTrackingDisplay(sampleRMA, 'Sample RMA Tracking Display');
+            previewDiv.appendChild(display);
+            
+            const info = document.createElement('div');
+            info.className = 'test-section info';
+            info.innerHTML = `
+                <h4>Key Improvements:</h4>
+                <ul>
+                    <li><strong>Green border:</strong> Replacement part tracking (outbound shipment)</li>
+                    <li><strong>Orange border:</strong> Defective part return tracking</li>
+                    <li><strong>Status badges:</strong> Visual indicators for delivery status</li>
+                    <li><strong>Fallback support:</strong> Shows legacy tracking when new structure unavailable</li>
+                    <li><strong>Clear separation:</strong> Different sections for different tracking types</li>
+                </ul>
+            `;
+            previewDiv.appendChild(info);
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

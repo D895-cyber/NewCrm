@@ -50,6 +50,32 @@ const upload = multer({
   }
 });
 
+// Helper function to fix malformed dates
+function fixMalformedDate(dateValue) {
+  if (!dateValue) return dateValue;
+  
+  const dateStr = dateValue.toString();
+  
+  // Fix malformed date strings with pattern +XXXXXX-12-31T18:30:00.000Z
+  const malformedPattern = /^\+(\d{6})-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+  const match = dateStr.match(malformedPattern);
+  
+  if (match) {
+    const serialNumber = parseInt(match[1]);
+    console.log('🔧 Backend fixing malformed date:', dateStr);
+    console.log('🔧 Converting serial number:', serialNumber);
+    
+    // Convert as Excel serial number
+    const excelEpoch = new Date(1900, 0, 1);
+    const daysSinceEpoch = serialNumber - 2;
+    const fixedDate = new Date(excelEpoch.getTime() + (daysSinceEpoch * 24 * 60 * 60 * 1000));
+    console.log('🔧 Backend fixed date:', fixedDate);
+    return fixedDate;
+  }
+  
+  return dateValue;
+}
+
 // Get all DTRs with pagination and filters
 router.get('/', auth, async (req, res) => {
   try {
@@ -79,10 +105,32 @@ router.get('/', auth, async (req, res) => {
       .limit(parseInt(limit))
       .populate('rmaCaseNumber', 'rmaNumber status');
     
+    // Fix malformed dates in the response
+    const fixedDtrs = dtrs.map(dtr => {
+      const fixedDtr = { ...dtr.toObject() };
+      
+      // Fix errorDate
+      if (fixedDtr.errorDate) {
+        fixedDtr.errorDate = fixMalformedDate(fixedDtr.errorDate);
+      }
+      
+      // Fix complaintDate
+      if (fixedDtr.complaintDate) {
+        fixedDtr.complaintDate = fixMalformedDate(fixedDtr.complaintDate);
+      }
+      
+      // Fix closedBy.closedDate
+      if (fixedDtr.closedBy && fixedDtr.closedBy.closedDate) {
+        fixedDtr.closedBy.closedDate = fixMalformedDate(fixedDtr.closedBy.closedDate);
+      }
+      
+      return fixedDtr;
+    });
+    
     const total = await DTR.countDocuments(filter);
     
     res.json({
-      dtrs,
+      dtrs: fixedDtrs,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       total
@@ -99,7 +147,26 @@ router.get('/:id', auth, async (req, res) => {
     if (!dtr) {
       return res.status(404).json({ message: 'DTR not found' });
     }
-    res.json(dtr);
+    
+    // Fix malformed dates in the response
+    const fixedDtr = { ...dtr.toObject() };
+    
+    // Fix errorDate
+    if (fixedDtr.errorDate) {
+      fixedDtr.errorDate = fixMalformedDate(fixedDtr.errorDate);
+    }
+    
+    // Fix complaintDate
+    if (fixedDtr.complaintDate) {
+      fixedDtr.complaintDate = fixMalformedDate(fixedDtr.complaintDate);
+    }
+    
+    // Fix closedBy.closedDate
+    if (fixedDtr.closedBy && fixedDtr.closedBy.closedDate) {
+      fixedDtr.closedBy.closedDate = fixMalformedDate(fixedDtr.closedBy.closedDate);
+    }
+    
+    res.json(fixedDtr);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching DTR', error: error.message });
   }
@@ -153,7 +220,10 @@ router.post('/', auth, async (req, res) => {
     const dtrData = {
       serialNumber,
       complaintDescription,
-      openedBy,
+      openedBy: {
+        ...openedBy,
+        userId: req.user.userId // Track the actual user who created the DTR
+      },
       priority,
       assignedTo: assignedTo ? (typeof assignedTo === 'string' ? {
         name: assignedTo,
@@ -169,10 +239,23 @@ router.post('/', auth, async (req, res) => {
       actionTaken,
       remarks,
       callStatus: callStatus || 'Open',
-      caseSeverity: caseSeverity || 'Medium',
+      caseSeverity: caseSeverity || 'Minor',
       siteName: site.name,
-      siteCode: site.name, // Using site name as code
-      region: site.address.state
+      siteCode: site.siteCode || site.name,
+      region: site.region || site.address?.state,
+      auditorium: (() => {
+        console.log('🔍 Debugging auditorium for projector:', projector.serialNumber);
+        console.log('🔍 Projector auditoriumId:', projector.auditoriumId);
+        console.log('🔍 Site auditoriums:', site.auditoriums);
+        
+        if (projector.auditoriumId && site.auditoriums) {
+          const auditorium = site.auditoriums.find(aud => aud._id.toString() === projector.auditoriumId.toString());
+          console.log('🔍 Found auditorium:', auditorium);
+          return auditorium ? auditorium.name : null;
+        }
+        console.log('🔍 No auditorium data available');
+        return null;
+      })()
     };
     
     const dtr = new DTR(dtrData);
@@ -203,7 +286,8 @@ router.put('/:id', auth, async (req, res) => {
       callStatus,
       caseSeverity,
       actionTaken,
-      remarks
+      remarks,
+      closedRemarks
     } = req.body;
     
     const updateData = {};
@@ -218,7 +302,13 @@ router.put('/:id', auth, async (req, res) => {
       updateData.closedReason = closedReason;
     }
     
-    if (closedBy !== undefined) updateData.closedBy = closedBy;
+    if (closedBy !== undefined) {
+      updateData.closedBy = {
+        ...closedBy,
+        userId: req.user.userId, // Track the actual user who closed the DTR
+        closedDate: status === 'Closed' ? new Date() : closedBy.closedDate
+      };
+    }
     if (assignedTo !== undefined) {
       updateData.assignedTo = typeof assignedTo === 'string' ? {
         name: assignedTo,
@@ -236,6 +326,7 @@ router.put('/:id', auth, async (req, res) => {
     if (caseSeverity !== undefined) updateData.caseSeverity = caseSeverity;
     if (actionTaken !== undefined) updateData.actionTaken = actionTaken;
     if (remarks !== undefined) updateData.remarks = remarks;
+    if (closedRemarks !== undefined) updateData.closedRemarks = closedRemarks;
     
     console.log('Update data prepared:', updateData);
     
@@ -331,6 +422,63 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
+// Bulk delete DTRs
+router.delete('/bulk-delete', auth, async (req, res) => {
+  try {
+    // Debug logging
+    console.log('🔍 Bulk delete request received');
+    console.log('📦 Request body:', req.body);
+    console.log('📋 Request headers:', req.headers);
+    
+    // Check if user has permission
+    if (req.user.role !== 'admin' && req.user.role !== 'rma_manager') {
+      return res.status(403).json({ message: 'Insufficient permissions for bulk delete' });
+    }
+
+    const { dtrIds } = req.body.data || req.body;
+    
+    console.log('🎯 Extracted dtrIds:', dtrIds);
+    console.log('📊 Is dtrIds an array?', Array.isArray(dtrIds));
+    console.log('📏 dtrIds length:', dtrIds ? dtrIds.length : 'N/A');
+    
+    if (!dtrIds || !Array.isArray(dtrIds) || dtrIds.length === 0) {
+      console.log('❌ Validation failed: dtrIds is missing, not array, or empty');
+      return res.status(400).json({ message: 'DTR IDs array is required' });
+    }
+
+    if (dtrIds.length > 1000) {
+      console.log('❌ Validation failed: too many DTRs');
+      return res.status(400).json({ message: 'Maximum 1000 DTRs can be deleted at once' });
+    }
+
+    console.log(`🗑️ Bulk deleting ${dtrIds.length} DTRs`);
+    console.log('🔍 DTR IDs to delete:', dtrIds);
+
+    // Delete DTRs
+    const result = await DTR.deleteMany({ _id: { $in: dtrIds } });
+    
+    console.log(`✅ MongoDB deleteMany result:`, result);
+    console.log(`✅ Successfully deleted ${result.deletedCount} DTRs`);
+    
+    // Verify deletion by checking if any of the DTRs still exist
+    const remainingDTRs = await DTR.find({ _id: { $in: dtrIds } });
+    console.log(`🔍 Remaining DTRs after deletion:`, remainingDTRs.length);
+    
+    res.json({
+      message: `Successfully deleted ${result.deletedCount} DTRs`,
+      deletedCount: result.deletedCount,
+      requestedCount: dtrIds.length
+    });
+
+  } catch (error) {
+    console.error('❌ Bulk delete error:', error);
+    res.status(500).json({ 
+      message: 'Bulk delete failed', 
+      error: error.message
+    });
+  }
+});
+
 // Delete DTR
 router.delete('/:id', auth, async (req, res) => {
   try {
@@ -403,11 +551,13 @@ router.get('/lookup/projector/:serialNumber', auth, async (req, res) => {
       lifePercentage,
       condition: projector.condition,
       primaryTechnician: projector.primaryTechnician,
+      auditoriumId: projector.auditoriumId,
       site: {
         name: site.name,
-        code: site.name,
-        region: site.address.state,
-        address: site.address
+        code: site.siteCode || site.name,
+        region: site.region || site.address?.state,
+        address: site.address,
+        auditoriums: site.auditoriums || []
       }
     };
     
@@ -882,13 +1032,8 @@ router.post('/bulk-import', auth, async (req, res) => {
             continue;
           }
 
-          if (!dtrData.siteName) {
-            results.errors.push(`Row ${i + 1}: Site name is required`);
-            results.failed++;
-            continue;
-          }
-
-          // Check if projector exists (skip check for placeholder serial numbers)
+          // Site name validation is now optional - it will be auto-populated from projector
+          // Check if projector exists and populate site information
           const Projector = require('../models/Projector');
           let projector = null;
           
@@ -896,24 +1041,46 @@ router.post('/bulk-import', auth, async (req, res) => {
             projector = await Projector.findOne({ serialNumber: dtrData.serialNumber });
             
             if (!projector) {
-              results.errors.push(`Row ${i + 1}: Projector with serial number ${dtrData.serialNumber} not found`);
-              results.failed++;
-              continue;
+              // Skip validation for missing projectors - they can be added later
+              console.log(`⚠️  Projector with serial number ${dtrData.serialNumber} not found - skipping validation`);
+              // Use placeholder values for missing projectors
+              dtrData.siteName = dtrData.siteName || 'Unknown Site';
+              dtrData.siteCode = dtrData.siteCode || 'UNKNOWN';
+              dtrData.region = dtrData.region || 'Unknown';
+              dtrData.unitModel = dtrData.unitModel || 'Unknown Model';
+            } else {
+              // Get site details from projector and auto-populate
+              const Site = require('../models/Site');
+              const site = await Site.findById(projector.siteId);
+              
+              if (!site) {
+                console.log(`⚠️  Site not found for projector ${dtrData.serialNumber} - using defaults`);
+                dtrData.siteName = dtrData.siteName || 'Unknown Site';
+                dtrData.siteCode = dtrData.siteCode || 'UNKNOWN';
+                dtrData.region = dtrData.region || 'Unknown';
+                dtrData.unitModel = projector.model || 'Unknown Model';
+              } else {
+                // Auto-populate site information
+                dtrData.siteName = site.name;
+                dtrData.siteCode = site.siteCode || site.name;
+                dtrData.region = site.region || site.address?.state || 'Unknown';
+                dtrData.unitModel = projector.model;
+                
+                // Auto-populate auditorium information
+                if (projector.auditoriumId && site.auditoriums) {
+                  const auditorium = site.auditoriums.find(aud => aud._id.toString() === projector.auditoriumId.toString());
+                  dtrData.auditorium = auditorium ? auditorium.name : null;
+                } else {
+                  dtrData.auditorium = null;
+                }
+              }
             }
-          }
-
-          // Check if site exists (skip check for placeholder serial numbers)
-          const Site = require('../models/Site');
-          let site = null;
-          
-          if (projector && projector.siteId) {
-            site = await Site.findById(projector.siteId);
-            
-            if (!site) {
-              results.errors.push(`Row ${i + 1}: Site not found for projector ${dtrData.serialNumber}`);
-              results.failed++;
-              continue;
-            }
+          } else {
+            // For placeholder serial numbers, use default values
+            dtrData.siteName = dtrData.siteName || 'Unknown Site';
+            dtrData.siteCode = dtrData.siteCode || 'UNKNOWN';
+            dtrData.region = dtrData.region || 'Unknown';
+            dtrData.unitModel = dtrData.unitModel || 'Unknown Model';
           }
 
           // Check if case ID already exists (only if provided and not empty)
@@ -936,11 +1103,107 @@ router.post('/bulk-import', auth, async (req, res) => {
               designation: 'System',
               contact: 'system@import.com'
             },
-            priority: dtrData.priority || 'Medium',
+            priority: (() => {
+              const priority = dtrData.priority || 'Medium';
+              // Map Excel values to valid enum values
+              const priorityMap = {
+                'Low': 'Low',
+                'Medium': 'Medium', 
+                'High': 'High',
+                'Critical': 'Critical',
+                'Major': 'High', // Map Major to High
+                'Minor': 'Low', // Map Minor to Low
+                'Information': 'Low' // Map Information to Low
+              };
+              return priorityMap[priority] || priority;
+            })(),
             assignedTo: dtrData.assignedTo,
             estimatedResolutionTime: dtrData.estimatedResolutionTime || '24 hours',
             notes: dtrData.notes || '',
-            errorDate: dtrData.errorDate || new Date(),
+            complaintDate: (() => {
+              if (!dtrData.errorDate) return new Date();
+              
+              const errorDateStr = dtrData.errorDate.toString().trim();
+              
+              // Try DD-MM-YYYY format first
+              const ddmmyyyyMatch = errorDateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+              if (ddmmyyyyMatch) {
+                const [, day, month, year] = ddmmyyyyMatch;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              }
+              
+              // Handle DDMMYY format (6 digits) - like "250623"
+              if (/^\d{6}$/.test(errorDateStr)) {
+                const day = parseInt(errorDateStr.substring(0, 2));
+                const month = parseInt(errorDateStr.substring(2, 4));
+                const year = parseInt(errorDateStr.substring(4, 6));
+                
+                // Convert 2-digit year to 4-digit year
+                const fullYear = year < 50 ? 2000 + year : 1900 + year;
+                
+                // Validate the parts
+                if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && fullYear >= 1900 && fullYear <= 2100) {
+                  return new Date(fullYear, month - 1, day);
+                }
+              }
+              
+              // Handle Excel serial numbers (larger numbers)
+              if (/^\d+$/.test(errorDateStr)) {
+                const serialNumber = parseInt(errorDateStr);
+                if (!isNaN(serialNumber) && serialNumber > 100000) {
+                  // Proper Excel serial number conversion
+                  const excelEpoch = new Date(1900, 0, 1);
+                  const daysSinceEpoch = serialNumber - 2; // Excel leap year bug correction
+                  return new Date(excelEpoch.getTime() + (daysSinceEpoch * 24 * 60 * 60 * 1000));
+                }
+              }
+              
+              // Try regular date parsing
+              const parsedDate = new Date(errorDateStr);
+              return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+            })(),
+            errorDate: (() => {
+              if (!dtrData.errorDate) return new Date();
+              
+              const errorDateStr = dtrData.errorDate.toString().trim();
+              
+              // Try DD-MM-YYYY format first
+              const ddmmyyyyMatch = errorDateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+              if (ddmmyyyyMatch) {
+                const [, day, month, year] = ddmmyyyyMatch;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              }
+              
+              // Handle DDMMYY format (6 digits) - like "250623"
+              if (/^\d{6}$/.test(errorDateStr)) {
+                const day = parseInt(errorDateStr.substring(0, 2));
+                const month = parseInt(errorDateStr.substring(2, 4));
+                const year = parseInt(errorDateStr.substring(4, 6));
+                
+                // Convert 2-digit year to 4-digit year
+                const fullYear = year < 50 ? 2000 + year : 1900 + year;
+                
+                // Validate the parts
+                if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && fullYear >= 1900 && fullYear <= 2100) {
+                  return new Date(fullYear, month - 1, day);
+                }
+              }
+              
+              // Handle Excel serial numbers (larger numbers)
+              if (/^\d+$/.test(errorDateStr)) {
+                const serialNumber = parseInt(errorDateStr);
+                if (!isNaN(serialNumber) && serialNumber > 100000) {
+                  // Proper Excel serial number conversion
+                  const excelEpoch = new Date(1900, 0, 1);
+                  const daysSinceEpoch = serialNumber - 2; // Excel leap year bug correction
+                  return new Date(excelEpoch.getTime() + (daysSinceEpoch * 24 * 60 * 60 * 1000));
+                }
+              }
+              
+              // Try regular date parsing
+              const parsedDate = new Date(errorDateStr);
+              return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+            })(),
             unitModel: dtrData.unitModel || (projector ? projector.model : 'Unknown'),
             problemName: dtrData.problemName || dtrData.complaintDescription,
             actionTaken: dtrData.actionTaken || '',
@@ -949,29 +1212,77 @@ router.post('/bulk-import', auth, async (req, res) => {
               const status = dtrData.callStatus || 'Open';
               // Map Excel values to valid enum values
               const statusMap = {
-                'Observation': 'Open',
+                'Observation': 'Observation',
                 'closed': 'Closed',
-                'Waiting_Cust_Responses': 'In Progress',
-                'RMA Part return to CDS': 'Escalated'
+                'Closed': 'Closed',
+                'Waiting_Cust_Responses': 'Waiting_Cust_Responses',
+                'RMA Part return to CDS': 'RMA Part return to CDS',
+                'In Progress': 'Open', // Map In Progress to Open
+                'blank': 'blank'
               };
               return statusMap[status] || status;
             })(),
             caseSeverity: (() => {
-              const severity = dtrData.caseSeverity || 'Medium';
+              const severity = dtrData.caseSeverity || 'Minor';
               // Map Excel values to valid enum values
               const severityMap = {
-                'Major': 'High',
-                'Minor': 'Low',
-                'Information': 'Low'
+                'Critical': 'Critical',
+                'Information': 'Information',
+                'Major': 'Major',
+                'Minor': 'Minor',
+                'Low': 'Low',
+                'High': 'Major', // Map High to Major
+                'Medium': 'Minor', // Map Medium to Minor
+                'blank': 'blank'
               };
               return severityMap[severity] || severity;
             })(),
             siteName: dtrData.siteName,
             siteCode: dtrData.siteCode || dtrData.siteName || 'UNKNOWN',
             region: dtrData.region || (site ? site.address?.state : 'Unknown') || 'Unknown',
+            auditorium: dtrData.auditorium || 'Unknown Auditorium',
             status: dtrData.status || 'Open',
             closedBy: dtrData.closedBy,
-            closedDate: dtrData.closedBy ? (dtrData.closedBy.closedDate || new Date()) : null
+            closedDate: (() => {
+              if (!dtrData.closedBy || !dtrData.closedBy.closedDate) return null;
+              
+              const closedDateStr = dtrData.closedBy.closedDate.toString().trim();
+              
+              // Try DD-MM-YYYY format first
+              const ddmmyyyyMatch = closedDateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+              if (ddmmyyyyMatch) {
+                const [, day, month, year] = ddmmyyyyMatch;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              }
+              
+              // Handle DDMMYY format (6 digits) - like "250623"
+              if (/^\d{6}$/.test(closedDateStr)) {
+                const day = parseInt(closedDateStr.substring(0, 2));
+                const month = parseInt(closedDateStr.substring(2, 4));
+                const year = parseInt(closedDateStr.substring(4, 6));
+                
+                // Convert 2-digit year to 4-digit year
+                const fullYear = year < 50 ? 2000 + year : 1900 + year;
+                
+                // Validate the parts
+                if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && fullYear >= 1900 && fullYear <= 2100) {
+                  return new Date(fullYear, month - 1, day);
+                }
+              }
+              
+              // Handle Excel serial numbers (larger numbers)
+              if (/^\d+$/.test(closedDateStr)) {
+                const serialNumber = parseInt(closedDateStr);
+                if (!isNaN(serialNumber) && serialNumber > 100000) {
+                  return new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+                }
+              }
+              
+              // Try regular date parsing
+              const parsedDate = new Date(closedDateStr);
+              return isNaN(parsedDate.getTime()) ? null : parsedDate;
+            })(),
+            closedRemarks: dtrData.closedRemarks || ''
           });
 
           await dtr.save();
@@ -1299,6 +1610,484 @@ router.post('/:id/upload-files', auth, upload.array('files', 10), async (req, re
     res.status(500).json({ 
       success: false, 
       message: 'Error uploading files', 
+      error: error.message 
+    });
+  }
+});
+
+// Update auditorium data for existing DTRs
+router.post('/update-auditoriums', auth, async (req, res) => {
+  try {
+    console.log('🔧 Starting auditorium data update for existing DTRs...');
+    
+    // Find all DTRs that don't have auditorium data
+    const dtrsWithoutAuditorium = await DTR.find({
+      $or: [
+        { auditorium: { $exists: false } },
+        { auditorium: null },
+        { auditorium: '' },
+        { auditorium: 'Unknown Auditorium' }
+      ]
+    }).limit(10); // Process in batches
+    
+    console.log(`📊 Found ${dtrsWithoutAuditorium.length} DTRs without auditorium data`);
+    
+    let updatedCount = 0;
+    let errorCount = 0;
+    
+    for (const dtr of dtrsWithoutAuditorium) {
+      try {
+        console.log(`🔍 Processing DTR ${dtr.caseId} (Serial: ${dtr.serialNumber})`);
+        
+        // Find projector
+        const projector = await Projector.findOne({ serialNumber: dtr.serialNumber });
+        if (!projector) {
+          console.log(`⚠️  Projector not found for serial ${dtr.serialNumber}`);
+          continue;
+        }
+        
+        // Find site
+        const site = await Site.findById(projector.siteId);
+        if (!site) {
+          console.log(`⚠️  Site not found for projector ${dtr.serialNumber}`);
+          continue;
+        }
+        
+        // Find auditorium
+        let auditoriumName = null;
+        if (projector.auditoriumId && site.auditoriums) {
+          const auditorium = site.auditoriums.find(aud => aud._id.toString() === projector.auditoriumId.toString());
+          if (auditorium) {
+            auditoriumName = auditorium.name;
+            console.log(`✅ Found auditorium: ${auditoriumName}`);
+          }
+        }
+        
+        // Update DTR with auditorium data
+        if (auditoriumName) {
+          await DTR.findByIdAndUpdate(dtr._id, { auditorium: auditoriumName });
+          updatedCount++;
+          console.log(`✅ Updated DTR ${dtr.caseId} with auditorium: ${auditoriumName}`);
+        } else {
+          console.log(`⚠️  No auditorium data available for DTR ${dtr.caseId}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error processing DTR ${dtr.caseId}:`, error.message);
+        errorCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Updated ${updatedCount} DTRs with auditorium data`,
+      updated: updatedCount,
+      errors: errorCount,
+      processed: dtrsWithoutAuditorium.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Update failed:', error);
+    res.status(500).json({ message: 'Error updating auditorium data', error: error.message });
+  }
+});
+
+// Debug endpoint to check auditorium data
+router.get('/debug-auditorium/:serialNumber', auth, async (req, res) => {
+  try {
+    const { serialNumber } = req.params;
+    
+    // Find projector
+    const projector = await Projector.findOne({ serialNumber });
+    if (!projector) {
+      return res.status(404).json({ message: 'Projector not found' });
+    }
+    
+    // Find site
+    const site = await Site.findById(projector.siteId);
+    if (!site) {
+      return res.status(404).json({ message: 'Site not found' });
+    }
+    
+    // Check auditorium data
+    let auditoriumData = null;
+    if (projector.auditoriumId && site.auditoriums) {
+      const auditorium = site.auditoriums.find(aud => aud._id.toString() === projector.auditoriumId.toString());
+      auditoriumData = auditorium;
+    }
+    
+    res.json({
+      projector: {
+        serialNumber: projector.serialNumber,
+        auditoriumId: projector.auditoriumId,
+        siteId: projector.siteId
+      },
+      site: {
+        name: site.name,
+        auditoriums: site.auditoriums,
+        auditoriumsCount: site.auditoriums ? site.auditoriums.length : 0
+      },
+      auditoriumData: auditoriumData,
+      auditoriumName: auditoriumData ? auditoriumData.name : null
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error checking auditorium data', error: error.message });
+  }
+});
+
+// DTR Reports - Analytics Endpoint
+router.get('/reports/analytics', auth, async (req, res) => {
+  try {
+    console.log('📊 Generating DTR analytics report...');
+    
+    const { 
+      serialNumber, 
+      startDate, 
+      endDate, 
+      status, 
+      priority, 
+      callStatus, 
+      siteName,
+      caseSeverity
+    } = req.query;
+    
+    // Build filter query
+    const filter = {};
+    
+    if (serialNumber) {
+      filter.serialNumber = { $regex: serialNumber, $options: 'i' };
+    }
+    
+    if (siteName) {
+      filter.siteName = { $regex: siteName, $options: 'i' };
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    if (priority && priority !== 'all') {
+      filter.priority = priority;
+    }
+    
+    if (callStatus && callStatus !== 'all') {
+      filter.callStatus = callStatus;
+    }
+    
+    if (caseSeverity && caseSeverity !== 'all') {
+      filter.caseSeverity = caseSeverity;
+    }
+    
+    // Date range filter
+    if (startDate || endDate) {
+      filter.errorDate = {};
+      if (startDate) filter.errorDate.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.errorDate.$lte = end;
+      }
+    }
+    
+    console.log('Filter applied:', filter);
+    
+    // Get filtered DTR records
+    const dtrRecords = await DTR.find(filter).sort({ errorDate: -1 });
+    
+    const totalCases = dtrRecords.length;
+    
+    // If no DTRs found, return empty analytics
+    if (totalCases === 0) {
+      console.log('No DTR records found with current filters');
+      const emptyAnalytics = {
+        summary: {
+          totalCases: 0,
+          openCases: 0,
+          inProgressCases: 0,
+          resolvedCases: 0,
+          closedCases: 0,
+          shiftedToRMA: 0,
+          avgResolutionTimeHours: 0
+        },
+        statusDistribution: {},
+        priorityDistribution: {},
+        severityDistribution: {},
+        callStatusDistribution: {},
+        timeBasedTrends: [],
+        serialNumberAnalysis: [],
+        siteAnalysis: [],
+        topProblems: [],
+        dtrRecords: [],
+        filters: {
+          serialNumber: serialNumber || 'all',
+          startDate: startDate || 'all',
+          endDate: endDate || 'all',
+          status: status || 'all',
+          priority: priority || 'all',
+          callStatus: callStatus || 'all',
+          siteName: siteName || 'all',
+          caseSeverity: caseSeverity || 'all'
+        },
+        generatedAt: new Date()
+      };
+      return res.json(emptyAnalytics);
+    }
+    
+    // Status distribution
+    const statusDistribution = {};
+    dtrRecords.forEach(dtr => {
+      const s = dtr.status || 'Open';
+      statusDistribution[s] = (statusDistribution[s] || 0) + 1;
+    });
+    
+    // Priority distribution
+    const priorityDistribution = {};
+    dtrRecords.forEach(dtr => {
+      const p = dtr.priority || 'Medium';
+      priorityDistribution[p] = (priorityDistribution[p] || 0) + 1;
+    });
+    
+    // Severity distribution
+    const severityDistribution = {};
+    dtrRecords.forEach(dtr => {
+      const sev = dtr.caseSeverity || 'Medium';
+      severityDistribution[sev] = (severityDistribution[sev] || 0) + 1;
+    });
+    
+    // Call status distribution
+    const callStatusDistribution = {};
+    dtrRecords.forEach(dtr => {
+      const cs = dtr.callStatus || 'Open';
+      callStatusDistribution[cs] = (callStatusDistribution[cs] || 0) + 1;
+    });
+    
+    // Time-based trends (group by date)
+    const timeBasedTrends = [];
+    const dateMap = {};
+    dtrRecords.forEach(dtr => {
+      const date = dtr.errorDate ? new Date(dtr.errorDate).toISOString().split('T')[0] : 'Unknown';
+      dateMap[date] = (dateMap[date] || 0) + 1;
+    });
+    Object.keys(dateMap).sort().forEach(date => {
+      timeBasedTrends.push({ date, count: dateMap[date] });
+    });
+    
+    // Serial number analysis
+    const serialMap = {};
+    dtrRecords.forEach(dtr => {
+      const sn = dtr.serialNumber || 'Unknown';
+      if (!serialMap[sn]) {
+        serialMap[sn] = {
+          serialNumber: sn,
+          siteName: dtr.siteName,
+          unitModel: dtr.unitModel || dtr.projectorDetails?.model,
+          count: 0,
+          cases: []
+        };
+      }
+      serialMap[sn].count++;
+      serialMap[sn].cases.push({
+        caseId: dtr.caseId,
+        problemName: dtr.problemName,
+        errorDate: dtr.errorDate,
+        status: dtr.status
+      });
+    });
+    const serialNumberAnalysis = Object.values(serialMap).sort((a, b) => b.count - a.count);
+    
+    // Site analysis
+    const siteMap = {};
+    dtrRecords.forEach(dtr => {
+      const site = dtr.siteName || 'Unknown';
+      siteMap[site] = (siteMap[site] || 0) + 1;
+    });
+    const siteAnalysis = Object.keys(siteMap).map(site => ({
+      siteName: site,
+      count: siteMap[site]
+    })).sort((a, b) => b.count - a.count);
+    
+    // Calculate average resolution time (for resolved cases)
+    const resolvedCases = dtrRecords.filter(dtr => 
+      dtr.status === 'Closed' || dtr.status === 'Completed by Technical Head'
+    );
+    
+    let avgResolutionTime = 0;
+    if (resolvedCases.length > 0) {
+      const totalHours = resolvedCases.reduce((sum, dtr) => {
+        if (dtr.createdAt && dtr.updatedAt) {
+          const hours = (new Date(dtr.updatedAt) - new Date(dtr.createdAt)) / (1000 * 60 * 60);
+          return sum + hours;
+        }
+        return sum;
+      }, 0);
+      avgResolutionTime = (totalHours / resolvedCases.length).toFixed(2);
+    }
+    
+    // Problem category analysis
+    const problemMap = {};
+    dtrRecords.forEach(dtr => {
+      const problem = dtr.problemName || 'Unspecified';
+      problemMap[problem] = (problemMap[problem] || 0) + 1;
+    });
+    const topProblems = Object.keys(problemMap).map(problem => ({
+      problemName: problem,
+      count: problemMap[problem]
+    })).sort((a, b) => b.count - a.count).slice(0, 10);
+    
+    const analytics = {
+      summary: {
+        totalCases,
+        openCases: statusDistribution['Open'] || 0,
+        inProgressCases: statusDistribution['In Progress'] || 0,
+        resolvedCases: resolvedCases.length,
+        closedCases: statusDistribution['Closed'] || 0,
+        shiftedToRMA: statusDistribution['Shifted to RMA'] || 0,
+        avgResolutionTimeHours: parseFloat(avgResolutionTime)
+      },
+      statusDistribution,
+      priorityDistribution,
+      severityDistribution,
+      callStatusDistribution,
+      timeBasedTrends,
+      serialNumberAnalysis: serialNumberAnalysis.slice(0, 20), // Top 20
+      siteAnalysis: siteAnalysis.slice(0, 20), // Top 20
+      topProblems,
+      dtrRecords: dtrRecords.slice(0, 100), // Limit to 100 for performance
+      filters: {
+        serialNumber: serialNumber || 'all',
+        startDate: startDate || 'all',
+        endDate: endDate || 'all',
+        status: status || 'all',
+        priority: priority || 'all',
+        callStatus: callStatus || 'all',
+        siteName: siteName || 'all',
+        caseSeverity: caseSeverity || 'all'
+      },
+      generatedAt: new Date()
+    };
+    
+    console.log(`✅ DTR Analytics generated: ${totalCases} cases found`);
+    res.json(analytics);
+    
+  } catch (error) {
+    console.error('❌ Error generating DTR analytics:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error generating DTR analytics', 
+      error: error.message 
+    });
+  }
+});
+
+// DTR Reports - Export Data Endpoint
+router.get('/reports/export-data', auth, async (req, res) => {
+  try {
+    console.log('📄 Generating DTR export data...');
+    
+    const { 
+      serialNumber, 
+      startDate, 
+      endDate, 
+      status, 
+      priority, 
+      callStatus, 
+      siteName,
+      caseSeverity
+    } = req.query;
+    
+    // Build filter query (same as analytics)
+    const filter = {};
+    
+    if (serialNumber) {
+      filter.serialNumber = { $regex: serialNumber, $options: 'i' };
+    }
+    
+    if (siteName) {
+      filter.siteName = { $regex: siteName, $options: 'i' };
+    }
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    if (priority && priority !== 'all') {
+      filter.priority = priority;
+    }
+    
+    if (callStatus && callStatus !== 'all') {
+      filter.callStatus = callStatus;
+    }
+    
+    if (caseSeverity && caseSeverity !== 'all') {
+      filter.caseSeverity = caseSeverity;
+    }
+    
+    // Date range filter
+    if (startDate || endDate) {
+      filter.errorDate = {};
+      if (startDate) filter.errorDate.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.errorDate.$lte = end;
+      }
+    }
+    
+    // Get all DTR records for export
+    const dtrRecords = await DTR.find(filter).sort({ errorDate: -1 });
+    
+    // Format for export
+    const exportData = dtrRecords.map(dtr => ({
+      caseId: dtr.caseId,
+      serialNumber: dtr.serialNumber,
+      siteName: dtr.siteName,
+      siteCode: dtr.siteCode,
+      region: dtr.region,
+      unitModel: dtr.unitModel || dtr.projectorDetails?.model || 'N/A',
+      brand: dtr.projectorDetails?.brand || 'N/A',
+      problemName: dtr.problemName || 'N/A',
+      complaintDescription: dtr.complaintDescription,
+      actionTaken: dtr.actionTaken || 'Not specified',
+      remarks: dtr.remarks || '',
+      status: dtr.status,
+      callStatus: dtr.callStatus,
+      caseSeverity: dtr.caseSeverity,
+      priority: dtr.priority,
+      errorDate: dtr.errorDate,
+      complaintDate: dtr.complaintDate,
+      openedBy: dtr.openedBy?.name || 'N/A',
+      assignedTo: typeof dtr.assignedTo === 'string' ? dtr.assignedTo : 
+                  typeof dtr.assignedTo === 'object' && dtr.assignedTo?.name ? dtr.assignedTo.name : 
+                  'Unassigned',
+      rmaCaseNumber: dtr.rmaCaseNumber || '',
+      createdAt: dtr.createdAt,
+      updatedAt: dtr.updatedAt
+    }));
+    
+    res.json({
+      success: true,
+      data: exportData,
+      totalRecords: exportData.length,
+      filters: {
+        serialNumber: serialNumber || 'all',
+        startDate: startDate || 'all',
+        endDate: endDate || 'all',
+        status: status || 'all',
+        priority: priority || 'all',
+        callStatus: callStatus || 'all',
+        siteName: siteName || 'all',
+        caseSeverity: caseSeverity || 'all'
+      },
+      exportedAt: new Date()
+    });
+    
+    console.log(`✅ DTR Export data generated: ${exportData.length} records`);
+    
+  } catch (error) {
+    console.error('❌ Error generating DTR export data:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error generating DTR export data', 
       error: error.message 
     });
   }

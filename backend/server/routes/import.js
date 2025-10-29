@@ -21,50 +21,78 @@ const upload = multer({
   }
 });
 
-// Excel Column Mapping to RMA Fields - Updated to match user's sheet
+// Excel Column Mapping to RMA Fields - CORRECTED according to user specifications
 const EXCEL_COLUMN_MAPPING = {
   // Support both old and new column header formats
   // Note: 'S. No.' is a row index in spreadsheets; do not map to any DB field
+  
+  // Field 1: RMA/CI RMA/Lamps - Only two values: RMA or RMA CL
   'RMA/CI/RMA/Lsm': 'rmaType',
   'RMA/CI RMA/Lamps': 'rmaType',
+  'RMA/CI RMA / Lamps': 'rmaType',
+  
+  // Field 2: Call Log # - Number like 694176
   'Call Log': 'callLogNumber',
   'Call Log #': 'callLogNumber',
   'Call Log Number': 'callLogNumber',
+  
+  // Field 3: RMA # - Number like 176020 or blank
   'RMA': 'rmaNumber',
   'RMA #': 'rmaNumber',
   'RMA Number': 'rmaNumber',
+  
+  // Field 4: RMA Order # SX/S4 - Number like 299811 or empty
   'RMA Order': 'rmaOrderNumber',
   'RMA Order # SX/S4': 'rmaOrderNumber',
   'RMA Order Number': 'rmaOrderNumber',
-  'SX': 'sxNumber', // New field for SX
+  'SX': 'sxNumber',
+  
+  // Field 5: Ascomp Raised Date - RMA raised date
   'Ascomp Raxise': 'ascompRaisedDate',
   'Ascomp Raised Date': 'ascompRaisedDate',
   'ASCOMP Raised Date': 'ascompRaisedDate',
-  'ed Ds': 'customerErrorDate', // Assuming this is "Customer Error Date"
+  
+  // Field 6: Customer Error Date - Date customer reported error
+  'ed Ds': 'customerErrorDate',
   'Customer Error Ds': 'customerErrorDate',
   'Customer Error Date': 'customerErrorDate',
+  
+  // Field 7: Site Name - Comes from Serial# field (projector serial number)
   'Site Name': 'siteName',
-  'Product Nam': 'productPartNumber', // Swapped: Product Name contains projector model, map to productPartNumber
-  'Product Name': 'productPartNumber', // Swapped: Product Name contains projector model, map to productPartNumber
-  'Product Par': 'productName', // Swapped: Product Part contains projector model, map to productName
-  'Product Part #': 'productName', // Swapped: Product Part contains projector model, map to productName
-  'Product Part Number': 'productName', // Swapped: Product Part contains projector model, map to productName
-  'Serial #': 'productPartNumber', // Swapped: Serial Number contains part number, map to productPartNumber
-  'Serial Number': 'productPartNumber', // Swapped: Serial Number contains part number, map to productPartNumber
-  'Projector Serial': 'projectorSerial', // Actual projector serial number
-  'Projector Serial #': 'projectorSerial', // Actual projector serial number
-  'Projector Serial Number': 'projectorSerial', // Actual projector serial number
-  'Defective Pa': 'defectivePartName',
-  'Defective Part Name': 'defectivePartName',
-  'Defecti': 'defectivePartName', // Partial match
-  'ive Part Num': 'defectivePartNumber',
+  
+  // Field 8: Product Name - Model number obtained from Serial# field
+  'Product Nam': 'productName',
+  'Product Name': 'productName',
+  
+  // Field 9: Product Part # - Part number like 163-015107-01
+  'Product Par': 'productPartNumber',
+  'Product Part #': 'productPartNumber',
+  'Product Part Number': 'productPartNumber',
+  
+  // Field 10: Serial # - Most important field (projector serial number)
+  'Serial #': 'serialNumber',
+  'Serial Number': 'serialNumber',
+  
+  // Field 11: Defective Part # - Part number like 000-001195-01
+  'Defective Pa': 'defectivePartNumber',
   'Defective Part #': 'defectivePartNumber',
   'Defective Part Number': 'defectivePartNumber',
+  'ive Part Num': 'defectivePartNumber',
+  
+  // Field 12: Defective Part Name - Name like "Assy. Ballast"
+  'Defective Part Name': 'defectivePartName',
+  'Defecti': 'defectivePartName', // Partial match
+  
+  // Field 13: Defective Serial # - Serial number like 10026145FA028 or blank
   'Defective Seris': 'defectiveSerialNumber',
   'Defective Serial #': 'defectiveSerialNumber',
   'Defective Serial Number': 'defectiveSerialNumber',
+  
+  // Field 14: Symptoms - Description like "Ballast communication failed"
   'Symptom': 'symptoms',
   'Symptoms': 'symptoms',
+  
+  // Field 15: Replaced Part # - Replacement part number like 004-001195-01 or blank
   'Replaced Par': 'replacedPartName',
   'Replaced Part Name': 'replacedPartName',
   'Replaced Part #': 'replacedPartNumber',
@@ -72,6 +100,8 @@ const EXCEL_COLUMN_MAPPING = {
   'Replaced Part Seris': 'replacedPartSerialNumber',
   'Replaced Part Serial #': 'replacedPartSerialNumber',
   'Replaced Part Serial Number': 'replacedPartSerialNumber',
+  
+  // Field 16: Replaced Part Serial # - Serial number like 10039624FA023 or NA or empty
   // Common alternative labels using "Replacement"
   'Replacement Part Name': 'replacedPartName',
   'Replacement Part #': 'replacedPartNumber',
@@ -81,34 +111,53 @@ const EXCEL_COLUMN_MAPPING = {
   'Replacement Part Serial #': 'replacedPartSerialNumber',
   'Replacement Part Serial Number': 'replacedPartSerialNumber',
   'Replacement Notes': 'replacementNotes',
+  
+  // Field 17: Shipped date - Date when replacement part is shipped
   'Shipped da': 'shippedDate',
   'Shipped date': 'shippedDate',
   'Shipped Date': 'shippedDate',
+  
+  // Field 18: Tracking # - Docket number of replacement part
   'Trac': 'trackingNumber', // Partial match
   'king': 'trackingNumber', // Partial match
   'Tracking #': 'trackingNumber',
   'Tracking Number': 'trackingNumber',
+  
+  // Field 19: Shipped Thru' - Delivery provider like "by hand" or "DTDC"
   'Shipped Th': 'shippedThru', // Partial match
   'Shipped Thru\'': 'shippedThru',
   'Shipped Through': 'shippedThru',
+  
+  // Field 20: Remarks - Delivery status like "delivered" or "in transit"
   'Remarks': 'remarks',
   'Created': 'createdBy', // Partial match
   'Created By': 'createdBy',
+  
+  // Field 21: Created By - Real user (currently Pankaj)
   // Common alternative label for call log
   'Call No': 'callLogNumber',
   'Call No.': 'callLogNumber',
   'Case Status': 'caseStatus',
   'Approval Status': 'approvalStatus',
+  
+  // Field 22: Case Status - Already defined status
   // Do NOT map bare 'RMA' header to a date to avoid overriding rmaNumber
   'A return Shipped da': 'rmaReturnShippedDate',
   'RMA return Shipped date': 'rmaReturnShippedDate',
   'RMA Return Shipped Date': 'rmaReturnShippedDate',
+  
+  // Field 23: RMA return Shipped date - Date defective part shipped from site
   'RMA return Tracking': 'rmaReturnTrackingNumber',
   'RMA return Tracking #': 'rmaReturnTrackingNumber',
   'RMA Return Tracking Number': 'rmaReturnTrackingNumber',
+  
+  // Field 24: RMA return Tracking # - Tracking details or docket number
   'RMA return Shipped Thru': 'rmaReturnShippedThru',
   'RMA return Shipped Thru\'': 'rmaReturnShippedThru',
   'RMA Return Shipped Through': 'rmaReturnShippedThru',
+  
+  // Field 25: Shipped Thru' - Provider of shipping defective part
+  
   // Additional fields from your CSV
   'Days Count Shipped to Site': 'daysCountShippedToSite',
   'Days Count Return to CDS': 'daysCountReturnToCDS',
@@ -116,6 +165,13 @@ const EXCEL_COLUMN_MAPPING = {
   'Brand': 'brand',
   'Projector Model': 'projectorModel',
   'Customer Site': 'customerSite',
+  
+  // Fix field name mismatches from error analysis
+  'replacedpartname': 'replacedPartName',
+  'casestatus': 'caseStatus',
+  'approvalstatus': 'approvalStatus',
+  'rmaReturnshippedDate': 'rmaReturnShippedDate',
+  'rmaReturnshippedThru': 'rmaReturnShippedThru',
   'Priority': 'priority',
   'Warranty Status': 'warrantyStatus',
   'Estimated Cost': 'estimatedCost',
@@ -289,34 +345,40 @@ function cleanData(row) {
   
   // Column-based mapping for specific positions (when header mapping fails)
   // NOTE: Index 0 is S.no (row number) - SKIP IT!
-  // Based on your CSV headers: S.no, Call Log #, RMA #, RMA Order #, Ascomp Raised Date, Customer Error Date, Site Name, Product Name, Product Part #, Serial #, Defective Part #, Defective Part Name, Defective Serial #, Symptoms, Replaced Part #, Replaced Part Name, Replaced Part Serial #, Shipped Date, Tracking #, Shipped Thru, Remarks, Created By, Case Status, RMA Return Shipped Date, RMA Return Tracking #, RMA Return Shipped Thru
+  // CORRECTED MAPPING based on user's exact 25-field specification:
+  // 1. RMA/CI RMA/Lamps, 2. Call Log #, 3. RMA #, 4. RMA Order # SX/S4, 5. Ascomp Raised Date, 
+  // 6. Customer Error Date, 7. Site Name, 8. Product Name, 9. Product Part #, 10. Serial #,
+  // 11. Defective Part #, 12. Defective Part Name, 13. Defective Serial #, 14. Symptoms,
+  // 15. Replaced Part #, 16. Replaced Part Serial #, 17. Shipped date, 18. Tracking #,
+  // 19. Shipped Thru', 20. Remarks, 21. Created By, 22. Case Status, 23. RMA return Shipped date,
+  // 24. RMA return Tracking #, 25. Shipped Thru'
   const columnMapping = {
     0: null,                     // Column A: S.no (IGNORED - row number)
-    1: 'callLogNumber',          // Column B: Call Log #
-    2: 'rmaNumber',              // Column C: RMA #
-    3: 'rmaOrderNumber',         // Column D: RMA Order #
-    4: 'ascompRaisedDate',       // Column E: Ascomp Raised Date
-    5: 'customerErrorDate',      // Column F: Customer Error Date
-    6: 'siteName',               // Column G: Site Name
-    7: 'productName',            // Column H: Product Name
-    8: 'productPartNumber',      // Column I: Product Part #
-    9: 'serialNumber',           // Column J: Serial #
-    10: 'defectiveSerialNumber', // Column K: Defective Part # (contains serial like 416128001)
-    11: 'defectivePartName',     // Column L: Defective Part Name
-    12: 'defectivePartNumber',   // Column M: Defective Serial # (contains part like Assy.IMCB)
-    13: 'symptoms',              // Column N: Symptoms
-    14: 'replacedPartNumber',    // Column O: Replaced Part #
-    15: 'replacedPartName',      // Column P: Replaced Part Name
-    16: 'replacedPartSerialNumber', // Column Q: Replaced Part Serial #
-    17: 'shippedDate',           // Column R: Shipped Date
-    18: 'trackingNumber',        // Column S: Tracking #
-    19: 'shippedThru',           // Column T: Shipped Thru
-    20: 'remarks',               // Column U: Remarks
-    21: 'createdBy',             // Column V: Created By
-    22: 'caseStatus',            // Column W: Case Status
-    23: 'rmaReturnShippedDate',  // Column X: RMA Return Shipped Date
-    24: 'rmaReturnTrackingNumber', // Column Y: RMA Return Tracking #
-    25: 'rmaReturnShippedThru'   // Column Z: RMA Return Shipped Thru
+    1: 'rmaType',                // Column B: RMA/CI RMA/Lamps (RMA or RMA CL)
+    2: 'callLogNumber',          // Column C: Call Log # (number like 694176)
+    3: 'rmaNumber',              // Column D: RMA # (number like 176020 or blank)
+    4: 'rmaOrderNumber',         // Column E: RMA Order # SX/S4 (number like 299811 or empty)
+    5: 'ascompRaisedDate',       // Column F: Ascomp Raised Date (RMA raised date)
+    6: 'customerErrorDate',      // Column G: Customer Error Date (date customer reported error)
+    7: 'siteName',               // Column H: Site Name (comes from Serial# field)
+    8: 'productName',            // Column I: Product Name (model number from Serial# field)
+    9: 'productPartNumber',      // Column J: Product Part # (part number like 163-015107-01)
+    10: 'serialNumber',          // Column K: Serial # (projector serial number - most important)
+    11: 'defectivePartNumber',   // Column L: Defective Part # (part number like 000-001195-01)
+    12: 'defectivePartName',     // Column M: Defective Part Name (name like "Assy. Ballast")
+    13: 'defectiveSerialNumber', // Column N: Defective Serial # (serial like 10026145FA028 or blank)
+    14: 'symptoms',              // Column O: Symptoms (description like "Ballast communication failed")
+    15: 'replacedPartNumber',    // Column P: Replaced Part # (replacement part like 004-001195-01 or blank)
+    16: 'replacedPartSerialNumber', // Column Q: Replaced Part Serial # (serial like 10039624FA023 or NA or empty)
+    17: 'shippedDate',           // Column R: Shipped date (date replacement part shipped)
+    18: 'trackingNumber',        // Column S: Tracking # (docket number of replacement part)
+    19: 'shippedThru',           // Column T: Shipped Thru' (delivery provider like "by hand" or "DTDC")
+    20: 'remarks',               // Column U: Remarks (delivery status like "delivered" or "in transit")
+    21: 'createdBy',             // Column V: Created By (real user, currently Pankaj)
+    22: 'caseStatus',            // Column W: Case Status (already defined status)
+    23: 'rmaReturnShippedDate',  // Column X: RMA return Shipped date (date defective part shipped from site)
+    24: 'rmaReturnTrackingNumber', // Column Y: RMA return Tracking # (tracking details or docket number)
+    25: 'rmaReturnShippedThru'   // Column Z: Shipped Thru' (provider of shipping defective part)
   };
   
   // Apply column-based mapping for missing fields
@@ -338,12 +400,12 @@ function cleanData(row) {
           cleaned[dbField] = PRIORITY_MAPPING[stringValue] || 'Medium';
         } else if (dbField === 'rmaType') {
           const rmaType = stringValue.toLowerCase();
-          if (rmaType.includes('ci') || rmaType.includes('customer')) {
-            cleaned[dbField] = 'Customer Issue';
-          } else if (rmaType.includes('lamp')) {
-            cleaned[dbField] = 'Lamp Replacement';
+          if (rmaType.includes('rma cl') || rmaType.includes('rma_cl') || rmaType.includes('rma-cl')) {
+            cleaned[dbField] = 'RMA CL';
+          } else if (rmaType.includes('rma')) {
+            cleaned[dbField] = 'RMA';
           } else {
-            cleaned[dbField] = 'Standard RMA';
+            cleaned[dbField] = 'RMA'; // Default to RMA
           }
         } else {
           cleaned[dbField] = stringValue;
@@ -351,6 +413,56 @@ function cleanData(row) {
       }
     }
   });
+  
+  // Enhanced logic to derive site name and product name from serial number
+  if (cleaned.serialNumber && cleaned.serialNumber.trim() !== '') {
+    // If site name is missing, try to derive from serial number
+    if (!cleaned.siteName || cleaned.siteName.trim() === '') {
+      // This would typically involve a lookup to projector database
+      // For now, we'll set a placeholder that indicates derivation needed
+      cleaned.siteName = `Site from Serial: ${cleaned.serialNumber}`;
+    }
+    
+    // If product name is missing, try to derive from serial number
+    if (!cleaned.productName || cleaned.productName.trim() === '') {
+      // This would typically involve a lookup to projector database
+      // For now, we'll set a placeholder that indicates derivation needed
+      cleaned.productName = `Model from Serial: ${cleaned.serialNumber}`;
+    }
+  }
+  
+  // Fix field value issues from error analysis
+  // Fix tracking number and shipped thru field swapping
+  if (cleaned.trackingNumber && cleaned.trackingNumber.toLowerCase().includes('hand')) {
+    if (!cleaned.shippedThru || cleaned.shippedThru.trim() === '') {
+      cleaned.shippedThru = cleaned.trackingNumber;
+      cleaned.trackingNumber = '';
+    }
+  }
+  
+  // Normalize shipped thru values
+  if (cleaned.shippedThru) {
+    const shippedThru = cleaned.shippedThru.toLowerCase();
+    if (shippedThru.includes('hand')) {
+      cleaned.shippedThru = 'By Hand';
+    } else if (shippedThru.includes('dtdc')) {
+      cleaned.shippedThru = 'DTDC';
+    } else if (shippedThru.includes('movin')) {
+      cleaned.shippedThru = 'Movin';
+    }
+  }
+  
+  // Normalize rma return shipped thru values
+  if (cleaned.rmaReturnShippedThru) {
+    const returnShippedThru = cleaned.rmaReturnShippedThru.toLowerCase();
+    if (returnShippedThru.includes('hand')) {
+      cleaned.rmaReturnShippedThru = 'By Hand';
+    } else if (returnShippedThru.includes('dtdc')) {
+      cleaned.rmaReturnShippedThru = 'DTDC';
+    } else if (returnShippedThru.includes('movin')) {
+      cleaned.rmaReturnShippedThru = 'Movin';
+    }
+  }
   
   // Set defaults without using today's date: prefer actual provided dates
   // If one of the dates is missing, mirror from the other to satisfy schema
@@ -361,7 +473,10 @@ function cleanData(row) {
     cleaned.customerErrorDate = cleaned.ascompRaisedDate;
   }
   if (!cleaned.createdBy) {
-    cleaned.createdBy = 'Excel Import';
+    cleaned.createdBy = 'Pankaj'; // Set to real user as requested
+  }
+  if (!cleaned.brand) {
+    cleaned.brand = 'Christie'; // Set default brand as requested
   }
   if (!cleaned.warrantyStatus) {
     cleaned.warrantyStatus = 'In Warranty';
@@ -371,6 +486,40 @@ function cleanData(row) {
   }
   if (!cleaned.priority) {
     cleaned.priority = 'Medium';
+  }
+  
+  // Additional validation to prevent errors
+  // Ensure all required fields have values
+  if (!cleaned.siteName || cleaned.siteName.trim() === '') {
+    cleaned.siteName = 'Unknown Site';
+  }
+  
+  if (!cleaned.productName || cleaned.productName.trim() === '') {
+    cleaned.productName = 'Unknown Product';
+  }
+  
+  // Ensure case status is properly formatted
+  if (cleaned.caseStatus) {
+    const status = cleaned.caseStatus.toLowerCase();
+    if (status.includes('completed')) {
+      cleaned.caseStatus = 'Completed';
+    } else if (status.includes('under review')) {
+      cleaned.caseStatus = 'Under Review';
+    } else if (status.includes('pending')) {
+      cleaned.caseStatus = 'Under Review';
+    }
+  }
+  
+  // Ensure approval status is properly formatted
+  if (cleaned.approvalStatus) {
+    const approvalStatus = cleaned.approvalStatus.toLowerCase();
+    if (approvalStatus.includes('pending')) {
+      cleaned.approvalStatus = 'Pending Review';
+    } else if (approvalStatus.includes('approved')) {
+      cleaned.approvalStatus = 'Approved';
+    } else if (approvalStatus.includes('rejected')) {
+      cleaned.approvalStatus = 'Rejected';
+    }
   }
   
   return cleaned;

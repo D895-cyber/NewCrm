@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Filter Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-step {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .expected-result {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .code-block {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Status Filter Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2 class="test-title">RMA Page Test</h2>
+        
+        <div class="test-step">
+            <h3>Step 1: Initial Load</h3>
+            <p><strong>Action:</strong> Navigate to the RMA page</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong> 
+                <ul>
+                    <li>Page should show empty state with message "Select a Status to View RMAs"</li>
+                    <li>Status filter should be set to "All" by default</li>
+                    <li>No RMA data should be loaded initially</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 2: Select Status Filter</h3>
+            <p><strong>Action:</strong> Change status filter from "All" to a specific status (e.g., "Under Review")</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>RMA data should be loaded for the selected status</li>
+                    <li>Table should display RMA records matching the selected status</li>
+                    <li>Stats cards should show updated counts</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 3: Change Status Filter</h3>
+            <p><strong>Action:</strong> Change status filter to a different status (e.g., "Completed")</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>RMA data should be filtered to show only records with the new status</li>
+                    <li>Table should update to display the new filtered results</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 4: Reset to "All"</h3>
+            <p><strong>Action:</strong> Change status filter back to "All"</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>RMA data should be cleared</li>
+                    <li>Empty state message should show "Select a Status to View RMAs"</li>
+                    <li>No RMA records should be displayed</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-title">DTR Page Test</h2>
+        
+        <div class="test-step">
+            <h3>Step 1: Initial Load</h3>
+            <p><strong>Action:</strong> Navigate to the DTR page</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>Page should show empty state with message "Select a Status to View DTRs"</li>
+                    <li>Status filter should be set to "all" by default</li>
+                    <li>No DTR data should be loaded initially</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 2: Select Status Filter</h3>
+            <p><strong>Action:</strong> Change status filter from "all" to a specific status (e.g., "Open")</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>DTR data should be loaded for the selected status</li>
+                    <li>Table should display DTR records matching the selected status</li>
+                    <li>Stats cards should show updated counts</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 3: Change Status Filter</h3>
+            <p><strong>Action:</strong> Change status filter to a different status (e.g., "In Progress")</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>DTR data should be filtered to show only records with the new status</li>
+                    <li>Table should update to display the new filtered results</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 4: Reset to "all"</h3>
+            <p><strong>Action:</strong> Change status filter back to "all"</p>
+            <div class="expected-result">
+                <strong>Expected Result:</strong>
+                <ul>
+                    <li>DTR data should be cleared</li>
+                    <li>Empty state message should show "Select a Status to View DTRs"</li>
+                    <li>No DTR records should be displayed</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2 class="test-title">Implementation Summary</h2>
+        
+        <div class="code-block">
+            <h4>Changes Made:</h4>
+            <ul>
+                <li><strong>RMA Page:</strong> Added hasLoadedData state and modified useEffect to only load data when status filter is not "All"</li>
+                <li><strong>DTR Page:</strong> Added hasLoadedData state and modified useEffect to only load data when status filter is not "all"</li>
+                <li><strong>Empty States:</strong> Updated empty state messages to show different content based on whether a status is selected</li>
+                <li><strong>Data Loading:</strong> Data is now only loaded when a specific status is selected, not on initial page load</li>
+            </ul>
+        </div>
+
+        <div class="test-step">
+            <h3>Key Benefits:</h3>
+            <ul>
+                <li>Improved performance - no unnecessary data loading on initial page load</li>
+                <li>Better user experience - clear indication that status selection is required</li>
+                <li>Reduced server load - data is only fetched when needed</li>
+                <li>Consistent behavior across RMA and DTR pages</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

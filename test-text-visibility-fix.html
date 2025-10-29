@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Visibility Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #374151;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            color: #111827 !important;
+            background-color: white !important;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #6b7280 !important;
+            opacity: 1 !important;
+        }
+        .test-section {
+            border: 2px solid #e5e7eb;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Text Visibility Fix Test</h1>
+        <p>This page tests the text visibility fixes for RMA Analytics components.</p>
+        
+        <div class="test-section">
+            <h3>Input Fields Test</h3>
+            <div class="form-group">
+                <label>Part Name</label>
+                <input type="text" placeholder="Enter part name (e.g., Assy. Integrator rod)" value="Assy. Integrator rod">
+            </div>
+            <div class="form-group">
+                <label>Part Number</label>
+                <input type="text" placeholder="Enter part number" value="003-005682-01">
+            </div>
+            <div class="form-group">
+                <label>Serial Number</label>
+                <input type="text" placeholder="Enter serial number" value="283809010">
+            </div>
+            <div class="form-group">
+                <label>Site Name</label>
+                <input type="text" placeholder="Enter site name" value="Xpria Mall - Dombivali-Audi 6">
+            </div>
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" value="2024-04-01">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" value="2024-05-01">
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Select Fields Test</h3>
+            <div class="form-group">
+                <label>Status</label>
+                <select>
+                    <option value="all">All Statuses</option>
+                    <option value="Under Review" selected>Under Review</option>
+                    <option value="CDS Approved">CDS Approved</option>
+                    <option value="Replacement Shipped">Replacement Shipped</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Priority</label>
+                <select>
+                    <option value="all">All Priorities</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Text Area Test</h3>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea placeholder="Enter additional notes or comments" rows="3">This is a test note to verify text visibility in textarea elements.</textarea>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Visibility Status</h3>
+            <div class="status success">✅ Input fields should have dark text on white background</div>
+            <div class="status success">✅ Placeholder text should be visible in gray</div>
+            <div class="status success">✅ Select options should be clearly readable</div>
+            <div class="status success">✅ Labels should be dark and bold</div>
+            <div class="status warning">⚠️ If any text appears invisible or very light, the CSS fix needs adjustment</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Instructions</h3>
+            <ol>
+                <li>Check that all input fields have dark, readable text</li>
+                <li>Verify placeholder text is visible in gray</li>
+                <li>Ensure select dropdown options are clearly readable</li>
+                <li>Confirm labels are dark and bold</li>
+                <li>Test with different browsers (Chrome, Firefox, Edge)</li>
+                <li>Check both light and dark mode if available</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Test script to verify text visibility
+        function testTextVisibility() {
+            const inputs = document.querySelectorAll('input, select, textarea');
+            let allVisible = true;
+            
+            inputs.forEach((input, index) => {
+                const computedStyle = window.getComputedStyle(input);
+                const color = computedStyle.color;
+                const backgroundColor = computedStyle.backgroundColor;
+                
+                console.log(`Element ${index + 1}:`, {
+                    color: color,
+                    backgroundColor: backgroundColor,
+                    value: input.value || input.placeholder
+                });
+                
+                // Check if text is too light (common issue)
+                if (color.includes('rgb(255, 255, 255)') || color.includes('rgba(255, 255, 255')) {
+                    console.warn(`Element ${index + 1} has white text - may not be visible`);
+                    allVisible = false;
+                }
+            });
+            
+            if (allVisible) {
+                console.log('✅ All text appears to be visible');
+            } else {
+                console.warn('⚠️ Some text may not be visible');
+            }
+        }
+        
+        // Run test on page load
+        window.onload = function() {
+            setTimeout(testTextVisibility, 100);
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

@@ -27,6 +27,11 @@ const DTRSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  auditorium: {
+    type: String,
+    required: false,
+    trim: true
+  },
   complaintDescription: {
     type: String,
     required: true,
@@ -61,13 +66,13 @@ const DTRSchema = new mongoose.Schema({
   },
   callStatus: {
     type: String,
-    enum: ['Open', 'In Progress', 'Resolved', 'Closed', 'Escalated'],
+    enum: ['Closed', 'Observation', 'Open', 'RMA Part return to CDS', 'Waiting_Cust_Responses', 'blank'],
     default: 'Open'
   },
   caseSeverity: {
     type: String,
-    enum: ['Low', 'Medium', 'High', 'Critical'],
-    default: 'Medium'
+    enum: ['Critical', 'Information', 'Major', 'Minor', 'Low', 'blank'],
+    default: 'Minor'
   },
   openedBy: {
     name: {
@@ -82,6 +87,10 @@ const DTRSchema = new mongoose.Schema({
     contact: {
       type: String,
       trim: true
+    },
+    userId: {
+      type: String,
+      ref: 'User'
     }
   },
   closedBy: {
@@ -97,6 +106,10 @@ const DTRSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
+    userId: {
+      type: String,
+      ref: 'User'
+    },
     closedDate: {
       type: Date
     }
@@ -109,6 +122,10 @@ const DTRSchema = new mongoose.Schema({
   closedReason: {
     type: String,
     enum: ['Resolved', 'Shifted to RMA', 'No Action Required', 'Other'],
+    trim: true
+  },
+  closedRemarks: {
+    type: String,
     trim: true
   },
   rmaCaseNumber: {
@@ -342,6 +359,23 @@ DTRSchema.index({ escalationLevel: 1 });
 DTRSchema.index({ 'escalatedTo.name': 1 });
 DTRSchema.index({ slaBreached: 1 });
 
+// Ensure complaintDate and errorDate are synchronized
+DTRSchema.pre('save', function(next) {
+  // If errorDate is set but complaintDate is not, set complaintDate to errorDate
+  if (this.errorDate && !this.complaintDate) {
+    this.complaintDate = this.errorDate;
+  }
+  // If complaintDate is set but errorDate is not, set errorDate to complaintDate
+  else if (this.complaintDate && !this.errorDate) {
+    this.errorDate = this.complaintDate;
+  }
+  // If both are set but different, prefer errorDate
+  else if (this.errorDate && this.complaintDate && this.errorDate.getTime() !== this.complaintDate.getTime()) {
+    this.complaintDate = this.errorDate;
+  }
+  next();
+});
+
 // Auto-generate case ID in format: DTR-YYYY-MM-DD-XXX
 DTRSchema.pre('save', async function(next) {
   if (!this.caseId) {
@@ -396,6 +430,15 @@ DTRSchema.pre('save', async function(next) {
             this.siteName = site.name;
             this.siteCode = site.name; // Using site name as code for now
             this.region = site.address.state; // Using state as region
+            
+            // Populate auditorium if not already set
+            if (!this.auditorium && projector.auditoriumId && site.auditoriums) {
+              const auditorium = site.auditoriums.find(aud => aud._id.toString() === projector.auditoriumId.toString());
+              if (auditorium) {
+                this.auditorium = auditorium.name;
+                console.log('🔍 Pre-save hook set auditorium:', auditorium.name);
+              }
+            }
           }
         }
         

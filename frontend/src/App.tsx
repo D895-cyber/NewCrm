@@ -18,6 +18,8 @@ import { AssignmentWorkflow } from "./components/mobile/AssignmentWorkflow";
 import { LoadingProgress } from "./components/ui/LoadingProgress";
 import { RMADashboardPage } from "./pages/RMADashboardPage";
 import { TechnicalHeadDashboardPage } from "./pages/TechnicalHeadDashboardPage";
+import { DTRReportDashboard } from "./components/reports/DTRReportDashboard";
+import { EnhancedRMAReportDashboard } from "./components/reports/EnhancedRMAReportDashboard";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -291,6 +293,32 @@ function AppContent() {
       <ErrorBoundary>
         <DataProviderWithProgress>
           <TechnicalHeadDashboardPage />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Check for DTR Reports
+  if (currentHash === '#dtr-reports') {
+    console.log('Showing DTR Report Dashboard');
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <DTRReportDashboard />
+        </DataProviderWithProgress>
+        <ToastContainer />
+      </ErrorBoundary>
+    );
+  }
+
+  // Check for RMA Reports
+  if (currentHash === '#rma-reports') {
+    console.log('Showing RMA Report Dashboard');
+    return (
+      <ErrorBoundary>
+        <DataProviderWithProgress>
+          <EnhancedRMAReportDashboard />
         </DataProviderWithProgress>
         <ToastContainer />
       </ErrorBoundary>

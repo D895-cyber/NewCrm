@@ -6,9 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 interface DTRImportData {
   'Error Date': string;
   'Case # (YYMMxx)': string;
-  'SITE': string;
-  'Unit': string;
-  'Model#': string;
   'Unit Serial#': string;
   'Nature of Problem/Request': string;
   'Action Taken': string;
@@ -16,8 +13,9 @@ interface DTRImportData {
   'Call Status': string;
   'Case Severity': string;
   'Created By': string;
-  'Date': string;
+  'Closed Date': string;
   'Closed By': string;
+  'Closed Remarks': string;
 }
 
 interface ImportResult {
@@ -102,9 +100,6 @@ const DTRBulkImport: React.FC = () => {
   const expectedHeaders = [
     'Error Date',
     'Case # (YYMMxx)',
-    'SITE',
-    'Unit',
-    'Model#',
     'Unit Serial#',
     'Nature of Problem/Request',
     'Action Taken',
@@ -112,19 +107,17 @@ const DTRBulkImport: React.FC = () => {
     'Call Status',
     'Case Severity',
     'Created By',
-    'Date',
-    'Closed By'
+    'Closed Date',
+    'Closed By',
+    'Closed Remarks'
   ];
 
   const downloadTemplate = () => {
     // Create template data with headers and sample row based on your real data
     const templateData = [
       {
-        'Error Date': '45352',
+        'Error Date': '30-05-2025',
         'Case # (YYMMxx)': '616606',
-        'SITE': 'TN01-Palazo Audi#1',
-        'Unit': 'CP2220',
-        'Model#': 'CP2220',
         'Unit Serial#': '479021012',
         'Nature of Problem/Request': 'Lamp fail to strike. IMCB version error',
         'Action Taken': 'Customer detached from site and installed spare projector. Advised troubleshooting to carryout IMCB shuffle and software upgrade',
@@ -132,8 +125,9 @@ const DTRBulkImport: React.FC = () => {
         'Call Status': 'Observation',
         'Case Severity': 'Major',
         'Created By': 'Khushwant',
-        'Date': '44986',
-        'Closed By': 'Arunraj'
+        'Closed Date': '15-06-2025',
+        'Closed By': 'Arunraj',
+        'Closed Remarks': 'Issue resolved after replacement'
       }
     ];
 
@@ -200,11 +194,6 @@ const DTRBulkImport: React.FC = () => {
         errors.push(`Row ${rowNum}: Nature of Problem/Request is required`);
       }
       
-      const site = row['SITE'];
-      if (!site || site.toString().trim() === '' || site.toString().trim() === 'undefined' || site.toString().trim() === 'null') {
-        errors.push(`Row ${rowNum}: SITE is required`);
-      }
-      
       // Very lenient date validation - only check if it's completely invalid
       if (row['Error Date'] && row['Error Date'].toString().trim() !== '') {
         const errorDateStr = row['Error Date'].toString().trim();
@@ -214,10 +203,10 @@ const DTRBulkImport: React.FC = () => {
         }
       }
       
-      if (row['Date'] && row['Date'].toString().trim() !== '') {
-        const dateStr = row['Date'].toString().trim();
+      if (row['Closed Date'] && row['Closed Date'].toString().trim() !== '') {
+        const closedDateStr = row['Closed Date'].toString().trim();
         // Accept any non-empty value for dates - let the backend handle conversion
-        if (dateStr === 'undefined' || dateStr === 'null' || dateStr === 'NaN') {
+        if (closedDateStr === 'undefined' || closedDateStr === 'null' || closedDateStr === 'NaN') {
           // Only flag if it's explicitly these string values
         }
       }
@@ -354,56 +343,124 @@ const DTRBulkImport: React.FC = () => {
           if (!row['Error Date'] || row['Error Date'].toString().trim() === '') return new Date();
           const errorDateStr = row['Error Date'].toString().trim();
           
+          console.log(`🔍 Frontend processing Error Date: "${errorDateStr}"`);
+          
+          // Try DD-MM-YYYY format first
+          const ddmmyyyyMatch = errorDateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+          if (ddmmyyyyMatch) {
+            const [, day, month, year] = ddmmyyyyMatch;
+            const result = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            console.log(`✅ DD-MM-YYYY result:`, result);
+            return result;
+          }
+          
+          // Handle Excel serial numbers
+          if (/^\d+$/.test(errorDateStr)) {
+            const serialNumber = parseInt(errorDateStr);
+            if (!isNaN(serialNumber) && serialNumber > 0) {
+              const result = new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+              console.log(`✅ Excel serial result:`, result);
+              return result;
+            }
+          }
+          
+          // Handle malformed date strings with invalid years
+          if (errorDateStr.includes('+') && errorDateStr.includes('-')) {
+            // Extract just the date part from malformed strings like "+045845-12-31T18:30:00.000Z"
+            const dateMatch = errorDateStr.match(/-(\d{2}-\d{2})T/);
+            if (dateMatch) {
+              const monthDay = dateMatch[1];
+              const currentYear = new Date().getFullYear();
+              const fixedDateStr = `${currentYear}-${monthDay}`;
+              const parsedDate = new Date(fixedDateStr);
+              if (!isNaN(parsedDate.getTime())) {
+                console.log(`✅ Fixed malformed date:`, parsedDate);
+                return parsedDate;
+              }
+            }
+          }
+          
           // Try to parse as regular date first
           const parsedDate = Date.parse(errorDateStr);
           if (!isNaN(parsedDate) && parsedDate > 0) {
-            return new Date(parsedDate);
-          }
-          
-          // Try to parse as Excel serial number
-          const serialNumber = parseInt(errorDateStr);
-          if (!isNaN(serialNumber) && serialNumber > 0) {
-            return new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+            const result = new Date(parsedDate);
+            console.log(`✅ Regular parsing result:`, result);
+            return result;
           }
           
           // Fallback to current date
+          console.log(`⚠️ Using fallback date for: "${errorDateStr}"`);
           return new Date();
         })(),
-        unitModel: row['Model#'] || '',
+        unitModel: '', // Auto-populated from Unit Serial#
         problemName: row['Nature of Problem/Request'],
         actionTaken: row['Action Taken'] || '',
         remarks: row['Remarks'] || '',
         callStatus: row['Call Status'] || 'Open',
-        caseSeverity: row['Case Severity'] || 'Medium',
-        siteName: row['SITE'],
-        siteCode: row['SITE'],
-        region: 'Unknown',
+        caseSeverity: row['Case Severity'] || 'Minor',
+        siteName: '', // Auto-populated from Unit Serial#
+        siteCode: '', // Auto-populated from Unit Serial#
+        region: '', // Auto-populated from Unit Serial#
         status: (row['Call Status'] === 'Closed' || row['Call Status'] === 'closed') ? 'Closed' : 'Open',
         closedBy: row['Closed By'] ? {
           name: row['Closed By'],
+          designation: 'Imported',
+          contact: 'imported@system.com',
           closedDate: (() => {
-            if (!row['Date'] || row['Date'].toString().trim() === '') return new Date();
-            const dateStr = row['Date'].toString().trim();
+            if (!row['Closed Date'] || row['Closed Date'].toString().trim() === '') return new Date();
+            const dateStr = row['Closed Date'].toString().trim();
+            
+            console.log(`🔍 Frontend processing Closed Date: "${dateStr}"`);
+            
+            // Try DD-MM-YYYY format first
+            const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+            if (ddmmyyyyMatch) {
+              const [, day, month, year] = ddmmyyyyMatch;
+              const result = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              console.log(`✅ DD-MM-YYYY Closed Date result:`, result);
+              return result;
+            }
+            
+            // Handle Excel serial numbers
+            if (/^\d+$/.test(dateStr)) {
+              const serialNumber = parseInt(dateStr);
+              if (!isNaN(serialNumber) && serialNumber > 0) {
+                const result = new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+                console.log(`✅ Excel serial Closed Date result:`, result);
+                return result;
+              }
+            }
             
             // Try to parse as regular date first
             const parsedDate = Date.parse(dateStr);
             if (!isNaN(parsedDate) && parsedDate > 0) {
-              return new Date(parsedDate);
-            }
-            
-            // Try to parse as Excel serial number
-            const serialNumber = parseInt(dateStr);
-            if (!isNaN(serialNumber) && serialNumber > 0) {
-              return new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+              const result = new Date(parsedDate);
+              console.log(`✅ Regular Closed Date result:`, result);
+              return result;
             }
             
             // Fallback to current date
+            console.log(`⚠️ Using fallback Closed Date for: "${dateStr}"`);
             return new Date();
-          })()
-        } : null
+          })(),
+          userId: 'imported'
+        } : null,
+        closedRemarks: row['Closed Remarks'] || ''
       }));
       
       console.log('Sending data to backend:', { dtrs: transformedData.slice(0, 2) }); // Log first 2 items for debugging
+      
+      // Debug the date fields specifically
+      transformedData.slice(0, 2).forEach((dtr, index) => {
+        console.log(`DTR ${index + 1} dates:`, {
+          errorDate: dtr.errorDate,
+          errorDateType: typeof dtr.errorDate,
+          errorDateValid: dtr.errorDate instanceof Date && !isNaN(dtr.errorDate.getTime()),
+          closedDate: dtr.closedBy?.closedDate,
+          closedDateType: typeof dtr.closedBy?.closedDate,
+          closedDateValid: dtr.closedBy?.closedDate instanceof Date && !isNaN(dtr.closedBy.closedDate.getTime())
+        });
+      });
       
       const response = await makeAuthenticatedRequest('/api/dtr/bulk-import', {
         method: 'POST',
@@ -479,26 +536,26 @@ const DTRBulkImport: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="bg-gray-900 text-white rounded-lg shadow-lg p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <FileText className="w-6 h-6 text-blue-600" />
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <FileText className="w-6 h-6 text-blue-400" />
           DTR Bulk Import
         </h2>
         <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">Token Status:</span> 
-            <span className={`ml-1 px-2 py-1 rounded text-xs ${
-              tokenStatus.includes('Valid') ? 'bg-green-100 text-green-800' :
-              tokenStatus.includes('expired') || tokenStatus.includes('Invalid') || tokenStatus.includes('No token') ? 'bg-red-100 text-red-800' :
-              'bg-yellow-100 text-yellow-800'
+          <div className="text-sm text-gray-100">
+            <span className="font-semibold">Token Status:</span> 
+            <span className={`ml-1 px-3 py-1 rounded-md text-xs font-bold ${
+              tokenStatus.includes('Valid') ? 'bg-green-700 text-green-100' :
+              tokenStatus.includes('expired') || tokenStatus.includes('Invalid') || tokenStatus.includes('No token') ? 'bg-red-700 text-red-100' :
+              'bg-yellow-700 text-yellow-100'
             }`}>
               {tokenStatus}
             </span>
           </div>
           <button
             onClick={checkTokenStatus}
-            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-sm bg-gray-600 text-gray-100 rounded-md hover:bg-gray-500 transition-colors font-semibold border border-gray-500"
           >
             Refresh
           </button>
@@ -530,12 +587,12 @@ const DTRBulkImport: React.FC = () => {
 
       {/* File Upload Section */}
       <div className="mb-6">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+        <div className="border-2 border-dashed border-gray-500 rounded-lg p-8 text-center bg-gray-800">
+          <Upload className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-100 mb-2">
             Upload Excel File
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-200 mb-4">
             Select an Excel file with DTR data matching the template format
           </p>
           <input
@@ -558,12 +615,12 @@ const DTRBulkImport: React.FC = () => {
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <h4 className="font-semibold text-red-800">Validation Errors</h4>
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <h4 className="font-semibold text-red-200">Validation Errors</h4>
           </div>
-          <ul className="text-red-700 space-y-1">
+          <ul className="text-red-300 space-y-1">
             {validationErrors.map((error, index) => (
               <li key={index} className="text-sm">• {error}</li>
             ))}
@@ -575,13 +632,13 @@ const DTRBulkImport: React.FC = () => {
       {originalData.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-700">
+            <h3 className="text-lg font-semibold text-gray-100">
               Preview Data ({originalData.length} rows)
             </h3>
             <div className="flex gap-2">
               <button
                 onClick={clearImport}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-gray-200 border border-gray-500 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Clear
               </button>
@@ -606,30 +663,64 @@ const DTRBulkImport: React.FC = () => {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-              <thead className="bg-gray-50">
+            <table className="min-w-full bg-gray-800 border border-gray-600 rounded-lg">
+              <thead className="bg-gray-700">
                 <tr>
                   {expectedHeaders.map((header) => (
-                    <th key={header} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                    <th key={header} className="px-3 py-2 text-left text-xs font-medium text-gray-200 uppercase tracking-wider border-b border-gray-600">
                       {header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-600">
                 {originalData.slice(0, 5).map((row, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    {expectedHeaders.map((header) => (
-                      <td key={header} className="px-3 py-2 text-sm text-gray-900 border-b">
-                        {row[header as keyof DTRImportData] || '-'}
-                      </td>
-                    ))}
+                  <tr key={index} className="hover:bg-gray-700">
+                    {expectedHeaders.map((header) => {
+                      let displayValue = row[header as keyof DTRImportData] || '-';
+                      
+                      // Format dates for preview
+                      if (header === 'Error Date' || header === 'Closed Date') {
+                        if (displayValue && displayValue !== '-') {
+                          const dateStr = displayValue.toString().trim();
+                          
+                          // Try DD-MM-YYYY format first
+                          const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+                          if (ddmmyyyyMatch) {
+                            const [, day, month, year] = ddmmyyyyMatch;
+                            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                            displayValue = date.toLocaleDateString('en-GB');
+                          }
+                          // Handle Excel serial numbers
+                          else if (/^\d+$/.test(dateStr)) {
+                            const serialNumber = parseInt(dateStr);
+                            if (!isNaN(serialNumber) && serialNumber > 0) {
+                              const date = new Date(serialNumber * 24 * 60 * 60 * 1000 + new Date(1900, 0, 1).getTime());
+                              displayValue = date.toLocaleDateString('en-GB');
+                            }
+                          }
+                          // Try regular date parsing
+                          else {
+                            const parsedDate = new Date(dateStr);
+                            if (!isNaN(parsedDate.getTime())) {
+                              displayValue = parsedDate.toLocaleDateString('en-GB');
+                            }
+                          }
+                        }
+                      }
+                      
+                      return (
+                        <td key={header} className="px-3 py-2 text-sm text-gray-100 border-b border-gray-600">
+                          {displayValue}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
             {originalData.length > 5 && (
-              <p className="text-sm text-gray-500 mt-2 text-center">
+              <p className="text-sm text-gray-300 mt-2 text-center">
                 Showing first 5 rows of {originalData.length} total rows
               </p>
             )}
@@ -641,48 +732,48 @@ const DTRBulkImport: React.FC = () => {
       {importResult && (
         <div className={`p-4 rounded-lg border ${
           importResult.success 
-            ? 'bg-green-50 border-green-200' 
-            : 'bg-red-50 border-red-200'
+            ? 'bg-green-900 border-green-700' 
+            : 'bg-red-900 border-red-700'
         }`}>
           <div className="flex items-center gap-2 mb-2">
             {importResult.success ? (
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <CheckCircle className="w-5 h-5 text-green-400" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600" />
+              <AlertCircle className="w-5 h-5 text-red-400" />
             )}
             <h4 className={`font-semibold ${
-              importResult.success ? 'text-green-800' : 'text-red-800'
+              importResult.success ? 'text-green-200' : 'text-red-200'
             }`}>
               {importResult.success ? 'Import Completed' : 'Import Failed'}
             </h4>
           </div>
           <p className={`${
-            importResult.success ? 'text-green-700' : 'text-red-700'
+            importResult.success ? 'text-green-300' : 'text-red-300'
           }`}>
             {importResult.message}
           </p>
           
           {/* Import Statistics */}
           <div className="grid grid-cols-2 gap-4 my-3">
-            <div className="bg-white bg-opacity-50 p-3 rounded border">
-              <div className="font-medium text-green-700">✅ Successful</div>
-              <div className="text-2xl font-bold text-green-800">{importResult.imported}</div>
+            <div className="bg-gray-800 p-3 rounded border border-gray-600">
+              <div className="font-medium text-green-300">✅ Successful</div>
+              <div className="text-2xl font-bold text-green-200">{importResult.imported}</div>
             </div>
-            <div className="bg-white bg-opacity-50 p-3 rounded border">
-              <div className="font-medium text-red-700">❌ Failed</div>
-              <div className="text-2xl font-bold text-red-800">{importResult.failed}</div>
+            <div className="bg-gray-800 p-3 rounded border border-gray-600">
+              <div className="font-medium text-red-300">❌ Failed</div>
+              <div className="text-2xl font-bold text-red-200">{importResult.failed}</div>
             </div>
           </div>
           
           {importResult.errors.length > 0 && (
             <div className="mt-3">
-              <h5 className="font-medium mb-2 text-red-800">Error Details:</h5>
+              <h5 className="font-medium mb-2 text-red-200">Error Details:</h5>
               <ul className="space-y-1 max-h-32 overflow-y-auto">
                 {importResult.errors.slice(0, 10).map((error, index) => (
-                  <li key={index} className="text-sm text-red-600">• {error}</li>
+                  <li key={index} className="text-sm text-red-300">• {error}</li>
                 ))}
                 {importResult.errors.length > 10 && (
-                  <li className="text-sm text-gray-600">... and {importResult.errors.length - 10} more errors</li>
+                  <li className="text-sm text-gray-300">... and {importResult.errors.length - 10} more errors</li>
                 )}
               </ul>
             </div>
@@ -691,15 +782,16 @@ const DTRBulkImport: React.FC = () => {
       )}
 
       {/* Instructions */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h4 className="font-semibold text-blue-800 mb-2">Import Instructions</h4>
-        <ul className="text-blue-700 text-sm space-y-1">
+      <div className="mt-6 p-4 bg-blue-900 border border-blue-700 rounded-lg">
+        <h4 className="font-semibold text-blue-100 mb-2">Import Instructions</h4>
+        <ul className="text-blue-200 text-sm space-y-1">
           <li>• Download the template to see the exact format required</li>
           <li>• All headers must match exactly (case-sensitive)</li>
-          <li>• Unit Serial#, Nature of Problem/Request, and SITE are required fields</li>
-          <li>• Dates can be in any format (Excel serial numbers, date strings, etc.)</li>
-          <li>• Call Status must be: Open, Observation, Closed, closed, Waiting_Cust_Responses, or RMA Part return to CDS</li>
-          <li>• Case Severity must be: High, Major, Minor, Information, or Critical</li>
+          <li>• Unit Serial# and Nature of Problem/Request are required fields</li>
+          <li>• SITE, Unit Model, and Auditorium are automatically populated from Unit Serial#</li>
+          <li>• Dates should be in DD-MM-YYYY format (e.g., 30-05-2025) or Excel serial numbers</li>
+          <li>• Call Status must be: Closed, Observation, Open, RMA Part return to CDS, Waiting_Cust_Responses, blank</li>
+          <li>• Case Severity must be: Critical, Information, Major, Minor, Low, blank</li>
         </ul>
       </div>
     </div>

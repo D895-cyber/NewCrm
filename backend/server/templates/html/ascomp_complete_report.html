@@ -104,6 +104,31 @@
             height: 80px;
             resize: vertical;
         }
+        .photo-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .photo-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .photo-img {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto 10px;
+        }
+        .photo-caption {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -458,17 +483,39 @@
         </table>
     </div>
 
+    <!-- Photo Documentation Section -->
+    {{#if hasPhotos}}
+    <div class="report-section">
+        <h3>Photo Documentation</h3>
+        <div class="photo-gallery">
+            {{#eachPhoto photos}}
+            <div class="photo-item">
+                <img src="{{embedPhoto photoUrl}}" alt="{{description}}" class="photo-img">
+                <div class="photo-caption">
+                    <strong>Photo {{index}}:</strong> {{description}}
+                    {{#if category}}<br><em>Category: {{category}}</em>{{/if}}
+                </div>
+            </div>
+            {{/eachPhoto}}
+        </div>
+    </div>
+    {{/if}}
+
     <div class="signature-section">
         <div class="signature-box">
             Client's Signature & Stamp
-            {{#if clientSignature}}
-            <br><img src="{{clientSignature}}" alt="Client Signature" class="signature-img">
+            {{#if hasClientSignature}}
+            <br><img src="{{embedSignature signatures.client}}" alt="Client Signature" class="signature-img">
+            {{else}}
+            <br><em>No signature provided</em>
             {{/if}}
         </div>
         <div class="signature-box">
             Engineer's Signature
-            {{#if engineerSignature}}
-            <br><img src="{{engineerSignature}}" alt="Engineer Signature" class="signature-img">
+            {{#if hasEngineerSignature}}
+            <br><img src="{{embedSignature signatures.engineer}}" alt="Engineer Signature" class="signature-img">
+            {{else}}
+            <br><em>No signature provided</em>
             {{/if}}
             <br><br>
             <strong>{{default engineer.name 'N/A'}}</strong><br>

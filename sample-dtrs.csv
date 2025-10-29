@@ -1,0 +1,12 @@
+Error Date,Case # (YYMMxx),SITE,Unit,Model#,Unit Serial#,Nature of Problem/Request,Action Taken,Remarks,Call Status,Case Severity,Created By,Date,Closed By
+2024-01-10,DTR-2024-001,TechCorp Mumbai Office,Projector,Epson EB-X41,EP2024001,No display output lamp indicator shows error,Lamp assembly replacement required,Lamp hours exceeded needs replacement,Open,High,Rajesh Kumar,2024-01-10,
+2024-01-11,DTR-2024-002,EduTech Bangalore Campus,Projector,Epson EB-X06,EP2024004,Dim display flickering image lamp hours exceeded,Lamp replacement in progress,Lamp replacement scheduled,In Progress,Medium,Priya Sharma,2024-01-11,
+2024-01-12,DTR-2024-003,MediCare Delhi Hospital,Projector,BenQ MW632ST,BQ2024001,Power issues intermittent shutdowns overheating,Power supply unit replacement completed,Critical medical equipment affected,Closed,Critical,Dr. Amit Patel,2024-01-12,Technical Support
+2024-01-13,DTR-2024-004,Finance Corp Chennai,Projector,Sony VPL-FHZ75,SN2024001,Color distortion in display,Color wheel replacement required,Color wheel malfunction detected,Open,Medium,Arun Kumar,2024-01-13,
+2024-01-14,DTR-2024-005,Retail Chain Pune,Projector,Optoma HD146X,OP2024001,Remote control not working,Remote control replacement,IR sensor issue,In Progress,Low,Sneha Patel,2024-01-14,
+
+
+
+
+
+

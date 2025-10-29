@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Replacement Name Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        .test-case {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .before {
+            background-color: #4d1e1e;
+            border-left: 4px solid #dc3545;
+        }
+        .after {
+            background-color: #1e4d2b;
+            border-left: 4px solid #28a745;
+        }
+        .keyword {
+            background-color: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Comprehensive Replacement Name Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>Issue from Image</h3>
+        <p>From the image, we can see that the replacement part name is showing "Integrator rod chipped" (a symptom description) instead of the actual part name. The comprehensive fix has been applied to detect more symptom patterns.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Comprehensive Symptom Keywords Detection</h3>
+        <p>The system now detects these comprehensive symptom keywords:</p>
+        <div class="test-case">
+            <h4>Basic Keywords:</h4>
+            <span class="keyword">chipped</span>
+            <span class="keyword">broken</span>
+            <span class="keyword">faulty</span>
+            <span class="keyword">defect</span>
+            <span class="keyword">failure</span>
+            <span class="keyword">marriage</span>
+        </div>
+        <div class="test-case">
+            <h4>Specific Part Keywords:</h4>
+            <span class="keyword">rod chipped</span>
+            <span class="keyword">integrator rod</span>
+            <span class="keyword">prism chipped</span>
+            <span class="keyword">segmen prism</span>
+        </div>
+        <div class="test-case">
+            <h4>Technical Issue Keywords:</h4>
+            <span class="keyword">connection lost</span>
+            <span class="keyword">power cycle</span>
+            <span class="keyword">marriage failure</span>
+            <span class="keyword">imb marriage</span>
+        </div>
+        <div class="test-case">
+            <h4>General Problem Keywords:</h4>
+            <span class="keyword">cracked</span>
+            <span class="keyword">damaged</span>
+            <span class="keyword">malfunction</span>
+            <span class="keyword">error</span>
+            <span class="keyword">issue</span>
+            <span class="keyword">problem</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Cases</h3>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section success">
+        <h3>Expected Result</h3>
+        <p>After refreshing the page, the replacement part name should now show:</p>
+        <ul>
+            <li><strong>Instead of:</strong> "Integrator rod chipped" (symptom)</li>
+            <li><strong>Should show:</strong> "Assy. Integrator rod" (actual part name)</li>
+        </ul>
+        <p>The part number (003-001529-01) remains unchanged, only the display name is corrected.</p>
+    </div>
+
+    <div class="test-section warning">
+        <h3>Files Updated</h3>
+        <ol>
+            <li><strong>frontend/src/components/pages/RMAPage.tsx</strong> - Data mapping and display logic</li>
+            <li><strong>frontend/src/pages/RMADashboardPage.tsx</strong> - Data mapping and display logic</li>
+            <li><strong>frontend/src/components/analytics/RMAOverdueAnalysis.tsx</strong> - Display logic</li>
+        </ol>
+    </div>
+
+    <script>
+        // Test the comprehensive fix logic
+        function testReplacementNameFix() {
+            const testCases = [
+                {
+                    name: "Integrator rod chipped",
+                    backendData: {
+                        defectivePartName: "Assy. Integrator rod",
+                        replacedPartName: "Integrator rod chipped"
+                    },
+                    expected: "Assy. Integrator rod"
+                },
+                {
+                    name: "Two segmen prism chipped",
+                    backendData: {
+                        defectivePartName: "Assy. Light Engine",
+                        replacedPartName: "Two segmen prism chipped"
+                    },
+                    expected: "Assy. Light Engine"
+                },
+                {
+                    name: "IMB Marriage Failure",
+                    backendData: {
+                        defectivePartName: "Assy. PIB",
+                        replacedPartName: "IMB Marriage Failure"
+                    },
+                    expected: "Assy. PIB"
+                },
+                {
+                    name: "Connection lost",
+                    backendData: {
+                        defectivePartName: "Power Supply Unit",
+                        replacedPartName: "Connection lost"
+                    },
+                    expected: "Power Supply Unit"
+                },
+                {
+                    name: "Valid replacement part name",
+                    backendData: {
+                        defectivePartName: "Old Component",
+                        replacedPartName: "New Component (Replacement)"
+                    },
+                    expected: "New Component (Replacement)"
+                }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            resultsContainer.innerHTML = '';
+
+            testCases.forEach((testCase, index) => {
+                const result = (() => {
+                    const replacedName = testCase.backendData.replacedPartName || 'N/A';
+                    const defectiveName = testCase.backendData.defectivePartName || 'Projector Component';
+                    
+                    // Check if the replacement part name contains symptom keywords
+                    const symptomKeywords = [
+                        'chipped', 'broken', 'faulty', 'defect', 'failure', 'marriage',
+                        'rod chipped', 'integrator rod', 'prism chipped', 'segmen prism',
+                        'connection lost', 'power cycle', 'marriage failure', 'imb marriage',
+                        'cracked', 'damaged', 'malfunction', 'error', 'issue', 'problem'
+                    ];
+                    
+                    if (replacedName === 'N/A' || 
+                        symptomKeywords.some(keyword => replacedName.toLowerCase().includes(keyword.toLowerCase()))) {
+                        return defectiveName;
+                    }
+                    return replacedName;
+                })();
+                
+                const isCorrect = result === testCase.expected;
+                const testDiv = document.createElement('div');
+                testDiv.className = `test-case ${isCorrect ? 'after' : 'before'}`;
+                testDiv.innerHTML = `
+                    <h4>Test ${index + 1}: ${testCase.name}</h4>
+                    <p><strong>Input:</strong> "${testCase.backendData.replacedPartName}"</p>
+                    <p><strong>Expected:</strong> "${testCase.expected}"</p>
+                    <p><strong>Result:</strong> "${result}"</p>
+                    <p><strong>Status:</strong> ${isCorrect ? '✅ PASS' : '❌ FAIL'}</p>
+                `;
+                resultsContainer.appendChild(testDiv);
+            });
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testReplacementNameFix);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

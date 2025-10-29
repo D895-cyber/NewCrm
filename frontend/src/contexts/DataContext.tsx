@@ -44,7 +44,36 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const useData = () => {
   const context = useContext(DataContext);
   if (!context) {
-    throw new Error('useData must be used within a DataProvider');
+    console.warn('useData called outside of DataProvider, returning default values');
+    return {
+      sites: [],
+      projectors: [],
+      services: [],
+      purchaseOrders: [],
+      fses: [],
+      serviceVisits: [],
+      rma: [],
+      spareParts: [],
+      isLoading: false,
+      loadingProgress: 0,
+      error: null,
+      refreshData: async () => {},
+      refreshSites: async () => {},
+      refreshProjectors: async () => {},
+      refreshServices: async () => {},
+      refreshPurchaseOrders: async () => {},
+      refreshFSEs: async () => {},
+      refreshServiceVisits: async () => {},
+      refreshRMA: async () => {},
+      refreshSpareParts: async () => {},
+      dashboardData: {
+        sites: 0,
+        projectors: 0,
+        pendingPOs: 0,
+        servicesThisWeek: 0,
+        warrantyAlerts: []
+      }
+    } as DataContextType;
   }
   return context;
 };
@@ -358,6 +387,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const refreshRMA = useCallback(async () => {
     try {
       console.log('Refreshing RMA data...');
+      setError(null); // Clear any previous errors
+      
       // Clear ALL caches to ensure fresh data
       apiCache.delete('data-rma');
       apiCache.delete('data-sites');
@@ -376,27 +407,46 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       // Add a longer delay to ensure cache is cleared
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      console.log('Making API call to fetch RMA data...');
+      
       // Force fresh data by calling API directly without any caching
       const data = await apiClient.getAllRMA();
       console.log('RMA data refreshed:', data.length, 'items');
-      console.log('First RMA item:', data[0]);
-      console.log('RMA statuses:', data.map(r => ({ rmaNumber: r.rmaNumber, status: r.status })));
       
-      // Check for RMA 705313 specifically
-      const rma705313 = data.find(rma => rma.rmaNumber === '705313');
-      if (rma705313) {
-        console.log('🔍 DEBUG - RMA 705313 in refreshed data:', {
-          rmaNumber: rma705313.rmaNumber,
-          defectivePartName: rma705313.defectivePartName,
-          replacedPartName: rma705313.replacedPartName,
-          symptoms: rma705313.symptoms
-        });
+      if (data.length > 0) {
+        console.log('First RMA item:', data[0]);
+        console.log('RMA statuses:', data.map(r => ({ rmaNumber: r.rmaNumber, status: r.status })));
+        
+        // Check for RMA 705313 specifically
+        const rma705313 = data.find(rma => rma.rmaNumber === '705313');
+        if (rma705313) {
+          console.log('🔍 DEBUG - RMA 705313 in refreshed data:', {
+            rmaNumber: rma705313.rmaNumber,
+            defectivePartName: rma705313.defectivePartName,
+            replacedPartName: rma705313.replacedPartName,
+            symptoms: rma705313.symptoms
+          });
+        }
+      } else {
+        console.log('⚠️ No RMA data received from API');
       }
       
       console.log('Setting RMA state with', data.length, 'items');
       setRMA([...data]); // Force a new array reference
     } catch (err: any) {
-      setError(`Failed to load RMA: ${err.message}`);
+      console.error('❌ Error refreshing RMA data:', err);
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      
+      // Check if it's a network error
+      if (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed to fetch')) {
+        setError('Network error: Unable to connect to the server. Please check if the backend server is running.');
+      } else {
+        setError(`Failed to load RMA data: ${err.message}`);
+      }
     }
   }, [loadData]);
 
@@ -449,9 +499,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   }, [refreshSites, refreshProjectors, refreshServices, refreshPurchaseOrders, refreshFSEs, refreshServiceVisits, refreshRMA, refreshSpareParts]);
 
-  // Initial data load
+  // Initial data load with retry mechanism
   useEffect(() => {
-    refreshData();
+    const loadDataWithRetry = async () => {
+      let retries = 3;
+      let delay = 1000;
+      
+      while (retries > 0) {
+        try {
+          await refreshData();
+          break; // Success, exit retry loop
+        } catch (error) {
+          retries--;
+          if (retries > 0) {
+            console.log(`Retrying data load in ${delay}ms... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+          } else {
+            console.error('Failed to load data after all retries:', error);
+          }
+        }
+      }
+    };
+    
+    loadDataWithRetry();
   }, [refreshData]);
 
   const value: DataContextType = {

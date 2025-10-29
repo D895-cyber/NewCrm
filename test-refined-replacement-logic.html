@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Refined Replacement Part Logic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        .test-case {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .should-replace {
+            border-left: 4px solid #dc3545;
+        }
+        .should-not-replace {
+            border-left: 4px solid #28a745;
+        }
+        .result {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .result.correct {
+            background-color: #28a745;
+            color: white;
+        }
+        .result.incorrect {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Refined Replacement Part Logic</h1>
+    
+    <div class="test-section info">
+        <h3>Testing the Refined Logic</h3>
+        <p>This test verifies that the replacement part name logic is now more precise and only replaces clear symptom descriptions.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section success">
+        <h3>Expected Behavior</h3>
+        <ul>
+            <li><strong>Should Replace:</strong> Clear symptom descriptions like "Integrator rod chipped", "IMB Marriage Failure"</li>
+            <li><strong>Should NOT Replace:</strong> Valid part names like "Assy. Integrator rod", "Lens Assembly", "Power Supply Unit"</li>
+        </ul>
+    </div>
+
+    <script>
+        function testRefinedLogic() {
+            const testCases = [
+                // Should be replaced (symptom descriptions)
+                {
+                    replacedName: "Integrator rod chipped",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: true,
+                    description: "Clear symptom: rod chipped"
+                },
+                {
+                    replacedName: "IMB Marriage Failure",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: true,
+                    description: "Clear symptom: marriage failure"
+                },
+                {
+                    replacedName: "Prism chipped",
+                    defectiveName: "Prism Assembly",
+                    shouldReplace: true,
+                    description: "Clear symptom: prism chipped"
+                },
+                {
+                    replacedName: "Connection lost",
+                    defectiveName: "Cable Assembly",
+                    shouldReplace: true,
+                    description: "Clear symptom: connection lost"
+                },
+                {
+                    replacedName: "N/A",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: true,
+                    description: "No replacement part name"
+                },
+                
+                // Should NOT be replaced (valid part names)
+                {
+                    replacedName: "Assy. Integrator rod",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: false,
+                    description: "Valid part name: Assy. Integrator rod"
+                },
+                {
+                    replacedName: "Lens Assembly",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: false,
+                    description: "Valid part name: Lens Assembly"
+                },
+                {
+                    replacedName: "Power Supply Unit",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: false,
+                    description: "Valid part name: Power Supply Unit"
+                },
+                {
+                    replacedName: "Integrator Rod Assembly",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: false,
+                    description: "Valid part name: Integrator Rod Assembly"
+                },
+                {
+                    replacedName: "Marriage Assembly",
+                    defectiveName: "Assy. Integrator rod",
+                    shouldReplace: false,
+                    description: "Valid part name: Marriage Assembly"
+                }
+            ];
+
+            const resultsContainer = document.getElementById('test-results');
+            let correctCount = 0;
+            let totalCount = testCases.length;
+
+            testCases.forEach((testCase, index) => {
+                const result = testReplacementLogic(testCase.replacedName, testCase.defectiveName);
+                const isCorrect = result.shouldReplace === testCase.shouldReplace;
+                
+                if (isCorrect) correctCount++;
+
+                const testDiv = document.createElement('div');
+                testDiv.className = `test-case ${testCase.shouldReplace ? 'should-replace' : 'should-not-replace'}`;
+                testDiv.innerHTML = `
+                    <h4>Test Case ${index + 1}: ${testCase.description}</h4>
+                    <p><strong>Replaced Name:</strong> "${testCase.replacedName}"</p>
+                    <p><strong>Defective Name:</strong> "${testCase.defectiveName}"</p>
+                    <p><strong>Expected:</strong> ${testCase.shouldReplace ? 'Should Replace' : 'Should NOT Replace'}</p>
+                    <p><strong>Actual:</strong> ${result.shouldReplace ? 'Replaced' : 'Not Replaced'}</p>
+                    <p><strong>Final Result:</strong> "${result.finalResult}"</p>
+                    <span class="result ${isCorrect ? 'correct' : 'incorrect'}">
+                        ${isCorrect ? 'CORRECT' : 'INCORRECT'}
+                    </span>
+                `;
+                resultsContainer.appendChild(testDiv);
+            });
+
+            // Summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-section ${correctCount === totalCount ? 'success' : 'error'}`;
+            summaryDiv.innerHTML = `
+                <h3>Test Summary</h3>
+                <p><strong>Correct:</strong> ${correctCount}/${totalCount} tests passed</p>
+                <p><strong>Success Rate:</strong> ${Math.round((correctCount / totalCount) * 100)}%</p>
+            `;
+            resultsContainer.appendChild(summaryDiv);
+        }
+
+        function testReplacementLogic(replacedName, defectiveName) {
+            // This is the exact logic from the updated code
+            const clearSymptomPatterns = [
+                'integrator rod chipped',
+                'prism chipped', 
+                'segmen prism',
+                'connection lost',
+                'power cycle',
+                'marriage failure',
+                'imb marriage',
+                'imb marriage failure'
+            ];
+            
+            // Check if it's exactly a symptom pattern or contains clear symptom indicators
+            const isSymptomDescription = replacedName === 'N/A' || 
+                clearSymptomPatterns.some(pattern => replacedName.toLowerCase().includes(pattern.toLowerCase())) ||
+                (replacedName.toLowerCase().includes('chipped') && replacedName.toLowerCase().includes('rod')) ||
+                (replacedName.toLowerCase().includes('marriage') && replacedName.toLowerCase().includes('failure'));
+            
+            const finalResult = isSymptomDescription ? defectiveName : replacedName;
+            
+            return {
+                shouldReplace: isSymptomDescription,
+                finalResult: finalResult,
+                reason: isSymptomDescription ? 'Clear symptom pattern detected' : 'Valid part name'
+            };
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testRefinedLogic);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

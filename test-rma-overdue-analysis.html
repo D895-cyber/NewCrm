@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMA Overdue Analysis Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        .analysis-display {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .summary-card {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            display: inline-block;
+            width: 200px;
+            margin-right: 15px;
+        }
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+        .summary-card .number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .overdue-item {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .critical { border-left: 4px solid #dc3545; }
+        .urgent { border-left: 4px solid #fd7e14; }
+        .overdue { border-left: 4px solid #ffc107; }
+        .recommendation {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .recommendation.critical { border-left: 4px solid #dc3545; }
+        .recommendation.urgent { border-left: 4px solid #fd7e14; }
+        .recommendation.process { border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>RMA Overdue Analysis Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Overview</h3>
+        <p>This test verifies the RMA overdue analysis functionality that identifies RMAs overdue for 30+ days from the raised date.</p>
+        <ul>
+            <li><strong>Backend API:</strong> <code>/api/rma/analytics/overdue</code></li>
+            <li><strong>Frontend Component:</strong> RMAOverdueAnalysis</li>
+            <li><strong>Integration:</strong> Added as tab in RMA Management page</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Test API Endpoint</h3>
+        <button onclick="testOverdueAPI()">Test Overdue Analysis API</button>
+        <button onclick="testWithFilters()">Test with Filters</button>
+        <div id="api-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected Analysis Features</h3>
+        <div id="expected-features"></div>
+    </div>
+
+    <div class="test-section warning">
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>30+ Day Analysis:</strong> Identifies RMAs raised 30+ days ago that are not completed</li>
+            <li><strong>Severity Levels:</strong> Critical (60+ days), Urgent (45-59 days), Overdue (30-44 days)</li>
+            <li><strong>Breakdown Analysis:</strong> By status, priority, and site</li>
+            <li><strong>Smart Recommendations:</strong> Actionable insights based on patterns</li>
+            <li><strong>Filtering Options:</strong> By days overdue and status</li>
+            <li><strong>Visual Indicators:</strong> Color-coded severity levels and status badges</li>
+        </ul>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:4000/api';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const resultsDiv = document.getElementById('api-results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        async function testOverdueAPI() {
+            const resultDiv = document.getElementById('api-results');
+            resultDiv.innerHTML = '<p>Testing overdue analysis API...</p>';
+            
+            try {
+                log('Testing overdue analysis API...', 'info');
+                
+                const response = await fetch(`${API_BASE}/rma/analytics/overdue?days=30&status=all`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${errorData.error || response.statusText}`);
+                }
+                
+                const analysis = await response.json();
+                log(`API test successful! Found ${analysis.summary.totalOverdue} overdue RMAs`, 'success');
+                
+                // Display the analysis
+                displayAnalysis(analysis);
+                
+            } catch (error) {
+                log(`API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWithFilters() {
+            const resultDiv = document.getElementById('api-results');
+            resultDiv.innerHTML = '<p>Testing with different filters...</p>';
+            
+            try {
+                // Test with 45+ days filter
+                log('Testing with 45+ days filter...', 'info');
+                const response45 = await fetch(`${API_BASE}/rma/analytics/overdue?days=45&status=all`);
+                const analysis45 = await response45.json();
+                log(`45+ days filter: ${analysis45.summary.totalOverdue} overdue RMAs`, 'success');
+                
+                // Test with status filter
+                log('Testing with status filter...', 'info');
+                const responseStatus = await fetch(`${API_BASE}/rma/analytics/overdue?days=30&status=Under Review`);
+                const analysisStatus = await responseStatus.json();
+                log(`Under Review filter: ${analysisStatus.summary.totalOverdue} overdue RMAs`, 'success');
+                
+                // Display comparison
+                const comparisonDiv = document.createElement('div');
+                comparisonDiv.className = 'analysis-display';
+                comparisonDiv.innerHTML = `
+                    <h4>Filter Comparison</h4>
+                    <div class="summary-card">
+                        <h3>30+ Days (All)</h3>
+                        <div class="number">${analysis45.summary.totalOverdue}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>45+ Days (All)</h3>
+                        <div class="number">${analysis45.summary.totalOverdue}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>30+ Days (Under Review)</h3>
+                        <div class="number">${analysisStatus.summary.totalOverdue}</div>
+                    </div>
+                `;
+                resultDiv.appendChild(comparisonDiv);
+                
+            } catch (error) {
+                log(`Filter test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function displayAnalysis(analysis) {
+            const resultDiv = document.getElementById('api-results');
+            
+            const analysisDiv = document.createElement('div');
+            analysisDiv.className = 'analysis-display';
+            
+            // Summary
+            analysisDiv.innerHTML = `
+                <h3>Analysis Summary</h3>
+                <div class="summary-card">
+                    <h3>Total Overdue</h3>
+                    <div class="number">${analysis.summary.totalOverdue}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Critical (60+ days)</h3>
+                    <div class="number" style="color: #dc3545;">${analysis.summary.criticalCount}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Urgent (45-59 days)</h3>
+                    <div class="number" style="color: #fd7e14;">${analysis.summary.urgentCount}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Avg Days Overdue</h3>
+                    <div class="number">${analysis.summary.averageDaysOverdue}</div>
+                </div>
+            `;
+            
+            // Recommendations
+            if (analysis.recommendations.length > 0) {
+                analysisDiv.innerHTML += '<h4>Recommendations</h4>';
+                analysis.recommendations.forEach(rec => {
+                    analysisDiv.innerHTML += `
+                        <div class="recommendation ${rec.type}">
+                            <strong>${rec.message}</strong><br>
+                            <em>Action: ${rec.action}</em>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Sample overdue RMAs
+            if (analysis.overdueRMAs.length > 0) {
+                analysisDiv.innerHTML += '<h4>Sample Overdue RMAs</h4>';
+                analysis.overdueRMAs.slice(0, 3).forEach(rma => {
+                    const severity = rma.daysOverdue >= 60 ? 'critical' : 
+                                   rma.daysOverdue >= 45 ? 'urgent' : 'overdue';
+                    const defectivePart = rma.defectivePartName || rma.productName || 'N/A';
+                    const replacementPart = rma.replacedPartName || 'Not Assigned';
+                    analysisDiv.innerHTML += `
+                        <div class="overdue-item ${severity}">
+                            <strong>${rma.rmaNumber}</strong> - ${rma.siteName}<br>
+                            <small>Defective: ${defectivePart}${rma.defectivePartNumber ? ' (#' + rma.defectivePartNumber + ')' : ''}</small><br>
+                            <small>Replacement: ${replacementPart}${rma.replacedPartNumber ? ' (#' + rma.replacedPartNumber + ')' : ''}</small><br>
+                            <small>Status: ${rma.caseStatus} | Priority: ${rma.priority} | Days Overdue: ${rma.daysOverdue}</small>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultDiv.appendChild(analysisDiv);
+        }
+
+        // Auto-generate expected features
+        window.addEventListener('load', () => {
+            const featuresDiv = document.getElementById('expected-features');
+            
+            featuresDiv.innerHTML = `
+                <h4>Expected Analysis Features:</h4>
+                <ul>
+                    <li><strong>Summary Cards:</strong> Total overdue, critical count, urgent count, average days</li>
+                    <li><strong>Severity Classification:</strong>
+                        <ul>
+                            <li>Critical: 60+ days overdue (red indicator)</li>
+                            <li>Urgent: 45-59 days overdue (orange indicator)</li>
+                            <li>Overdue: 30-44 days overdue (yellow indicator)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Breakdown Analysis:</strong>
+                        <ul>
+                            <li>By Status: Under Review, RMA Raised Yet to Deliver, etc.</li>
+                            <li>By Priority: Critical, High, Medium, Low</li>
+                            <li>By Site: Which sites have most overdue RMAs</li>
+                        </ul>
+                    </li>
+                    <li><strong>Smart Recommendations:</strong>
+                        <ul>
+                            <li>Process bottlenecks (too many in "Under Review")</li>
+                            <li>Logistics issues (delivery delays)</li>
+                            <li>Priority escalations (high/critical priority overdue)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Filtering Options:</strong>
+                        <ul>
+                            <li>Days overdue: 30+, 45+, 60+, 90+</li>
+                            <li>Status filter: All, Under Review, RMA Raised Yet to Deliver, etc.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Interactive Features:</strong>
+                        <ul>
+                            <li>Tabbed interface in RMA Management page</li>
+                            <li>Real-time refresh capability</li>
+                            <li>Detailed RMA list with severity indicators</li>
+                        </ul>
+                    </li>
+                    <li><strong>Part Information Display:</strong>
+                        <ul>
+                            <li>Defective Part: Shows part name and part number</li>
+                            <li>Replacement Part: Shows replacement part name and number</li>
+                            <li>Clear distinction between defective and replacement parts</li>
+                            <li>Fallback to product name if part details not available</li>
+                        </ul>
+                    </li>
+                </ul>
+            `;
+        });
+    </script>
+</body>
+</html>

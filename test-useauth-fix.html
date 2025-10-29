@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test useAuth Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        .step {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.running {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.stopped {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test useAuth Fix</h1>
+    
+    <div class="test-section info">
+        <h3>Server Status Check</h3>
+        <p>Let's verify that both servers are running and the useAuth error is fixed.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Server Status</h3>
+        <div id="server-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Instructions</h3>
+        <div class="step">
+            <h4>Step 1: Open the Application</h4>
+            <p>Open your browser and go to: <a href="http://localhost:3000" target="_blank" style="color: #87ceeb;">http://localhost:3000</a></p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 2: Check for Errors</h4>
+            <p>Open Developer Tools (F12) and check the Console tab for any "useAuth must be used within an AuthProvider" errors.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 3: Expected Result</h4>
+            <p>You should see either:</p>
+            <ul>
+                <li><strong>Login Page:</strong> If not authenticated, you should see the login page without any useAuth errors</li>
+                <li><strong>Dashboard:</strong> If authenticated, you should see the appropriate dashboard without any useAuth errors</li>
+                <li><strong>Loading Screen:</strong> You might see a brief "Initializing..." screen while the AuthProvider initializes</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>What Was Fixed</h3>
+        <ul>
+            <li><strong>AuthProvider Initialization:</strong> Added proper initialization state to prevent components from rendering before the provider is ready</li>
+            <li><strong>Error Handling:</strong> Enhanced error handling in the useAuth hook</li>
+            <li><strong>Loading State:</strong> Added a loading screen while the AuthProvider initializes</li>
+        </ul>
+    </div>
+
+    <div class="test-section success">
+        <h3>Next Steps</h3>
+        <p>Once the useAuth error is fixed and the application loads properly, we can test the replacement part name fix for RMA #705313.</p>
+    </div>
+
+    <script>
+        // Check server status
+        async function checkServerStatus() {
+            const statusContainer = document.getElementById('server-status');
+            
+            // Check frontend server
+            try {
+                const frontendResponse = await fetch('http://localhost:3000');
+                const frontendStatus = frontendResponse.ok ? 'running' : 'stopped';
+                statusContainer.innerHTML += `
+                    <div class="step">
+                        <strong>Frontend Server (Port 3000):</strong> 
+                        <span class="status ${frontendStatus}">${frontendStatus.toUpperCase()}</span>
+                    </div>
+                `;
+            } catch (error) {
+                statusContainer.innerHTML += `
+                    <div class="step">
+                        <strong>Frontend Server (Port 3000):</strong> 
+                        <span class="status stopped">STOPPED</span>
+                    </div>
+                `;
+            }
+            
+            // Check backend server
+            try {
+                const backendResponse = await fetch('http://localhost:4000/api/health');
+                const backendStatus = backendResponse.ok ? 'running' : 'stopped';
+                statusContainer.innerHTML += `
+                    <div class="step">
+                        <strong>Backend Server (Port 4000):</strong> 
+                        <span class="status ${backendStatus}">${backendStatus.toUpperCase()}</span>
+                    </div>
+                `;
+            } catch (error) {
+                statusContainer.innerHTML += `
+                    <div class="step">
+                        <strong>Backend Server (Port 4000):</strong> 
+                        <span class="status stopped">STOPPED</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Run the check when page loads
+        window.addEventListener('load', checkServerStatus);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

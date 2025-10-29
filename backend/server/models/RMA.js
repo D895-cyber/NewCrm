@@ -586,6 +586,82 @@ const rmaSchema = new mongoose.Schema({
       type: String,
       trim: true
     }
+  },
+  
+  // RMA Comments/Updates System
+  comments: [{
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: () => new mongoose.Types.ObjectId()
+    },
+    comment: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    commentedBy: {
+      userId: {
+        type: String,
+        required: true,
+        ref: 'User'
+      },
+      name: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      email: {
+        type: String,
+        trim: true
+      }
+    },
+    commentType: {
+      type: String,
+      enum: ['update', 'status_change', 'note', 'escalation', 'resolution'],
+      default: 'update'
+    },
+    isInternal: {
+      type: Boolean,
+      default: false
+    },
+    attachments: [{
+      filename: String,
+      url: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
+  // Last Update Tracking
+  lastUpdate: {
+    comment: {
+      type: String,
+      trim: true
+    },
+    updatedBy: {
+      userId: {
+        type: String,
+        ref: 'User'
+      },
+      name: {
+        type: String,
+        trim: true
+      }
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   }
 }, {
   timestamps: true

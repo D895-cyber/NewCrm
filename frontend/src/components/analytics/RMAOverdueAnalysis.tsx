@@ -21,9 +21,12 @@ import {
   ChevronUp,
   Eye,
   Package,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare,
+  User
 } from 'lucide-react';
 import { apiClient } from '../../utils/api/client';
+import { RMACommentSystem } from '../RMACommentSystem';
 
 interface OverdueRMA {
   _id: string;
@@ -45,6 +48,10 @@ interface OverdueRMA {
   raisedDate: string;
   isCritical: boolean;
   isUrgent: boolean;
+  // Comment fields will be added later when the backend is updated
+  publicComments?: Array<any>;
+  totalComments?: number;
+  lastUpdate?: any;
 }
 
 interface OverdueAnalysis {
@@ -78,15 +85,73 @@ export function RMAOverdueAnalysis() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [expandedStatuses, setExpandedStatuses] = useState<Set<string>>(new Set());
+  const [selectedRMA, setSelectedRMA] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(false);
 
   const loadAnalysis = async () => {
     try {
+      console.log('🔄 loadAnalysis called - refreshing overdue analysis...');
       setLoading(true);
       setError(null);
-      const data = await apiClient.getOverdueRMAAnalysis(daysFilter, statusFilter);
-      setAnalysis(data);
+      
+      // Try the new endpoint with comments first, fallback to original if it fails
+      let data;
+      // Use the working analytics endpoint directly
+      data = await apiClient.getOverdueRMAAnalysis(daysFilter, statusFilter);
+      
+      // Transform the data to match the expected format
+      const transformedData = {
+        summary: {
+          totalOverdue: data.summary?.totalOverdue || data.overdueRMAs?.length || 0,
+          criticalCount: data.summary?.criticalCount || data.overdueRMAs?.filter((rma: OverdueRMA) => rma.isCritical).length || 0,
+          urgentCount: data.summary?.urgentCount || data.overdueRMAs?.filter((rma: OverdueRMA) => rma.isUrgent).length || 0,
+          averageDaysOverdue: data.summary?.averageDaysOverdue || (data.overdueRMAs?.length > 0 ? 
+            Math.round(data.overdueRMAs.reduce((sum: number, rma: OverdueRMA) => sum + rma.daysOverdue, 0) / data.overdueRMAs.length) : 0)
+        },
+        breakdown: {
+          byStatus: data.overdueByStatus || {},
+          byPriority: data.overdueByPriority || {},
+          bySite: data.overdueBySite || {}
+        },
+        overdueByStatus: data.overdueByStatus || {},
+        overdueByPriority: data.overdueByPriority || {},
+        overdueBySite: data.overdueBySite || {},
+        overdueRMAs: data.overdueRMAs || [],
+        recommendations: data.recommendations || []
+      };
+
+      // Calculate statistics if not provided
+      if (data.overdueRMAs && (!data.overdueByStatus || Object.keys(data.overdueByStatus).length === 0)) {
+        data.overdueRMAs.forEach((rma: OverdueRMA) => {
+          const status = rma.caseStatus || 'Unknown';
+          const priority = rma.priority || 'Unknown';
+          const site = rma.siteName || 'Unknown';
+          
+          transformedData.overdueByStatus[status] = (transformedData.overdueByStatus[status] || 0) + 1;
+          transformedData.overdueByPriority[priority] = (transformedData.overdueByPriority[priority] || 0) + 1;
+          transformedData.overdueBySite[site] = (transformedData.overdueBySite[site] || 0) + 1;
+        });
+        
+        // Update breakdown object as well
+        transformedData.breakdown.byStatus = transformedData.overdueByStatus;
+        transformedData.breakdown.byPriority = transformedData.overdueByPriority;
+        transformedData.breakdown.bySite = transformedData.overdueBySite;
+      }
+
+      // Ensure comment fields exist for each RMA (preserve existing data if available)
+      if (transformedData.overdueRMAs) {
+        transformedData.overdueRMAs = transformedData.overdueRMAs.map((rma: any) => ({
+          ...rma,
+          publicComments: rma.publicComments || [], // Use existing data or empty array
+          totalComments: rma.totalComments || 0,    // Use existing data or 0
+          lastUpdate: rma.lastUpdate || null        // Use existing data or null
+        }));
+      }
+
+      console.log('✅ Analysis data updated:', transformedData.overdueRMAs?.length || 0, 'RMAs');
+      setAnalysis(transformedData);
     } catch (err: any) {
-      console.error('Error loading overdue analysis:', err);
+      console.error('❌ Error loading overdue analysis:', err);
       setError(err.message || 'Failed to load overdue analysis');
     } finally {
       setLoading(false);
@@ -167,6 +232,15 @@ export function RMAOverdueAnalysis() {
       <div className="flex items-center justify-center p-8">
         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
         <span>Loading overdue analysis...</span>
+      </div>
+    );
+  }
+
+  if (!analysis) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <AlertCircle className="w-6 h-6 text-red-500 mr-2" />
+        <span>No analysis data available</span>
       </div>
     );
   }
@@ -448,6 +522,76 @@ export function RMAOverdueAnalysis() {
                               <div className="text-white text-sm">{rma.notes}</div>
                             </div>
                           )}
+                          
+                          {/* Last Update Display */}
+                          {rma.lastUpdate && (
+                            <div className="mt-3 p-2 bg-dark-tag border border-dark-color rounded">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Clock className="w-4 h-4 text-gray-400" />
+                                <span className="text-sm text-gray-400">Last Update:</span>
+                                <span className="text-sm text-white font-medium">{rma.lastUpdate.updatedBy?.name || 'Unknown'}</span>
+                                <span className="text-xs text-gray-500">
+                                  {rma.lastUpdate.updatedAt ? new Date(rma.lastUpdate.updatedAt).toLocaleDateString() : 'N/A'}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-300">{rma.lastUpdate.comment || 'No comment'}</p>
+                            </div>
+                          )}
+                          
+                          {/* Recent Comments Preview */}
+                          {rma.publicComments && rma.publicComments.length > 0 && (
+                            <div className="mt-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <MessageSquare className="w-4 h-4 text-gray-400" />
+                                <span className="text-sm text-gray-400">Recent Updates:</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {rma.totalComments || 0} total
+                                </Badge>
+                              </div>
+                              <div className="space-y-2">
+                                {rma.publicComments.slice(0, 2).map((comment, index) => (
+                                  <div key={comment._id || index} className="bg-dark-tag border border-dark-color rounded p-2">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <User className="w-3 h-3 text-gray-400" />
+                                      <span className="text-xs text-white font-medium">{comment.commentedBy?.name || 'Unknown'}</span>
+                                      <span className="text-xs text-gray-500">
+                                        {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : 'N/A'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 line-clamp-2">{comment.comment || 'No comment'}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            onClick={() => {
+                              setSelectedRMA(rma._id);
+                              setShowComments(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-white border-gray-600 hover:bg-gray-700"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Comments ({rma.totalComments || 0})
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setSelectedRMA(rma._id);
+                              setShowComments(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-white border-gray-600 hover:bg-gray-700"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -482,7 +626,7 @@ export function RMAOverdueAnalysis() {
                   <div className="text-sm text-gray-400 mb-4">
                     Click on any status to view all RMAs with that status
                   </div>
-                  {Object.entries(analysis.breakdown.byStatus).map(([status, count], index) => (
+                  {Object.entries(analysis?.breakdown?.byStatus || {}).map(([status, count], index) => (
                     <div 
                       key={status} 
                       className={`group relative overflow-hidden border border-dark-color rounded-lg transition-all duration-300 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 cursor-pointer ${
@@ -641,7 +785,7 @@ export function RMAOverdueAnalysis() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(analysis.breakdown.byPriority).map(([priority, count], index) => (
+                {Object.entries(analysis?.breakdown?.byPriority || {}).map(([priority, count], index) => (
                   <div 
                     key={priority} 
                     className="group relative overflow-hidden border border-dark-color rounded-lg transition-all duration-300 hover:border-orange-500 hover:shadow-lg hover:shadow-orange-500/20 cursor-pointer"
@@ -687,7 +831,7 @@ export function RMAOverdueAnalysis() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(analysis.breakdown.bySite)
+                {Object.entries(analysis?.breakdown?.bySite || {})
                   .sort(([,a], [,b]) => b - a)
                   .map(([site, count], index) => (
                   <div 
@@ -726,6 +870,41 @@ export function RMAOverdueAnalysis() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Comment Modal */}
+      {showComments && selectedRMA && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-card border border-dark-color rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-dark-color">
+              <h3 className="text-lg font-semibold text-white">
+                RMA Comments & Updates
+              </h3>
+              <Button
+                onClick={() => {
+                  setShowComments(false);
+                  setSelectedRMA(null);
+                }}
+                variant="ghost"
+                size="sm"
+                className="text-gray-400 hover:text-white"
+              >
+                <XCircle className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <RMACommentSystem
+                rmaId={selectedRMA}
+                rmaNumber={analysis?.overdueRMAs.find(rma => rma._id === selectedRMA)?.rmaNumber || 'Unknown'}
+                onCommentAdded={() => {
+                  console.log('🔄 Comment added callback triggered - refreshing analysis...');
+                  loadAnalysis(); // Refresh the analysis to show updated comments
+                }}
+                showInternalComments={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

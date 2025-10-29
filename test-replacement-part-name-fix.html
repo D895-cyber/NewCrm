@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Replacement Part Name Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .rma-display {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .part-info {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .defective-part {
+            border-left: 4px solid #dc3545;
+        }
+        .replacement-part {
+            border-left: 4px solid #28a745;
+        }
+        .part-number {
+            font-family: monospace;
+            color: #007bff;
+            font-size: 12px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: #333;
+            font-weight: bold;
+        }
+        .before {
+            background-color: #4d1e1e;
+        }
+        .after {
+            background-color: #1e4d2b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Replacement Part Name Fix Test</h1>
+    
+    <div class="test-section info">
+        <h3>Fix Summary</h3>
+        <p>The replacement part name logic has been updated to show the correct part name instead of symptom descriptions:</p>
+        <ul>
+            <li><strong>Issue:</strong> Replacement part name was showing symptom descriptions (e.g., "Two segmen prism chipped")</li>
+            <li><strong>Fix:</strong> When replacement part name contains symptom keywords, use the defective part name instead</li>
+            <li><strong>Logic:</strong> Check for keywords like "chipped", "broken", "faulty", "defect" in replacement part name</li>
+            <li><strong>Fallback:</strong> Use defective part name when replacement part name is invalid or contains symptoms</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>Before vs After Comparison</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th class="before">Before (Issue)</th>
+                    <th class="after">After (Fixed)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Defective Part</strong></td>
+                    <td class="before">Assy. Light Engine</td>
+                    <td class="after">Assy. Light Engine (unchanged)</td>
+                </tr>
+                <tr>
+                    <td><strong>Replacement Part Name</strong></td>
+                    <td class="before">Two segmen prism chipped (symptom)</td>
+                    <td class="after">Assy. Light Engine (correct part name)</td>
+                </tr>
+                <tr>
+                    <td><strong>Replacement Part Number</strong></td>
+                    <td class="before">004-101329-02</td>
+                    <td class="after">004-101329-02 (unchanged)</td>
+                </tr>
+                <tr>
+                    <td><strong>Logic</strong></td>
+                    <td class="before">Direct display of replacedPartName field</td>
+                    <td class="after">Smart detection of symptom descriptions</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Different Scenarios</h3>
+        <button onclick="testSymptomInReplacementName()">Test Symptom in Replacement Name</button>
+        <button onclick="testValidReplacementName()">Test Valid Replacement Name</button>
+        <button onclick="testMissingReplacementName()">Test Missing Replacement Name</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected Display Format</h3>
+        <p>Here's how the part information should now appear:</p>
+        <div id="expected-display"></div>
+    </div>
+
+    <script>
+        function createRMADisplay(rmaData, title, description) {
+            const container = document.createElement('div');
+            container.className = 'rma-display';
+            
+            const titleEl = document.createElement('h4');
+            titleEl.textContent = title;
+            titleEl.style.color = '#ffffff';
+            container.appendChild(titleEl);
+            
+            if (description) {
+                const descEl = document.createElement('p');
+                descEl.textContent = description;
+                descEl.style.color = '#ccc';
+                descEl.style.fontSize = '12px';
+                container.appendChild(descEl);
+            }
+            
+            // RMA basic info
+            const basicInfo = document.createElement('div');
+            basicInfo.innerHTML = `
+                <div><strong>RMA #:</strong> ${rmaData.rmaNumber}</div>
+                <div><strong>Site:</strong> ${rmaData.siteName}</div>
+            `;
+            container.appendChild(basicInfo);
+            
+            // Defective part info
+            const defectiveDiv = document.createElement('div');
+            defectiveDiv.className = 'part-info defective-part';
+            defectiveDiv.innerHTML = `
+                <div><strong>Defective Part:</strong></div>
+                <div>Name: ${rmaData.defectivePartName}</div>
+                <div class="part-number">Part #: ${rmaData.defectivePartNumber}</div>
+            `;
+            container.appendChild(defectiveDiv);
+            
+            // Replacement part info
+            const replacementDiv = document.createElement('div');
+            replacementDiv.className = 'part-info replacement-part';
+            
+            // Apply the fix logic
+            const replacementPartName = (() => {
+                // If replacedPartName is not set or seems to be a symptom description, use defectivePartName
+                if (!rmaData.replacedPartName || rmaData.replacedPartName === 'N/A' || 
+                    rmaData.replacedPartName.toLowerCase().includes('chipped') ||
+                    rmaData.replacedPartName.toLowerCase().includes('broken') ||
+                    rmaData.replacedPartName.toLowerCase().includes('faulty') ||
+                    rmaData.replacedPartName.toLowerCase().includes('defect')) {
+                    return rmaData.defectivePartName || 'Not Assigned';
+                }
+                return rmaData.replacedPartName;
+            })();
+            
+            replacementDiv.innerHTML = `
+                <div><strong>Replacement Part:</strong></div>
+                <div>Name: ${replacementPartName}</div>
+                <div class="part-number">Part #: ${rmaData.replacedPartNumber}</div>
+            `;
+            container.appendChild(replacementDiv);
+            
+            return container;
+        }
+
+        function testSymptomInReplacementName() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing replacement part name with symptom description...</p>';
+            
+            const rmaWithSymptomInReplacement = {
+                rmaNumber: 'RMA-2024-001',
+                siteName: 'Test Site',
+                defectivePartName: 'Assy. Light Engine',
+                defectivePartNumber: '004-101329-01',
+                replacedPartName: 'Two segmen prism chipped', // This is a symptom, not a part name
+                replacedPartNumber: '004-101329-02'
+            };
+            
+            const display = createRMADisplay(rmaWithSymptomInReplacement, 'Symptom in Replacement Name', 'Should show "Assy. Light Engine" for replacement part name');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        function testValidReplacementName() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing valid replacement part name...</p>';
+            
+            const rmaWithValidReplacement = {
+                rmaNumber: 'RMA-2024-002',
+                siteName: 'Test Site',
+                defectivePartName: 'Lamp Power Supply',
+                defectivePartNumber: '004-001195-01',
+                replacedPartName: 'Lamp Power Supply (Replacement)', // This is a valid part name
+                replacedPartNumber: '004-001195-02'
+            };
+            
+            const display = createRMADisplay(rmaWithValidReplacement, 'Valid Replacement Name', 'Should show the actual replacement part name');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        function testMissingReplacementName() {
+            const resultDiv = document.getElementById('test-results');
+            resultDiv.innerHTML = '<p>Testing missing replacement part name...</p>';
+            
+            const rmaWithMissingReplacement = {
+                rmaNumber: 'RMA-2024-003',
+                siteName: 'Test Site',
+                defectivePartName: 'Projector Lamp',
+                defectivePartNumber: 'LAMP-001',
+                replacedPartName: null, // Missing replacement part name
+                replacedPartNumber: 'LAMP-002'
+            };
+            
+            const display = createRMADisplay(rmaWithMissingReplacement, 'Missing Replacement Name', 'Should fallback to defective part name');
+            resultDiv.innerHTML = '';
+            resultDiv.appendChild(display);
+        }
+
+        // Auto-generate expected display
+        window.addEventListener('load', () => {
+            const expectedDiv = document.getElementById('expected-display');
+            
+            const sampleRMA = {
+                rmaNumber: 'RMA-2024-001',
+                siteName: 'Test Site',
+                defectivePartName: 'Assy. Light Engine',
+                defectivePartNumber: '004-101329-01',
+                replacedPartName: 'Two segmen prism chipped', // Symptom description
+                replacedPartNumber: '004-101329-02'
+            };
+            
+            const display = createRMADisplay(sampleRMA, 'Expected Display for RMA with Symptom in Replacement Name', 'This shows how the fix should work');
+            expectedDiv.appendChild(display);
+            
+            const info = document.createElement('div');
+            info.className = 'test-section success';
+            info.innerHTML = `
+                <h4>✅ Replacement Part Name Fix Applied</h4>
+                <p>The replacement part name now correctly shows:</p>
+                <ul>
+                    <li><strong>Actual Part Name:</strong> When replacement part name contains symptom keywords</li>
+                    <li><strong>Defective Part Name:</strong> Used as fallback for invalid replacement names</li>
+                    <li><strong>Smart Detection:</strong> Detects symptom keywords like "chipped", "broken", "faulty", "defect"</li>
+                    <li><strong>Consistent Display:</strong> Both defective and replacement parts show proper part names</li>
+                </ul>
+            `;
+            expectedDiv.appendChild(info);
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

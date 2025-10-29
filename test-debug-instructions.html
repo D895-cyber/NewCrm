@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Instructions for RMA 705313</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        .step {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .console-log {
+            background-color: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ff00;
+        }
+        .expected {
+            background-color: #1e4d2b;
+            border-left: 4px solid #28a745;
+        }
+        .current {
+            background-color: #4d1e1e;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Instructions for RMA 705313 Fix</h1>
+    
+    <div class="test-section error">
+        <h3>Current Issue</h3>
+        <p>RMA #705313 is still showing "Integrator rod chipped" in the replacement part name instead of the actual part name "Assy. Integrator rod".</p>
+    </div>
+
+    <div class="test-section info">
+        <h3>Step-by-Step Debug Instructions</h3>
+        
+        <div class="step">
+            <h4>Step 1: Open Browser Developer Tools</h4>
+            <p>Press F12 or right-click and select "Inspect" to open Developer Tools.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 2: Go to Console Tab</h4>
+            <p>Click on the "Console" tab in the Developer Tools.</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 3: Refresh the RMA Page</h4>
+            <p>Refresh the RMA page (Ctrl+F5 or Cmd+Shift+R for hard refresh).</p>
+        </div>
+        
+        <div class="step">
+            <h4>Step 4: Look for Debug Messages</h4>
+            <p>In the console, look for these specific debug messages:</p>
+            <div class="console-log">
+🔍 DEBUG - RMA 705313 backend data: {...}
+🔍 DEBUG - RMA with symptom in replacement part name: {...}
+🔄 DEBUG - Replacing symptom name with defective part name: {...}
+🔍 DEBUG - RMA 705313 replacement logic: {...}
+🔍 DEBUG - RMA 705313 details: {...}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h4>Step 5: Check the Data</h4>
+            <p>Look for the debug message that shows the backend data for RMA 705313. It should show:</p>
+            <div class="console-log">
+{
+  "rmaNumber": "705313",
+  "defectivePartName": "Assy. Integrator rod",
+  "replacedPartName": "Integrator rod chipped",
+  "symptoms": "Integrator rod chipped"
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h4>Step 6: Check the Fix Logic</h4>
+            <p>Look for the debug message that shows the replacement logic. It should show:</p>
+            <div class="console-log">
+{
+  "rmaNumber": "705313",
+  "replacedName": "Integrator rod chipped",
+  "defectiveName": "Assy. Integrator rod",
+  "willReplace": true,
+  "finalResult": "Assy. Integrator rod"
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Expected vs Current State</h3>
+        
+        <div class="step current">
+            <h4>Current State (Problem):</h4>
+            <p><strong>Replacement Part Name:</strong> "Integrator rod chipped" ❌</p>
+            <p>This is showing a symptom description instead of the actual part name.</p>
+        </div>
+        
+        <div class="step expected">
+            <h4>Expected State (After Fix):</h4>
+            <p><strong>Replacement Part Name:</strong> "Assy. Integrator rod" ✅</p>
+            <p>This should show the actual part name from the defective part field.</p>
+        </div>
+    </div>
+
+    <div class="test-section warning">
+        <h3>Possible Issues</h3>
+        <ul>
+            <li><strong>No debug messages:</strong> The page might not be refreshed or the data might not be loading</li>
+            <li><strong>Debug messages but no fix:</strong> The keyword detection logic might not be working</li>
+            <li><strong>Fix in console but not in UI:</strong> The frontend might not be re-rendering properly</li>
+            <li><strong>Data not updating:</strong> The backend data might not be refreshed</li>
+        </ul>
+    </div>
+
+    <div class="test-section info">
+        <h3>Force Refresh Steps</h3>
+        <ol>
+            <li>Click the "Force Refresh" button on the RMA page</li>
+            <li>Wait for the data to reload</li>
+            <li>Check the console for debug messages</li>
+            <li>Look for RMA 705313 in the table</li>
+        </ol>
+    </div>
+
+    <div class="test-section success">
+        <h3>What to Report</h3>
+        <p>Please share the console output for the debug messages related to RMA 705313. This will help identify where the fix is not working.</p>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

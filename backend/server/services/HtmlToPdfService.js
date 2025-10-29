@@ -42,6 +42,51 @@ class HtmlToPdfService {
     Handlebars.registerHelper('default', function(value, defaultValue) {
       return value || defaultValue || '';
     });
+
+    // Helper for embedding photos as base64
+    Handlebars.registerHelper('embedPhoto', function(photoUrl, altText = 'Photo') {
+      if (!photoUrl) return '';
+      
+      // If it's already a base64 data URL, return as is
+      if (photoUrl.startsWith('data:image/')) {
+        return photoUrl;
+      }
+      
+      // For now, return the URL - in production, you'd convert to base64 here
+      return photoUrl;
+    });
+
+    // Helper for embedding signatures
+    Handlebars.registerHelper('embedSignature', function(signatureData, altText = 'Signature') {
+      if (!signatureData) return '';
+      
+      // If it's already a base64 data URL, return as is
+      if (signatureData.startsWith('data:image/')) {
+        return signatureData;
+      }
+      
+      return signatureData;
+    });
+
+    // Helper for photo gallery
+    Handlebars.registerHelper('eachPhoto', function(photos, options) {
+      if (!photos || !Array.isArray(photos)) return '';
+      
+      let result = '';
+      photos.forEach((photo, index) => {
+        if (photo && (photo.cloudUrl || photo.path || photo.dataURI)) {
+          const photoUrl = photo.cloudUrl || photo.path || photo.dataURI;
+          result += options.fn({
+            ...photo,
+            index: index + 1,
+            photoUrl: photoUrl,
+            description: photo.description || `Photo ${index + 1}`,
+            category: photo.category || photo.beforeAfter || 'Service Photo'
+          });
+        }
+      });
+      return result;
+    });
   }
 
   /**

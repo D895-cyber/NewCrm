@@ -47,6 +47,11 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [analytics, setAnalytics] = useState<PartAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Date range filtering
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [useDateFilter, setUseDateFilter] = useState(false);
 
   const searchTypeOptions = [
     { value: 'partName', label: 'Part Name', icon: Package, placeholder: 'Enter part name (e.g., Assy. Light Engine)' },
@@ -65,13 +70,32 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
       return;
     }
 
+    // Validate date range if enabled
+    if (useDateFilter) {
+      if (!startDate || !endDate) {
+        setError('Please select both start and end dates');
+        return;
+      }
+      if (new Date(startDate) > new Date(endDate)) {
+        setError('Start date cannot be after end date');
+        return;
+      }
+    }
+
     setIsSearching(true);
     setError(null);
     setAnalytics(null);
 
     try {
-      const searchParam = `${searchType}=${encodeURIComponent(searchTerm.trim())}`;
-      const response = await fetch(`/api/rma/search/part-analytics?${searchParam}`);
+      const params = new URLSearchParams();
+      params.append(searchType, searchTerm.trim());
+      
+      if (useDateFilter) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+      
+      const response = await fetch(`/api/rma/search/part-analytics?${params.toString()}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -94,26 +118,26 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
 
   const getStatusColor = (status: string) => {
     const statusColors: { [key: string]: string } = {
-      'Under Review': 'bg-yellow-100 text-yellow-800',
-      'Sent to CDS': 'bg-blue-100 text-blue-800',
-      'CDS Approved': 'bg-green-100 text-green-800',
-      'Replacement Shipped': 'bg-purple-100 text-purple-800',
-      'Completed': 'bg-green-100 text-green-800',
-      'Rejected': 'bg-red-100 text-red-800',
-      'Faulty Transit to CDS': 'bg-orange-100 text-orange-800',
-      'RMA Raised Yet to Deliver': 'bg-gray-100 text-gray-800'
+      'Under Review': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+      'Sent to CDS': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+      'CDS Approved': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+      'Replacement Shipped': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+      'Completed': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+      'Rejected': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
+      'Faulty Transit to CDS': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
+      'RMA Raised Yet to Deliver': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
     };
-    return statusColors[status] || 'bg-gray-100 text-gray-800';
+    return statusColors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
   };
 
   const getPriorityColor = (priority: string) => {
     const priorityColors: { [key: string]: string } = {
-      'Low': 'bg-green-100 text-green-800',
-      'Medium': 'bg-yellow-100 text-yellow-800',
-      'High': 'bg-orange-100 text-orange-800',
-      'Critical': 'bg-red-100 text-red-800'
+      'Low': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+      'Medium': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+      'High': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
+      'Critical': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
     };
-    return priorityColors[priority] || 'bg-gray-100 text-gray-800';
+    return priorityColors[priority] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
   };
 
   const exportResults = () => {
@@ -199,6 +223,45 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
                 Search
               </Button>
             </div>
+
+            {/* Date Range Filter */}
+            <div className="border-t pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  id="useDateFilter"
+                  checked={useDateFilter}
+                  onChange={(e) => setUseDateFilter(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="useDateFilter" className="text-sm font-medium">
+                  Filter by date range (e.g., April 1 to April 10)
+                </label>
+              </div>
+              
+              {useDateFilter && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Start Date</label>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="text-gray-900 rma-analytics-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">End Date</label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="text-gray-900 rma-analytics-input"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           {error && (
             <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -211,6 +274,22 @@ export function AdvancedRMASearch({ onRmaSelect }: AdvancedRMASearchProps) {
       {/* Analytics Results */}
       {analytics && (
         <div className="space-y-6">
+          {/* Date Range Info */}
+          {analytics.dateRange?.hasDateFilter && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-medium">
+                    Date Range: {analytics.dateRange.startDate ? new Date(analytics.dateRange.startDate).toLocaleDateString() : 'No start'} 
+                    {' to '} 
+                    {analytics.dateRange.endDate ? new Date(analytics.dateRange.endDate).toLocaleDateString() : 'No end'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>

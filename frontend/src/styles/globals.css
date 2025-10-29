@@ -514,41 +514,98 @@ html {
 
 /* Universal Input field text visibility fix */
 @layer components {
-  /* Apply to all input types */
-  input[type="text"], 
-  input[type="number"], 
-  input[type="email"], 
-  input[type="password"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="search"],
-  textarea,
-  select {
+  /* Apply to all input types - but respect dark theme */
+  input[type="text"]:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="number"]:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="email"]:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="password"]:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="tel"]:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="url"]:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="search"]:not(.bg-dark-bg input):not(.bg-dark-card input),
+  textarea:not(.bg-dark-bg textarea):not(.bg-dark-card textarea),
+  select:not(.bg-dark-bg select):not(.bg-dark-card select) {
     color: #000000 !important;
     background-color: #FFFFFF !important;
     border-color: #D1D5DB !important;
   }
   
-  /* Focus states */
-  input[type="text"]:focus, 
-  input[type="number"]:focus, 
-  input[type="email"]:focus, 
-  input[type="password"]:focus,
-  input[type="tel"]:focus,
-  input[type="url"]:focus,
-  input[type="search"]:focus,
-  textarea:focus,
-  select:focus {
+  /* Dark theme inputs */
+  .bg-dark-bg input[type="text"],
+  .bg-dark-bg input[type="number"],
+  .bg-dark-bg input[type="email"],
+  .bg-dark-bg input[type="password"],
+  .bg-dark-bg input[type="tel"],
+  .bg-dark-bg input[type="url"],
+  .bg-dark-bg input[type="search"],
+  .bg-dark-bg textarea,
+  .bg-dark-bg select,
+  .bg-dark-card input[type="text"],
+  .bg-dark-card input[type="number"],
+  .bg-dark-card input[type="email"],
+  .bg-dark-card input[type="password"],
+  .bg-dark-card input[type="tel"],
+  .bg-dark-card input[type="url"],
+  .bg-dark-card input[type="search"],
+  .bg-dark-card textarea,
+  .bg-dark-card select {
+    color: #f9fafb !important; /* white text */
+    background-color: #1f2937 !important; /* dark background */
+    border-color: #374151 !important; /* dark border */
+  }
+  
+  /* Focus states - light theme */
+  input[type="text"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="number"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="email"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input), 
+  input[type="password"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="tel"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="url"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input),
+  input[type="search"]:focus:not(.bg-dark-bg input):not(.bg-dark-card input),
+  textarea:focus:not(.bg-dark-bg textarea):not(.bg-dark-card textarea),
+  select:focus:not(.bg-dark-bg select):not(.bg-dark-card select) {
     color: #000000 !important;
     background-color: #FFFFFF !important;
     border-color: #3B82F6 !important;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
   }
   
-  /* Placeholder text */
-  input::placeholder,
-  textarea::placeholder {
+  /* Focus states - dark theme */
+  .bg-dark-bg input[type="text"]:focus,
+  .bg-dark-bg input[type="number"]:focus,
+  .bg-dark-bg input[type="email"]:focus,
+  .bg-dark-bg input[type="password"]:focus,
+  .bg-dark-bg input[type="tel"]:focus,
+  .bg-dark-bg input[type="url"]:focus,
+  .bg-dark-bg input[type="search"]:focus,
+  .bg-dark-bg textarea:focus,
+  .bg-dark-bg select:focus,
+  .bg-dark-card input[type="text"]:focus,
+  .bg-dark-card input[type="number"]:focus,
+  .bg-dark-card input[type="email"]:focus,
+  .bg-dark-card input[type="password"]:focus,
+  .bg-dark-card input[type="tel"]:focus,
+  .bg-dark-card input[type="url"]:focus,
+  .bg-dark-card input[type="search"]:focus,
+  .bg-dark-card textarea:focus,
+  .bg-dark-card select:focus {
+    color: #f9fafb !important;
+    background-color: #1f2937 !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+  }
+  
+  /* Placeholder text - light theme */
+  input::placeholder:not(.bg-dark-bg input):not(.bg-dark-card input),
+  textarea::placeholder:not(.bg-dark-bg textarea):not(.bg-dark-card textarea) {
     color: #6B7280 !important;
+  }
+  
+  /* Placeholder text - dark theme */
+  .bg-dark-bg input::placeholder,
+  .bg-dark-bg textarea::placeholder,
+  .bg-dark-card input::placeholder,
+  .bg-dark-card textarea::placeholder {
+    color: #9ca3af !important; /* lighter gray for dark theme */
   }
   
   /* Disabled states */
@@ -593,6 +650,16 @@ html {
     background-color: #FFFFFF !important;
   }
   
+  /* Fix for dialog/modal inputs - ensure black text on white backgrounds */
+  .dialog input,
+  .modal input,
+  [role="dialog"] input,
+  [role="dialog"] textarea,
+  [role="dialog"] select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
   /* Ensure all input containers have visible text */
   .space-y-2 input,
   .space-y-4 input,
@@ -618,16 +685,20 @@ html {
     background-color: #FFFFFF !important;
   }
   
-  /* Card and modal text visibility */
+  /* Card and modal text visibility - FIXED for light backgrounds */
   .card p,
   .card span,
   .modal p,
   .modal span,
   .bg-white p,
-  .bg-white span,
+  .bg-white span {
+    color: #000000 !important;
+  }
+  
+  /* Dark theme cards keep white text */
   .bg-dark-card p,
   .bg-dark-card span {
-    color: #000000 !important;
+    color: #FFFFFF !important;
   }
   
   /* Ensure all text in white backgrounds is black */
@@ -635,16 +706,73 @@ html {
     color: #000000 !important;
   }
   
-  /* Override any light text colors on white backgrounds */
-  .text-gray-600,
-  .text-gray-500,
-  .text-gray-400,
-  .text-slate-600,
-  .text-slate-500,
-  .text-slate-400 {
+  /* Override any light text colors on white backgrounds ONLY */
+  .bg-white .text-gray-600,
+  .bg-white .text-gray-500,
+  .bg-white .text-gray-400,
+  .bg-white .text-slate-600,
+  .bg-white .text-slate-500,
+  .bg-white .text-slate-400,
+  .modal .text-gray-600,
+  .modal .text-gray-500,
+  .modal .text-gray-400,
+  .modal .text-slate-600,
+  .modal .text-slate-500,
+  .modal .text-slate-400 {
     color: #000000 !important;
   }
   
+  /* CRITICAL FIX: Force text visibility in all dialog/modal components */
+  [data-radix-dialog-content] *,
+  [data-radix-dialog-content] input,
+  [data-radix-dialog-content] textarea,
+  [data-radix-dialog-content] select,
+  [data-radix-dialog-content] span,
+  [data-radix-dialog-content] div,
+  [data-radix-dialog-content] p,
+  [data-radix-dialog-content] label {
+    color: #000000 !important;
+  }
+  
+  /* Force input text to be black in dialogs */
+  [data-radix-dialog-content] input[type="text"],
+  [data-radix-dialog-content] input[type="number"],
+  [data-radix-dialog-content] input[type="email"],
+  [data-radix-dialog-content] textarea {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+  }
+  
+  /* Override any existing text color classes in dialogs */
+  [data-radix-dialog-content] .text-gray-600,
+  [data-radix-dialog-content] .text-gray-500,
+  [data-radix-dialog-content] .text-gray-400,
+  [data-radix-dialog-content] .text-white,
+  [data-radix-dialog-content] .text-slate-600,
+  [data-radix-dialog-content] .text-slate-500,
+  [data-radix-dialog-content] .text-slate-400 {
+    color: #000000 !important;
+  }
+
+  /* Specific fixes for dialog/modal components */
+  [data-radix-popper-content-wrapper] *,
+  [role="dialog"] *,
+  .dialog * {
+    color: #000000 !important;
+  }
+  
+  /* Ensure dialog content has proper contrast */
+  .dialog-content,
+  .modal-content,
+  [role="dialog"] {
+    color: #000000 !important;
+  }
+  
+  /* Fix for Radix UI Dialog components */
+  [data-state="open"] * {
+    color: #000000 !important;
+  }
+
   /* Specific fixes for workflow components */
   .bg-blue-50 p,
   .bg-blue-50 span,
@@ -659,6 +787,69 @@ html {
   .bg-green-50 p,
   .bg-green-50 span,
   .bg-green-50 div {
+    color: #000000 !important;
+  }
+  
+  /* FINAL OVERRIDE: Force all dialog text to be black - highest priority */
+  [data-radix-dialog-content],
+  [data-radix-dialog-content] *,
+  [data-radix-dialog-content] *::before,
+  [data-radix-dialog-content] *::after {
+    color: #000000 !important;
+  }
+  
+  /* Force all input text in dialogs to be black */
+  [data-radix-dialog-content] input,
+  [data-radix-dialog-content] textarea,
+  [data-radix-dialog-content] select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    border-color: #D1D5DB !important;
+  }
+  
+  /* Override any Tailwind text color classes in dialogs */
+  [data-radix-dialog-content] .text-white,
+  [data-radix-dialog-content] .text-gray-50,
+  [data-radix-dialog-content] .text-gray-100,
+  [data-radix-dialog-content] .text-gray-200,
+  [data-radix-dialog-content] .text-gray-300,
+  [data-radix-dialog-content] .text-gray-400,
+  [data-radix-dialog-content] .text-gray-500,
+  [data-radix-dialog-content] .text-gray-600,
+  [data-radix-dialog-content] .text-gray-700,
+  [data-radix-dialog-content] .text-gray-800,
+  [data-radix-dialog-content] .text-gray-900,
+  [data-radix-dialog-content] .text-slate-50,
+  [data-radix-dialog-content] .text-slate-100,
+  [data-radix-dialog-content] .text-slate-200,
+  [data-radix-dialog-content] .text-slate-300,
+  [data-radix-dialog-content] .text-slate-400,
+  [data-radix-dialog-content] .text-slate-500,
+  [data-radix-dialog-content] .text-slate-600,
+  [data-radix-dialog-content] .text-slate-700,
+  [data-radix-dialog-content] .text-slate-800,
+  [data-radix-dialog-content] .text-slate-900 {
+    color: #000000 !important;
+  }
+  
+  /* EMERGENCY FIX: Target specific dialog content */
+  div[class*="DialogContent"] *,
+  div[class*="dialog-content"] *,
+  div[class*="modal-content"] * {
+    color: #000000 !important;
+  }
+  
+  /* Force all text in any dialog to be black */
+  [class*="Dialog"] *,
+  [class*="dialog"] *,
+  [class*="Modal"] *,
+  [class*="modal"] * {
+    color: #000000 !important;
+  }
+  
+  /* Override any component library styles */
+  .radix-dialog-content *,
+  .radix-modal-content * {
     color: #000000 !important;
   }
 }

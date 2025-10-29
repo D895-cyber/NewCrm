@@ -256,6 +256,31 @@ export function TechnicalHeadDashboardPage() {
     }
   }, [dtrs]);
 
+  // Add periodic refresh to catch assignments made from other pages
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isAuthenticated && token) {
+        console.log('🔄 Periodic DTR refresh...');
+        loadDTRs();
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, token]);
+
+  // Refresh data when user returns to the tab (focus event)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAuthenticated && token) {
+        console.log('🔄 Tab focused, refreshing DTR data...');
+        loadDTRs();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isAuthenticated, token]);
+
   const loadDTRs = async () => {
     try {
       console.log('🔄 Loading DTR data for technical head dashboard...');
@@ -312,10 +337,17 @@ export function TechnicalHeadDashboardPage() {
         console.log('Full user object:', user);
         console.log('User object keys:', user ? Object.keys(user) : 'No user object');
         
+        // Show assignment status in console for debugging
+        console.log('🔍 Assignment Debug Info:');
+        console.log('Current User ID:', currentUserId);
+        console.log('Current Username:', currentUsername);
+        
         const assignedDTRs = response.dtrs.filter((dtr: any) => {
           const isAssignedToCurrentUser = dtr.assignedTo && (
             (typeof dtr.assignedTo === 'string' && dtr.assignedTo === currentUserId) ||
-            (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === currentUsername)
+            (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === currentUserId) ||
+            // Also check assignedToDetails for technical head assignments
+            (dtr.assignedToDetails && dtr.assignedToDetails.userId && dtr.assignedToDetails.userId === currentUserId)
           );
           return isAssignedToCurrentUser;
         });
@@ -327,6 +359,13 @@ export function TechnicalHeadDashboardPage() {
           assignedToType: typeof dtr.assignedTo,
           assignedToDetails: dtr.assignedToDetails
         })));
+        
+        // Show assignment status in UI
+        if (assignedDTRs.length > 0) {
+          console.log('✅ Found', assignedDTRs.length, 'DTRs assigned to current technical head');
+        } else {
+          console.log('⚠️ No DTRs found assigned to current technical head');
+        }
         
         // Temporary debug: If no DTRs found for current user, show all assigned DTRs
         if (assignedDTRs.length === 0 && response.dtrs.length > 0) {
@@ -372,7 +411,7 @@ export function TechnicalHeadDashboardPage() {
         const assignedDTRs = response.filter((dtr: any) => {
           const isAssignedToCurrentUser = dtr.assignedTo && (
             (typeof dtr.assignedTo === 'string' && dtr.assignedTo === currentUserId) ||
-            (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === currentUsername)
+            (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === currentUserId)
           );
           return isAssignedToCurrentUser;
         });
@@ -575,7 +614,9 @@ export function TechnicalHeadDashboardPage() {
       // Only count DTRs assigned to current technical head that are pending
       const isAssignedToCurrentUser = dtr.assignedTo && (
         (typeof dtr.assignedTo === 'string' && dtr.assignedTo === user?.userId) ||
-        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === user?.username)
+        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === user?.userId) ||
+        // Also check assignedToDetails for technical head assignments
+        (dtr.assignedToDetails && dtr.assignedToDetails.userId && dtr.assignedToDetails.userId === user?.userId)
       );
       return dtr.status === 'Open' && isAssignedToCurrentUser;
     }).length;
@@ -583,7 +624,9 @@ export function TechnicalHeadDashboardPage() {
       // Check if DTR is assigned to the current technical head user
       const isAssignedToCurrentUser = dtr.assignedTo && (
         (typeof dtr.assignedTo === 'string' && dtr.assignedTo === user?.userId) ||
-        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === user?.username)
+        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === user?.userId) ||
+        // Also check assignedToDetails for technical head assignments
+        (dtr.assignedToDetails && dtr.assignedToDetails.userId && dtr.assignedToDetails.userId === user?.userId)
       );
       // Count DTRs assigned to current technical head regardless of status
       return isAssignedToCurrentUser;
@@ -595,7 +638,9 @@ export function TechnicalHeadDashboardPage() {
       // Only count DTRs assigned to current technical head that are ready for RMA
       const isAssignedToCurrentUser = dtr.assignedTo && (
         (typeof dtr.assignedTo === 'string' && dtr.assignedTo === user?.userId) ||
-        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === user?.username)
+        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === user?.userId) ||
+        // Also check assignedToDetails for technical head assignments
+        (dtr.assignedToDetails && dtr.assignedToDetails.userId && dtr.assignedToDetails.userId === user?.userId)
       );
       return dtr.status === 'Ready for RMA' && isAssignedToCurrentUser;
     }).length;
@@ -982,7 +1027,9 @@ export function TechnicalHeadDashboardPage() {
       // Only show DTRs assigned to current technical head
       const isAssignedToCurrentUser = dtr.assignedTo && (
         (typeof dtr.assignedTo === 'string' && dtr.assignedTo === user?.userId) ||
-        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.name && dtr.assignedTo.name === user?.username)
+        (typeof dtr.assignedTo === 'object' && dtr.assignedTo.userId && dtr.assignedTo.userId === user?.userId) ||
+        // Also check assignedToDetails for technical head assignments
+        (dtr.assignedToDetails && dtr.assignedToDetails.userId && dtr.assignedToDetails.userId === user?.userId)
       );
       
       // Apply search filter
@@ -1296,7 +1343,7 @@ export function TechnicalHeadDashboardPage() {
                 <Menu className="h-4 w-4 mr-2" />
                 Navigation
               </Button>
-              <Button onClick={loadDTRs} variant="outline" size="sm" disabled={isLoading}>
+              <Button onClick={loadDTRs} variant="outline" size="sm" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white">
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh DTRs
               </Button>

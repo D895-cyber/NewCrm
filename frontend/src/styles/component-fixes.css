@@ -1,0 +1,502 @@
+/* ========================================
+   COMPONENT-SPECIFIC STYLING FIXES
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   RMA COMPONENT FIXES
+   ======================================== */
+
+/* RMA Overdue Analysis Component */
+.rma-overdue-analysis {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.rma-overdue-analysis .text-gray-400 {
+  color: var(--muted-foreground) !important;
+}
+
+.rma-overdue-analysis .text-white {
+  color: var(--foreground) !important;
+}
+
+.rma-overdue-analysis .bg-gray-800\/50 {
+  background-color: var(--muted) !important;
+}
+
+/* RMA Comment System */
+.rma-comment-system {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.rma-comment-system .text-gray-300 {
+  color: var(--muted-foreground) !important;
+}
+
+.rma-comment-system .bg-dark-card {
+  background-color: var(--card) !important;
+}
+
+.rma-comment-system .border-dark-color {
+  border-color: var(--border) !important;
+}
+
+/* ========================================
+   FORM COMPONENT FIXES
+   ======================================== */
+
+/* Universal Form Input Fixes */
+.form-input {
+  color: var(--input-foreground) !important;
+  background-color: var(--input-background) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.form-input::placeholder {
+  color: var(--muted-foreground) !important;
+}
+
+.form-input:focus {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Form Labels */
+.form-label {
+  color: var(--foreground) !important;
+  font-weight: 500;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--foreground) !important;
+}
+
+/* ========================================
+   BADGE COMPONENT FIXES
+   ======================================== */
+
+/* Status Badges */
+.badge-status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-status-approved {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-status-rejected {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-status-in-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-status-completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* Dark Theme Badge Overrides */
+.dark .badge-status-pending {
+  background-color: #713f12;
+  color: #fef3c7;
+}
+
+.dark .badge-status-approved {
+  background-color: #14532d;
+  color: #dcfce7;
+}
+
+.dark .badge-status-rejected {
+  background-color: #991b1b;
+  color: #fee2e2;
+}
+
+.dark .badge-status-in-progress {
+  background-color: #1e3a8a;
+  color: #dbeafe;
+}
+
+.dark .badge-status-completed {
+  background-color: #14532d;
+  color: #dcfce7;
+}
+
+/* ========================================
+   TABLE COMPONENT FIXES
+   ======================================== */
+
+/* RMA Table */
+.rma-table {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.rma-table th {
+  background-color: var(--muted);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.rma-table td {
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+
+.rma-table tr:hover {
+  background-color: var(--muted);
+}
+
+.rma-table tr:hover td {
+  color: var(--foreground);
+}
+
+/* ========================================
+   CARD COMPONENT FIXES
+   ======================================== */
+
+/* Dashboard Cards */
+.dashboard-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card h3 {
+  color: var(--foreground);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.dashboard-card p {
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}
+
+/* ========================================
+   NAVIGATION COMPONENT FIXES
+   ======================================== */
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+}
+
+.sidebar-nav .nav-item {
+  color: var(--sidebar-foreground);
+  transition: all 0.2s ease;
+}
+
+.sidebar-nav .nav-item:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+.sidebar-nav .nav-item-active {
+  background-color: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--primary);
+}
+
+/* ========================================
+   MODAL COMPONENT FIXES
+   ======================================== */
+
+/* Modal Overlay */
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border);
+  padding: 1rem;
+}
+
+.modal-title {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 1rem;
+  color: var(--muted-foreground);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+}
+
+/* ========================================
+   BUTTON COMPONENT FIXES
+   ======================================== */
+
+/* Primary Button */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+  box-shadow: 0 0 0 1px var(--primary), 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background-color: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.btn-secondary:disabled {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border-color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   ALERT COMPONENT FIXES
+   ======================================== */
+
+/* Success Alert */
+.alert-success {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #22c55e;
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.dark .alert-success {
+  background-color: #14532d;
+  color: #dcfce7;
+  border-color: #22c55e;
+}
+
+/* Error Alert */
+.alert-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.dark .alert-error {
+  background-color: #991b1b;
+  color: #fee2e2;
+  border-color: #ef4444;
+}
+
+/* Warning Alert */
+.alert-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.dark .alert-warning {
+  background-color: #713f12;
+  color: #fef3c7;
+  border-color: #f59e0b;
+}
+
+/* Info Alert */
+.alert-info {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.dark .alert-info {
+  background-color: #1e3a8a;
+  color: #dbeafe;
+  border-color: #3b82f6;
+}
+
+/* ========================================
+   LOADING COMPONENT FIXES
+   ======================================== */
+
+/* Loading Spinner */
+.loading-spinner {
+  border: 2px solid var(--muted);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading Text */
+.loading-text {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+/* ========================================
+   RESPONSIVE FIXES
+   ======================================== */
+
+/* Mobile-specific fixes */
+@media (max-width: 768px) {
+  .mobile-form-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .mobile-button {
+    min-height: 48px; /* Larger touch targets */
+    padding: 1rem;
+  }
+  
+  .mobile-card {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+  
+  .mobile-table {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-table th,
+  .mobile-table td {
+    padding: 0.5rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY FIXES
+   ======================================== */
+
+/* Focus indicators */
+.focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .high-contrast {
+    border: 2px solid var(--foreground);
+  }
+  
+  .high-contrast-text {
+    color: var(--foreground) !important;
+    font-weight: 600;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-left,
+  .animate-slide-in-bottom,
+  .animate-fade-in-scale {
+    animation: none;
+  }
+}
+
+/* ========================================
+   CRITICAL OVERRIDES
+   ======================================== */
+
+/* Ensure all text is visible in any context */
+* {
+  color: inherit;
+}
+
+/* Override any problematic text colors */
+.text-invisible {
+  color: var(--foreground) !important;
+}
+
+/* Ensure form elements are always visible */
+input, textarea, select {
+  color: var(--input-foreground) !important;
+  background-color: var(--input-background) !important;
+}
+
+/* Ensure all text in cards is visible */
+.card *,
+.bg-dark-card *,
+.bg-white * {
+  color: var(--foreground) !important;
+}
+
+/* Override any light text on dark backgrounds */
+.bg-dark-bg .text-gray-600,
+.bg-dark-bg .text-gray-500,
+.bg-dark-bg .text-gray-400,
+.bg-dark-card .text-gray-600,
+.bg-dark-card .text-gray-500,
+.bg-dark-card .text-gray-400 {
+  color: var(--muted-foreground) !important;
+}

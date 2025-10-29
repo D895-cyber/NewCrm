@@ -29,6 +29,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../utils/api/client';
 import { exportServiceReportToPDF } from '../../utils/export';
 import { ASCOMPServiceReportForm } from '../ASCOMPServiceReportForm';
+import { transformFormDataToTemplate } from '../../utils/ascompDataMapper';
 
 interface ServiceVisit {
   _id: string;
@@ -462,20 +463,31 @@ export function FSEWorkflow() {
       };
 
       console.log('Submitting report with data:', mergedReportData);
+      
+      // Transform data to match template structure for PDF generation
+      console.log('🔄 Transforming data for template...');
+      const templateData = transformFormDataToTemplate(mergedReportData);
+      
+      // Add transformed data to submission
+      const submissionData = {
+        ...mergedReportData,
+        templateData: templateData
+      };
 
       // Submit the comprehensive report
-      console.log('📤 Submitting report to API with merged data:', {
-        reportNumber: mergedReportData.reportNumber,
-        siteName: mergedReportData.siteName,
-        projectorSerial: mergedReportData.projectorSerial,
-        projectorModel: mergedReportData.projectorModel,
-        brand: mergedReportData.brand,
-        engineerName: mergedReportData.engineer?.name,
-        hasPhotos: mergedReportData.photos?.length > 0,
-        dataSize: JSON.stringify(mergedReportData).length
+      console.log('📤 Submitting report to API with merged and transformed data:', {
+        reportNumber: submissionData.reportNumber,
+        siteName: submissionData.siteName,
+        projectorSerial: submissionData.projectorSerial,
+        projectorModel: submissionData.projectorModel,
+        brand: submissionData.brand,
+        engineerName: submissionData.engineer?.name,
+        hasPhotos: submissionData.photos?.length > 0,
+        hasTemplateData: !!submissionData.templateData,
+        dataSize: JSON.stringify(submissionData).length
       });
       
-      const response = await apiClient.createServiceReport(mergedReportData);
+      const response = await apiClient.createServiceReport(submissionData);
       console.log('✅ ASCOMP Report created successfully:', response);
 
       if (response.generatedDoc || response.generatedPdf) {

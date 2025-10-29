@@ -1,64 +1,83 @@
 const axios = require('axios');
 
-// Test script to verify DTR assignment to technical heads functionality
+// Test script to debug DTR assignment to technical head
 async function testDTRAssignment() {
-  const baseURL = 'http://localhost:5000/api';
+  console.log('🔍 Testing DTR Assignment to Technical Head...\n');
+  
+  const baseURL = 'http://localhost:4000/api';
   
   try {
-    console.log('🧪 Testing DTR Assignment to Technical Heads...\n');
-
-    // 1. Test getting technical heads
-    console.log('1. Testing GET /dtr/users/technical-heads...');
-    try {
-      const response = await axios.get(`${baseURL}/dtr/users/technical-heads`);
-      console.log('✅ Technical heads endpoint working');
-      console.log('   Found technical heads:', response.data.length);
-      if (response.data.length > 0) {
-        console.log('   Sample technical head:', {
-          userId: response.data[0].userId,
-          username: response.data[0].username,
-          email: response.data[0].email
-        });
-      }
-    } catch (error) {
-      console.log('❌ Error getting technical heads:', error.response?.data?.message || error.message);
-    }
-
-    // 2. Test getting DTRs
-    console.log('\n2. Testing GET /dtr...');
-    try {
-      const response = await axios.get(`${baseURL}/dtr`);
-      console.log('✅ DTRs endpoint working');
-      console.log('   Found DTRs:', response.data.length);
-      if (response.data.length > 0) {
-        console.log('   Sample DTR:', {
-          _id: response.data[0]._id,
-          caseId: response.data[0].caseId,
-          status: response.data[0].status
-        });
-      }
-    } catch (error) {
-      console.log('❌ Error getting DTRs:', error.response?.data?.message || error.message);
-    }
-
-    console.log('\n🎉 Test completed!');
-    console.log('\n📋 Summary:');
-    console.log('   - Backend API endpoints are set up');
-    console.log('   - Frontend dialog component is created');
-    console.log('   - RMA page has assign DTR button for RMA handlers');
-    console.log('   - Assignment logic is integrated');
+    // Test 1: Check if backend is running
+    console.log('1. Testing backend connection...');
+    const healthResponse = await axios.get(`${baseURL}/health`);
+    console.log('✅ Backend is running');
     
-    console.log('\n🚀 Next steps:');
-    console.log('   1. Start the backend server');
-    console.log('   2. Start the frontend application');
-    console.log('   3. Login as an RMA handler');
-    console.log('   4. Go to RMA page and click the workflow button on any RMA');
-    console.log('   5. Select a technical head and assign the DTR');
-
+    // Test 2: Get technical heads
+    console.log('\n2. Testing technical heads endpoint...');
+    try {
+      const techHeadsResponse = await axios.get(`${baseURL}/dtr/users/technical-heads`);
+      console.log('✅ Technical heads endpoint working');
+      console.log(`📊 Found ${techHeadsResponse.data.length} technical heads:`);
+      techHeadsResponse.data.forEach((head, index) => {
+        console.log(`   ${index + 1}. ${head.username} (${head.email}) - Role: ${head.role}`);
+      });
+    } catch (error) {
+      console.log('❌ Technical heads endpoint failed:', error.response?.data?.message || error.message);
+    }
+    
+    // Test 3: Get a sample DTR
+    console.log('\n3. Testing DTR fetch...');
+    try {
+      const dtrsResponse = await axios.get(`${baseURL}/dtr`);
+      if (dtrsResponse.data.length > 0) {
+        const sampleDTR = dtrsResponse.data[0];
+        console.log('✅ Found sample DTR:', sampleDTR.caseId);
+        console.log(`   DTR ID: ${sampleDTR._id}`);
+        console.log(`   Current Status: ${sampleDTR.status}`);
+        console.log(`   Assigned To: ${sampleDTR.assignedTo || 'Not assigned'}`);
+        
+        // Test 4: Try to assign the DTR
+        console.log('\n4. Testing DTR assignment...');
+        if (techHeadsResponse.data.length > 0) {
+          const technicalHead = techHeadsResponse.data[0];
+          console.log(`   Attempting to assign to: ${technicalHead.username}`);
+          
+          try {
+            const assignResponse = await axios.post(`${baseURL}/dtr/${sampleDTR._id}/assign-technical-head`, {
+              technicalHeadId: technicalHead.userId,
+              technicalHeadName: technicalHead.profile?.firstName && technicalHead.profile?.lastName
+                ? `${technicalHead.profile.firstName} ${technicalHead.profile.lastName}`
+                : technicalHead.username,
+              technicalHeadEmail: technicalHead.email,
+              assignedBy: 'rma_handler'
+            });
+            
+            console.log('✅ Assignment successful!');
+            console.log('   Response:', assignResponse.data);
+          } catch (assignError) {
+            console.log('❌ Assignment failed:', assignError.response?.data?.message || assignError.message);
+            console.log('   Status:', assignError.response?.status);
+            console.log('   Data:', assignError.response?.data);
+          }
+        }
+      } else {
+        console.log('❌ No DTRs found to test with');
+      }
+    } catch (error) {
+      console.log('❌ DTR fetch failed:', error.response?.data?.message || error.message);
+    }
+    
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
+    console.log('❌ Backend connection failed:', error.message);
+    console.log('   Make sure the backend server is running on port 4000');
   }
 }
 
 // Run the test
-testDTRAssignment();
+testDTRAssignment()
+  .then(() => {
+    console.log('\n🎯 Test completed');
+  })
+  .catch((error) => {
+    console.error('❌ Test failed:', error);
+  });

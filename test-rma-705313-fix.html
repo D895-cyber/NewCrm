@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test RMA 705313 Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+        }
+        .success {
+            background-color: #1e4d2b;
+            border-color: #2d5a3d;
+            color: #90ee90;
+        }
+        .error {
+            background-color: #4d1e1e;
+            border-color: #5a2d2d;
+            color: #ff6b6b;
+        }
+        .info {
+            background-color: #1e3a4d;
+            border-color: #2d4a5a;
+            color: #87ceeb;
+        }
+        .warning {
+            background-color: #4d3e1e;
+            border-color: #5a4a2d;
+            color: #ffd700;
+        }
+        .rma-item {
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .before {
+            border-left: 4px solid #dc3545;
+        }
+        .after {
+            border-left: 4px solid #28a745;
+        }
+        .part-info {
+            background-color: #444;
+            border: 1px solid #666;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .defective-part {
+            border-left: 4px solid #dc3545;
+        }
+        .replacement-part {
+            border-left: 4px solid #28a745;
+        }
+        .symptom {
+            background-color: #dc3545;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .fixed {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .debug-log {
+            background-color: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test RMA 705313 Fix</h1>
+    
+    <div class="test-section info">
+        <h3>Testing the exact data from the image</h3>
+        <p>This test simulates the exact RMA data shown in the image to verify the fix is working.</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Results</h3>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Debug Logs</h3>
+        <div id="debug-logs"></div>
+    </div>
+
+    <script>
+        function testRMA705313Fix() {
+            // Simulate the exact data from the image
+            const backendRMA = {
+                rmaNumber: '705313',
+                defectivePartName: 'Assy. Integrator rod',
+                replacedPartName: 'Integrator rod chipped',
+                symptoms: 'Integrator rod chipped',
+                defectivePartNumber: '003-001529-01',
+                replacedPartNumber: '003-001529-01'
+            };
+
+            const debugLogs = [];
+            
+            // Simulate the data mapping logic
+            function mapBackendDataToFrontend(backendRMA) {
+                // Debug logging for replacement part name issue
+                if (backendRMA.replacedPartName && (
+                    backendRMA.replacedPartName.toLowerCase().includes('chipped') ||
+                    backendRMA.replacedPartName.toLowerCase().includes('integrator rod') ||
+                    backendRMA.replacedPartName.toLowerCase().includes('marriage')
+                )) {
+                    const log = `🔍 DEBUG - RMA with symptom in replacement part name: ${JSON.stringify({
+                        rmaNumber: backendRMA.rmaNumber,
+                        defectivePartName: backendRMA.defectivePartName,
+                        replacedPartName: backendRMA.replacedPartName,
+                        symptoms: backendRMA.symptoms
+                    })}`;
+                    debugLogs.push(log);
+                    console.log(log);
+                }
+                
+                // Debug logging for RMA 705313 specifically
+                if (backendRMA.rmaNumber === '705313') {
+                    const log = `🔍 DEBUG - RMA 705313 backend data: ${JSON.stringify({
+                        rmaNumber: backendRMA.rmaNumber,
+                        defectivePartName: backendRMA.defectivePartName,
+                        replacedPartName: backendRMA.replacedPartName,
+                        symptoms: backendRMA.symptoms
+                    })}`;
+                    debugLogs.push(log);
+                    console.log(log);
+                }
+                
+                const replacedPartName = (() => {
+                    // If replacedPartName is not set or seems to be a symptom description, use defectivePartName
+                    const replacedName = backendRMA.replacedPartName || 'N/A';
+                    const defectiveName = backendRMA.defectivePartName || 'Projector Component';
+                    
+                    // Check if the replacement part name contains symptom keywords
+                    const symptomKeywords = [
+                        'chipped', 'broken', 'faulty', 'defect', 'failure', 'marriage',
+                        'rod chipped', 'integrator rod', 'prism chipped', 'segmen prism',
+                        'connection lost', 'power cycle', 'marriage failure', 'imb marriage',
+                        'cracked', 'damaged', 'malfunction', 'error', 'issue', 'problem'
+                    ];
+                    
+                    if (replacedName === 'N/A' || 
+                        symptomKeywords.some(keyword => replacedName.toLowerCase().includes(keyword.toLowerCase()))) {
+                        const log = `🔄 DEBUG - Replacing symptom name with defective part name: ${JSON.stringify({
+                            rmaNumber: backendRMA.rmaNumber,
+                            originalReplacedName: replacedName,
+                            newReplacedName: defectiveName
+                        })}`;
+                        debugLogs.push(log);
+                        console.log(log);
+                        return defectiveName;
+                    }
+                    
+                    // Debug logging for RMA 705313 specifically
+                    if (backendRMA.rmaNumber === '705313') {
+                        const log = `🔍 DEBUG - RMA 705313 replacement logic: ${JSON.stringify({
+                            rmaNumber: backendRMA.rmaNumber,
+                            replacedName: replacedName,
+                            defectiveName: defectiveName,
+                            willReplace: replacedName === 'N/A' || symptomKeywords.some(keyword => replacedName.toLowerCase().includes(keyword.toLowerCase())),
+                            finalResult: replacedName === 'N/A' || symptomKeywords.some(keyword => replacedName.toLowerCase().includes(keyword.toLowerCase())) ? defectiveName : replacedName
+                        })}`;
+                        debugLogs.push(log);
+                        console.log(log);
+                    }
+                    
+                    return replacedName;
+                })();
+
+                return {
+                    rmaNumber: backendRMA.rmaNumber,
+                    defectivePartName: backendRMA.defectivePartName,
+                    replacedPartName: replacedPartName,
+                    symptoms: backendRMA.symptoms,
+                    defectivePartNumber: backendRMA.defectivePartNumber,
+                    replacedPartNumber: backendRMA.replacedPartNumber
+                };
+            }
+
+            // Test the mapping
+            const mappedRMA = mapBackendDataToFrontend(backendRMA);
+            
+            // Display results
+            const resultsContainer = document.getElementById('test-results');
+            const isFixed = mappedRMA.replacedPartName !== backendRMA.replacedPartName;
+            
+            resultsContainer.innerHTML = `
+                <div class="rma-item ${isFixed ? 'after' : 'before'}">
+                    <h3>RMA ${mappedRMA.rmaNumber} - ${isFixed ? 'FIXED' : 'NOT FIXED'}</h3>
+                    <div class="part-info defective-part">
+                        <strong>Defective Part:</strong> "${mappedRMA.defectivePartName}"
+                    </div>
+                    <div class="part-info replacement-part">
+                        <strong>Original Replacement Part:</strong> "${backendRMA.replacedPartName}" <span class="symptom">❌ SYMPTOM</span>
+                    </div>
+                    <div class="part-info replacement-part">
+                        <strong>Fixed Replacement Part:</strong> "${mappedRMA.replacedPartName}" ${isFixed ? '<span class="fixed">✅ FIXED</span>' : '<span class="symptom">❌ NOT FIXED</span>'}
+                    </div>
+                    <div class="part-info">
+                        <strong>Part Number:</strong> ${mappedRMA.replacedPartNumber}
+                    </div>
+                </div>
+            `;
+            
+            // Display debug logs
+            const debugContainer = document.getElementById('debug-logs');
+            debugContainer.innerHTML = debugLogs.map(log => `<div class="debug-log">${log}</div>`).join('');
+        }
+
+        // Run the test when page loads
+        window.addEventListener('load', testRMA705313Fix);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -80,6 +80,48 @@ const convertDocxToPdf = async (docBuffer) => {
 const buildTemplateData = (report) => {
   const plainReport = report.toObject ? report.toObject() : report;
 
+  // If templateData exists (from frontend transformation), use it for PDF generation
+  if (plainReport.templateData) {
+    console.log('✅ Using pre-transformed template data from frontend');
+    
+    // Process photos for embedding
+    const processedPhotos = (plainReport.photos || []).map(photo => ({
+      ...photo,
+      embeddedUrl: photo.cloudUrl || photo.path || photo.dataURI,
+      description: photo.description || photo.category || 'Service Photo',
+      category: photo.category || photo.beforeAfter || 'Service Photo'
+    }));
+
+    // Process signatures for embedding
+    const processedSignatures = {
+      client: plainReport.signatures?.customer || plainReport.clientSignature || null,
+      engineer: plainReport.signatures?.engineer || plainReport.engineerSignature || null
+    };
+
+    return {
+      ...plainReport,
+      ...plainReport.templateData,
+      // Keep original fields for backward compatibility
+      reportDate: plainReport.date ? new Date(plainReport.date).toLocaleDateString('en-IN') : '',
+      engineerName: plainReport.engineer?.name || '',
+      engineerEmail: plainReport.engineer?.email || '',
+      engineerPhone: plainReport.engineer?.phone || '',
+      siteInchargeName: plainReport.siteIncharge?.name || '',
+      siteInchargeContact: plainReport.siteIncharge?.contact || '',
+      // Add processed photos and signatures
+      photos: processedPhotos,
+      signatures: processedSignatures,
+      // Add photo counts for template
+      photoCount: processedPhotos.length,
+      hasPhotos: processedPhotos.length > 0,
+      hasClientSignature: !!processedSignatures.client,
+      hasEngineerSignature: !!processedSignatures.engineer
+    };
+  }
+
+  // Legacy path: transform data on backend if templateData doesn't exist
+  console.log('⚠️ No templateData found, using legacy transformation');
+
   // Handle ASCOMP data structure - ensure both sections and inspectionSections are available
   if (plainReport.sections && !plainReport.inspectionSections) {
     plainReport.inspectionSections = {

@@ -1,0 +1,306 @@
+/* ========================================
+   LOGIN PAGE ICON FIXES
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   LOGIN INPUT FIELD ICON POSITIONING
+   ======================================== */
+@layer components {
+  /* Fix icon positioning in login form inputs */
+  .login-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .login-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Ensure icons are visible on login page */
+  .login-page .login-input-icon {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .login-input {
+    padding-left: 2.5rem !important; /* Ensure space for icon */
+    padding-right: 2.5rem !important; /* Ensure space for password toggle */
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  /* Override default Input component styles with higher specificity */
+  .login-page .login-input-container .login-input {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .login-page .login-input-container .login-input:focus {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1) !important;
+  }
+
+  .login-input:focus {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1) !important;
+    outline: none;
+  }
+
+  .login-input::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+    opacity: 1;
+  }
+
+  /* Password toggle button positioning */
+  .password-toggle {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 10;
+    transition: color 0.2s ease;
+  }
+
+  .password-toggle:hover {
+    color: white;
+  }
+
+  /* Ensure password toggle is visible on login page */
+  .login-page .password-toggle {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .login-page .password-toggle:hover {
+    color: white !important;
+  }
+
+  /* Ensure proper spacing for icons */
+  .login-input-container .login-input {
+    padding-left: 2.5rem !important;
+  }
+
+  .login-input-container .password-toggle {
+    right: 0.75rem;
+  }
+}
+
+/* ========================================
+   LOGIN FORM LAYOUT IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* Login form container */
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* Form field spacing */
+  .login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .login-label {
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Input field improvements */
+  .login-input-container {
+    position: relative;
+    width: 100%;
+  }
+
+  /* Icon positioning fixes */
+  .login-input-container .login-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Ensure icons don't overlap with text */
+  .login-input-container .login-input {
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+  }
+
+  /* Password field specific fixes */
+  .password-field .login-input {
+    padding-right: 2.5rem !important;
+  }
+
+  .password-field .password-toggle {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+  }
+}
+
+/* ========================================
+   RESPONSIVE LOGIN FIXES
+   ======================================== */
+@layer utilities {
+  /* Mobile login improvements */
+  @media (max-width: 768px) {
+    .login-input-container {
+      margin-bottom: 1rem;
+    }
+
+    .login-input {
+      padding: 0.875rem 2.5rem !important;
+      font-size: 1rem; /* Prevent zoom on iOS */
+    }
+
+    .login-input-icon {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    .password-toggle {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+  }
+
+  /* Tablet improvements */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .login-input {
+      padding: 0.75rem 2.5rem !important;
+    }
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY IMPROVEMENTS
+   ======================================== */
+@layer utilities {
+  /* Focus indicators */
+  .login-input:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+  }
+
+  .password-toggle:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+  }
+
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .login-input {
+      border: 2px solid white;
+    }
+
+    .login-input:focus {
+      border: 2px solid #60a5fa;
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .login-input {
+      transition: none;
+    }
+
+    .password-toggle {
+      transition: none;
+    }
+  }
+}
+
+/* ========================================
+   SPECIFIC LOGIN PAGE OVERRIDES
+   ======================================== */
+@layer components {
+  /* Override any conflicting styles */
+  .login-page .login-input-container {
+    position: relative !important;
+  }
+
+  .login-page .login-input-icon {
+    position: absolute !important;
+    left: 0.75rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 10 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .login-page .login-input {
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .login-page .login-input:focus {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1) !important;
+  }
+
+  .login-page .password-toggle {
+    position: absolute !important;
+    right: 0.75rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 10 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .login-page .password-toggle:hover {
+    color: white !important;
+  }
+
+  /* Ensure proper spacing */
+  .login-page .relative {
+    position: relative !important;
+  }
+
+  .login-page .absolute {
+    position: absolute !important;
+  }
+}
+
+
+
+

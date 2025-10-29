@@ -1,0 +1,616 @@
+/* ========================================
+   DESIGN IMPROVEMENTS - FIX TIGHT DESIGN
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   SPACING SYSTEM
+   ======================================== */
+:root {
+  /* Enhanced spacing scale */
+  --space-xs: 0.25rem;    /* 4px */
+  --space-sm: 0.5rem;     /* 8px */
+  --space-md: 0.75rem;    /* 12px */
+  --space-lg: 1rem;        /* 16px */
+  --space-xl: 1.5rem;      /* 24px */
+  --space-2xl: 2rem;       /* 32px */
+  --space-3xl: 3rem;       /* 48px */
+  --space-4xl: 4rem;       /* 64px */
+  
+  /* Component spacing */
+  --component-padding: 1.5rem;
+  --component-margin: 1rem;
+  --section-spacing: 2rem;
+  --card-spacing: 1.25rem;
+}
+
+/* ========================================
+   TYPOGRAPHY IMPROVEMENTS
+   ======================================== */
+@layer base {
+  /* Enhanced font sizes with better hierarchy */
+  h1, .h1 {
+    font-size: 2.25rem;    /* 36px */
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    margin-bottom: var(--space-lg);
+  }
+
+  h2, .h2 {
+    font-size: 1.875rem;    /* 30px */
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.025em;
+    margin-bottom: var(--space-md);
+  }
+
+  h3, .h3 {
+    font-size: 1.5rem;      /* 24px */
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: var(--space-md);
+  }
+
+  h4, .h4 {
+    font-size: 1.25rem;     /* 20px */
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: var(--space-sm);
+  }
+
+  /* Body text improvements */
+  p, .text-body {
+    font-size: 1rem;        /* 16px - increased from 14px */
+    font-weight: 400;
+    line-height: 1.6;       /* Better line height */
+    margin-bottom: var(--space-md);
+  }
+
+  /* Small text improvements */
+  .text-sm {
+    font-size: 0.875rem;    /* 14px */
+    line-height: 1.5;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;     /* 12px */
+    line-height: 1.4;
+  }
+
+  /* Labels with better spacing */
+  label, .label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: var(--space-sm);
+    display: block;
+  }
+}
+
+/* ========================================
+   LAYOUT IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* Main container with better spacing */
+  .main-container {
+    padding: var(--space-2xl);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Section spacing */
+  .section {
+    margin-bottom: var(--section-spacing);
+  }
+
+  /* Card improvements */
+  .card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;    /* Increased from 0.75rem */
+    padding: var(--component-padding);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: var(--component-margin);
+  }
+
+  .card-header {
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: var(--space-sm);
+  }
+
+  .card-subtitle {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0;
+  }
+
+  .card-content {
+    color: var(--muted-foreground);
+    line-height: 1.6;
+  }
+}
+
+/* ========================================
+   DASHBOARD CARD IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* KPI Cards with better spacing */
+  .kpi-card {
+    background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+    border-radius: 12px;
+    padding: var(--space-xl);
+    color: white;
+    box-shadow: 0 8px 25px -5px rgba(59, 130, 246, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px -5px rgba(59, 130, 246, 0.4);
+  }
+
+  .kpi-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: var(--space-sm);
+  }
+
+  .kpi-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    opacity: 0.9;
+    margin-bottom: var(--space-xs);
+  }
+
+  .kpi-icon {
+    width: 2rem;
+    height: 2rem;
+    opacity: 0.8;
+  }
+
+  /* Segmented KPI Card */
+  .kpi-segmented {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-xl);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .kpi-segment {
+    padding: var(--space-lg);
+    border-radius: 8px;
+    margin-bottom: var(--space-md);
+  }
+
+  .kpi-segment:last-child {
+    margin-bottom: 0;
+  }
+
+  .kpi-segment-orange {
+    background-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  .kpi-segment-red {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .kpi-segment-number {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: var(--space-xs);
+  }
+
+  .kpi-segment-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
+
+/* ========================================
+   NAVIGATION IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* Sidebar with better spacing */
+  .sidebar {
+    width: 280px;          /* Increased from default */
+    padding: var(--space-xl);
+    background-color: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-header {
+    margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .sidebar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--sidebar-foreground);
+    margin-bottom: var(--space-xs);
+  }
+
+  .sidebar-subtitle {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0;
+  }
+
+  /* Navigation items with better spacing */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: var(--muted-foreground);
+    margin-bottom: var(--space-sm);
+    min-height: 48px;        /* Increased touch target */
+  }
+
+  .nav-item:hover {
+    background-color: var(--muted);
+    color: var(--foreground);
+  }
+
+  .nav-item-active {
+    background-color: var(--muted);
+    color: var(--foreground);
+    border: 1px solid var(--primary);
+  }
+
+  .nav-item-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .nav-item-text {
+    flex: 1;
+  }
+
+  .nav-item-description {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin-top: var(--space-xs);
+    line-height: 1.3;
+  }
+}
+
+/* ========================================
+   SEARCH AND FILTER IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* Search bar with better spacing */
+  .search-container {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: var(--space-md) var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: var(--input-background);
+    color: var(--input-foreground);
+    transition: all 0.2s ease;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .search-input::placeholder {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+  }
+
+  /* Filter controls with better spacing */
+  .filter-controls {
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: var(--space-lg);
+  }
+
+  .filter-select {
+    padding: var(--space-md) var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: var(--input-background);
+    color: var(--input-foreground);
+    font-size: 0.875rem;
+    min-width: 150px;
+  }
+
+  .filter-button {
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .filter-button-clear {
+    background-color: var(--muted);
+    color: var(--foreground);
+  }
+
+  .filter-button-import {
+    background-color: #22c55e;
+    color: white;
+  }
+
+  .filter-button-advanced {
+    background-color: var(--primary);
+    color: white;
+  }
+
+  .filter-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* ========================================
+   TAB NAVIGATION IMPROVEMENTS
+   ======================================== */
+@layer components {
+  .tab-container {
+    margin-bottom: var(--space-xl);
+  }
+
+  .tab-list {
+    display: flex;
+    gap: var(--space-sm);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-lg);
+  }
+
+  .tab-item {
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 8px 8px 0 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+  }
+
+  .tab-item:hover {
+    color: var(--foreground);
+    background-color: var(--muted);
+  }
+
+  .tab-item-active {
+    color: var(--foreground);
+    background-color: var(--card);
+    border-bottom: 2px solid var(--primary);
+  }
+}
+
+/* ========================================
+   CONTENT AREA IMPROVEMENTS
+   ======================================== */
+@layer components {
+  /* Content sections with better spacing */
+  .content-section {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: var(--space-2xl);
+    margin-bottom: var(--space-xl);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .content-section-header {
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .content-section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: var(--space-sm);
+  }
+
+  .content-section-description {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0;
+  }
+
+  /* Empty state improvements */
+  .empty-state {
+    text-align: center;
+    padding: var(--space-4xl) var(--space-2xl);
+    color: var(--muted-foreground);
+  }
+
+  .empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto var(--space-lg);
+    opacity: 0.5;
+  }
+
+  .empty-state-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: var(--space-sm);
+  }
+
+  .empty-state-description {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0;
+  }
+}
+
+/* ========================================
+   BUTTON IMPROVEMENTS
+   ======================================== */
+@layer components {
+  .btn {
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 44px;
+    border: none;
+  }
+
+  .btn-primary {
+    background-color: var(--primary);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+
+  .btn-success {
+    background-color: #22c55e;
+    color: white;
+  }
+
+  .btn-success:hover {
+    background-color: #16a34a;
+  }
+}
+
+/* ========================================
+   RESPONSIVE IMPROVEMENTS
+   ======================================== */
+@layer utilities {
+  /* Mobile improvements */
+  @media (max-width: 768px) {
+    .main-container {
+      padding: var(--space-lg);
+    }
+
+    .sidebar {
+      width: 100%;
+      padding: var(--space-lg);
+    }
+
+    .kpi-card {
+      padding: var(--space-lg);
+    }
+
+    .kpi-number {
+      font-size: 2rem;
+    }
+
+    .search-container {
+      padding: var(--space-lg);
+    }
+
+    .filter-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .filter-select,
+    .filter-button {
+      width: 100%;
+    }
+  }
+
+  /* Tablet improvements */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .main-container {
+      padding: var(--space-xl);
+    }
+
+    .kpi-card {
+      padding: var(--space-lg);
+    }
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY IMPROVEMENTS
+   ======================================== */
+@layer utilities {
+  /* Focus indicators */
+  .focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .card {
+      border: 2px solid var(--foreground);
+    }
+
+    .nav-item {
+      border: 1px solid var(--border);
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
