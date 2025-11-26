@@ -327,8 +327,8 @@ export function ServiceReportsAnalysisPage() {
     
     return (
       <React.Fragment key={report._id}>
-        <TableRow className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}>
-          <TableCell>
+        <TableRow className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : 'bg-white'}`}>
+          <TableCell className="text-gray-900">
             <input
               type="checkbox"
               checked={isSelected}
@@ -336,48 +336,54 @@ export function ServiceReportsAnalysisPage() {
               className="rounded border-gray-300"
             />
           </TableCell>
-          <TableCell className="font-medium">
+          <TableCell className="font-medium text-gray-900">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => toggleRowExpansion(report._id)}
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 text-gray-700 hover:text-gray-900"
               >
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
-              {report.reportNumber}
+              <span className="text-gray-900">{report.reportNumber}</span>
             </div>
           </TableCell>
-          <TableCell>
-            <Badge className={getReportTypeColor(report.reportType)}>
-              {report.reportType}
+          <TableCell className="text-gray-900">
+            <Badge className={getReportTypeColor(report.reportType || 'First')}>
+              {report.reportType || 'N/A'}
             </Badge>
           </TableCell>
-          <TableCell>{report.siteName}</TableCell>
-          <TableCell>{report.projectorModel}</TableCell>
-          <TableCell>{report.projectorSerial}</TableCell>
-          <TableCell>{report.engineer.name}</TableCell>
-          <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
-          <TableCell>
+          <TableCell className="text-gray-900">{report.siteName || 'N/A'}</TableCell>
+          <TableCell className="text-gray-900">{report.projectorModel || 'N/A'}</TableCell>
+          <TableCell className="text-gray-900">{report.projectorSerial || 'N/A'}</TableCell>
+          <TableCell className="text-gray-900">{report.engineer?.name || 'N/A'}</TableCell>
+          <TableCell className="text-gray-900">{report.date ? new Date(report.date).toLocaleDateString() : 'N/A'}</TableCell>
+          <TableCell className="text-gray-900">
             <div className="flex gap-1">
-              <span className={`px-2 py-1 rounded text-xs ${getStatusColor(report.sections.opticals.filter(o => o.result === 'OK').length === report.sections.opticals.length ? 'OK' : 'FAIL')}`}>
-                {report.sections.opticals.filter(o => o.result === 'OK').length}/{report.sections.opticals.length}
-              </span>
+              {report.sections?.opticals ? (
+                <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(report.sections.opticals.filter((o: any) => o.result === 'OK').length === report.sections.opticals.length ? 'OK' : 'FAIL')}`}>
+                  {report.sections.opticals.filter((o: any) => o.result === 'OK').length}/{report.sections.opticals.length}
+                </span>
+              ) : (
+                <span className="text-gray-500 text-xs">-</span>
+              )}
             </div>
           </TableCell>
-          <TableCell>
+          <TableCell className="text-gray-900">
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => window.location.hash = `#/service-reports/${report._id}?readonly=1`}
+                className="text-gray-700 hover:text-gray-900 border-gray-300"
               >
                 <Eye className="h-4 w-4" />
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
+                className="text-gray-700 hover:text-gray-900 border-gray-300"
                 onClick={async () => {
                   try {
                     // Ensure authentication token is set before making the request
@@ -905,17 +911,17 @@ export function ServiceReportsAnalysisPage() {
               </div>
               <UITable>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">Select</TableHead>
-                    <TableHead>Report #</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead>Projector Model</TableHead>
-                    <TableHead>Serial #</TableHead>
-                    <TableHead>Engineer</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-gray-100">
+                    <TableHead className="w-12 text-gray-900 font-semibold">Select</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Report #</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Type</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Site</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Projector Model</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Serial #</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Engineer</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Date</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Status</TableHead>
+                    <TableHead className="text-gray-900 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

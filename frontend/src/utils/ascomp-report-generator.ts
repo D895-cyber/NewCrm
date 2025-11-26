@@ -77,9 +77,42 @@ const generateASCOMPReportHTML = (report: any): string => {
   const airPollutionLevels = safeAccess(report, ['airPollutionLevels'], {});
   const finalStatus = safeAccess(report, ['finalStatus'], {});
   const imageEvaluation = safeAccess(report, ['imageEvaluation'], {});
+  
+  // Extract signature data - support multiple possible locations
+  // Signatures can be stored as base64 data URIs or URLs
+  let clientSignature = safeAccess(report, ['clientSignature'], 
+    safeAccess(report, ['signatures', 'customer'], 
+      safeAccess(report, ['clientSignatureAndStamp', 'signatureData'], null)));
+  let engineerSignature = safeAccess(report, ['engineerSignature'], 
+    safeAccess(report, ['signatures', 'engineer'], 
+      safeAccess(report, ['engineerSignature', 'signatureData'], null)));
+  
+  // Ensure signatures are valid base64 data URIs or URLs
+  // If it's already a data URI, use it as is; otherwise try to construct one
+  if (clientSignature && typeof clientSignature === 'string') {
+    if (!clientSignature.startsWith('data:') && !clientSignature.startsWith('http')) {
+      // Assume it's base64 without prefix, add data URI prefix
+      clientSignature = `data:image/png;base64,${clientSignature}`;
+    }
+  }
+  
+  if (engineerSignature && typeof engineerSignature === 'string') {
+    if (!engineerSignature.startsWith('data:') && !engineerSignature.startsWith('http')) {
+      // Assume it's base64 without prefix, add data URI prefix
+      engineerSignature = `data:image/png;base64,${engineerSignature}`;
+    }
+  }
+  
+  console.log('🔍 Signature data check:', {
+    hasClientSignature: !!clientSignature,
+    hasEngineerSignature: !!engineerSignature,
+    clientSignatureType: clientSignature ? (clientSignature.substring(0, 30)) : null,
+    engineerSignatureType: engineerSignature ? (engineerSignature.substring(0, 30)) : null
+  });
 
   // Extract inspection sections data using the correct form structure
-  const inspectionSections = safeAccess(report, ['inspectionSections'], {});
+  // Support both direct access and nested inspectionSections structure
+  const inspectionSections = safeAccess(report, ['inspectionSections'], safeAccess(report, ['sections'], {}));
   const opticals = safeAccess(inspectionSections, ['opticals'], []);
   const electronics = safeAccess(inspectionSections, ['electronics'], []);
   const mechanical = safeAccess(inspectionSections, ['mechanical'], []);
@@ -87,6 +120,19 @@ const generateASCOMPReportHTML = (report: any): string => {
   const serialNumberVerified = safeAccess(inspectionSections, ['serialNumberVerified'], {});
   const disposableConsumables = safeAccess(inspectionSections, ['disposableConsumables'], []);
   const coolant = safeAccess(inspectionSections, ['coolant'], {});
+  
+  // Debug logging to verify data structure
+  console.log('🔍 PDF Generator - Inspection Sections Data:', {
+    hasInspectionSections: !!inspectionSections,
+    hasOpticals: !!opticals,
+    opticalsLength: opticals?.length || 0,
+    firstOptical: opticals?.[0] || null,
+    sampleOpticalData: opticals?.[0] ? {
+      description: opticals[0].description,
+      status: opticals[0].status,
+      result: opticals[0].result
+    } : null
+  });
 
   return `
     <!DOCTYPE html>
@@ -98,9 +144,9 @@ const generateASCOMPReportHTML = (report: any): string => {
         body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 20px;
-          font-size: 12px;
-          line-height: 1.3;
+          padding: 15px;
+          font-size: 11px;
+          line-height: 1.2;
           color: #000;
           background: white;
         }
@@ -109,9 +155,9 @@ const generateASCOMPReportHTML = (report: any): string => {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 20px;
+          margin-bottom: 12px;
           border-bottom: 2px solid #000;
-          padding-bottom: 10px;
+          padding-bottom: 8px;
         }
         
         .date-time {
@@ -140,39 +186,54 @@ const generateASCOMPReportHTML = (report: any): string => {
           background: #f9f9f9;
         }
         
-        .company-logo {
-          width: 60px;
-          height: 60px;
-          background: #0066cc;
-          border-radius: 50%;
+        .logo-section {
+          margin-bottom: 15px;
+        }
+        
+        .ascomp-logo-container {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 24px;
-          font-weight: bold;
-          margin-right: 20px;
+          align-items: flex-start;
+          margin-bottom: 12px;
+        }
+        
+        .ascomp-logo-img {
+          width: 85px;
+          height: auto;
+          margin-right: 18px;
+          flex-shrink: 0;
+          object-fit: contain;
+        }
+        
+        .ascomp-logo-svg {
+          width: 85px;
+          height: auto;
+          margin-right: 18px;
+          flex-shrink: 0;
         }
         
         .company-info {
           flex: 1;
+          padding-top: 3px;
         }
         
         .company-name {
           font-size: 16px;
           font-weight: bold;
-          margin-bottom: 5px;
+          margin-bottom: 6px;
+          color: #000;
         }
         
         .company-address {
           font-size: 11px;
-          margin-bottom: 5px;
+          margin-bottom: 6px;
+          color: #000;
         }
         
         .company-contact {
           font-size: 11px;
           display: flex;
           gap: 20px;
+          flex-wrap: wrap;
         }
         
         .contact-item {
@@ -181,32 +242,44 @@ const generateASCOMPReportHTML = (report: any): string => {
           gap: 5px;
         }
         
+        .christie-logo-section {
+          margin: 12px 0 10px 0;
+          padding-left: 0;
+        }
+        
+        .christie-logo-container {
+          display: block;
+          margin-bottom: 8px;
+        }
+        
+        .christie-logo-svg {
+          height: 40px;
+          width: auto;
+        }
+        
         .brand-title {
-          text-align: center;
-          font-size: 24px;
-          font-weight: bold;
-          color: #0066cc;
-          margin: 20px 0 10px 0;
+          display: none; /* Hide old text version, using SVG logo instead */
         }
         
         .subtitle {
-          text-align: center;
-          font-size: 14px;
-          margin-bottom: 20px;
+          text-align: left;
+          font-size: 12px;
+          margin-bottom: 12px;
+          margin-top: 3px;
         }
         
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin-bottom: 20px;
+          gap: 15px;
+          margin-bottom: 12px;
         }
         
         .info-box {
           border: 2px solid #000;
-          padding: 15px;
+          padding: 10px;
           background: #f8f8f8;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
         }
         
         .info-box h3 {
@@ -225,15 +298,15 @@ const generateASCOMPReportHTML = (report: any): string => {
         .sections-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 12px;
+          margin-bottom: 12px;
+          font-size: 11px;
           border: 2px solid #000;
         }
         
         .sections-table th,
         .sections-table td {
           border: 1px solid #000;
-          padding: 10px 8px;
+          padding: 6px 5px;
           text-align: left;
           vertical-align: middle;
         }
@@ -266,9 +339,9 @@ const generateASCOMPReportHTML = (report: any): string => {
         }
         
         .section-title {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: bold;
-          margin: 20px 0 10px 0;
+          margin: 10px 0 5px 0;
           color: #0066cc;
           text-decoration: underline;
         }
@@ -276,20 +349,20 @@ const generateASCOMPReportHTML = (report: any): string => {
         .technical-tables {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin-bottom: 20px;
+          gap: 15px;
+          margin-bottom: 12px;
         }
         
         .technical-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 11px;
+          font-size: 10px;
         }
         
         .technical-table th,
         .technical-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -303,14 +376,14 @@ const generateASCOMPReportHTML = (report: any): string => {
         .observations-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
         
         .observations-table th,
         .observations-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -324,14 +397,14 @@ const generateASCOMPReportHTML = (report: any): string => {
         .parts-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
         
         .parts-table th,
         .parts-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -345,14 +418,14 @@ const generateASCOMPReportHTML = (report: any): string => {
         .color-coordinates-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
         
         .color-coordinates-table th,
         .color-coordinates-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -366,14 +439,14 @@ const generateASCOMPReportHTML = (report: any): string => {
         .screen-info-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
         
         .screen-info-table th,
         .screen-info-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -387,14 +460,14 @@ const generateASCOMPReportHTML = (report: any): string => {
         .pollution-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
-          font-size: 11px;
+          margin-bottom: 12px;
+          font-size: 10px;
         }
         
         .pollution-table th,
         .pollution-table td {
           border: 1px solid #000;
-          padding: 6px;
+          padding: 4px;
           text-align: left;
         }
         
@@ -406,18 +479,18 @@ const generateASCOMPReportHTML = (report: any): string => {
         }
         
         .status-section {
-          margin: 20px 0;
+          margin: 12px 0;
         }
         
         .status-item {
-          margin: 5px 0;
-          font-size: 12px;
+          margin: 3px 0;
+          font-size: 11px;
         }
         
         .footer-note {
-          margin-top: 30px;
+          margin-top: 15px;
           text-align: center;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: bold;
         }
         
@@ -426,6 +499,61 @@ const generateASCOMPReportHTML = (report: any): string => {
           bottom: 20px;
           right: 20px;
           font-size: 10px;
+        }
+        
+        .signature-section {
+          display: flex;
+          justify-content: space-between;
+          margin: 15px 0;
+          padding: 12px 0;
+          border-top: 2px solid #000;
+        }
+        
+        .signature-box {
+          flex: 1;
+          text-align: center;
+          padding: 10px;
+          border: 1px solid #ccc;
+          background: #f9f9f9;
+          margin: 0 8px;
+        }
+        
+        .signature-box h4 {
+          margin: 0 0 10px 0;
+          font-size: 12px;
+          font-weight: bold;
+          color: #000;
+        }
+        
+        .signature-img {
+          max-width: 200px;
+          max-height: 80px;
+          margin: 10px auto;
+          display: block;
+          border: 1px solid #ddd;
+          background: white;
+        }
+        
+        .signature-placeholder {
+          color: #999;
+          font-style: italic;
+          font-size: 11px;
+          padding: 20px;
+          border: 1px dashed #ccc;
+          margin: 10px 0;
+        }
+        
+        .signature-name {
+          margin-top: 10px;
+          font-size: 11px;
+          font-weight: bold;
+          color: #000;
+        }
+        
+        .signature-date {
+          margin-top: 5px;
+          font-size: 10px;
+          color: #666;
         }
       </style>
     </head>
@@ -441,30 +569,74 @@ const generateASCOMPReportHTML = (report: any): string => {
         </div>
       </div>
       
-      <div class="company-section">
-        <div class="company-logo">A</div>
-        <div class="company-info">
-          <div class="company-name">ASCOMP INC.</div>
-          <div class="company-address">9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
-          <div class="company-contact">
-            <div class="contact-item">
-              <strong>Desk:</strong> 011-45501226
-            </div>
-            <div class="contact-item">
-              <strong>Mobile:</strong> 8882475207
-            </div>
-            <div class="contact-item">
-              <strong>Website:</strong> <a href="http://www.ascompinc.in" style="color: #0066cc; text-decoration: underline;">WWW.ASCOMPINC.IN</a>
-            </div>
-            <div class="contact-item">
-              <strong>Email:</strong> <a href="mailto:helpdesk@ascompinc.in" style="color: #0066cc; text-decoration: underline;">helpdesk@ascompinc.in</a>
+      <!-- ASCOMP Logo and Company Information -->
+      <div class="logo-section">
+        <div class="ascomp-logo-container">
+          <img src="https://www.ascompinc.in/assets/img/logo/logo.png" alt="ASCOMP INC." class="ascomp-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <svg class="ascomp-logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="display:none;">
+            <!-- Fallback SVG logo if image fails to load -->
+            <path d="M 35 95 Q 35 85 40 75 Q 45 25 50 20 Q 55 25 60 75 Q 65 85 65 95 M 42 72 Q 50 68 58 72" 
+                  stroke="#00B0F0" 
+                  stroke-width="7" 
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  fill="none"/>
+            <path d="M 58 72 Q 60 70 62 68" 
+                  stroke="#00B0F0" 
+                  stroke-width="5" 
+                  stroke-linecap="round" 
+                  fill="none"/>
+            <text x="60" y="110" 
+                  font-family="Arial, sans-serif" 
+                  font-size="12" 
+                  font-weight="bold" 
+                  fill="#000" 
+                  text-anchor="middle">ASCOMP INC.</text>
+          </svg>
+          <div class="company-info">
+            <div class="company-name">ASCOMP INC.</div>
+            <div class="company-address">9, Community Centre, 2nd Floor, Phase I, Mayapuri, New Delhi, 110064</div>
+            <div class="company-contact">
+              <div class="contact-item">
+                <strong>Desk:</strong> 011-45501226
+              </div>
+              <div class="contact-item">
+                <strong>Mobile:</strong> 8882475207
+              </div>
+              <div class="contact-item">
+                <strong>Website:</strong> <a href="http://www.ascompinc.in" style="color: #0066cc; text-decoration: underline;">WWW.ASCOMPINC.IN</a>
+              </div>
+              <div class="contact-item">
+                <strong>Email:</strong> <a href="mailto:helpdesk@ascompinc.in" style="color: #0066cc; text-decoration: underline;">helpdesk@ascompinc.in</a>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
-      <div class="brand-title">CHRISTIE</div>
-      <div class="subtitle">Projector Service Report - ${reportType} done on Date - ${reportDate}</div>
+      <!-- Christie Logo and Report Title -->
+      <div class="christie-logo-section">
+        <div class="christie-logo-container">
+          <svg class="christie-logo-svg" viewBox="0 0 400 60" xmlns="http://www.w3.org/2000/svg">
+            <!-- CHRISTIE text with italicized I and registered symbol -->
+            <text x="0" y="45" 
+                  font-family="Arial, sans-serif" 
+                  font-size="48" 
+                  font-weight="bold" 
+                  fill="#000" 
+                  letter-spacing="2">
+              <tspan>CHR</tspan>
+              <tspan font-style="italic">I</tspan>
+              <tspan>ST</tspan>
+              <tspan>K</tspan>
+              <tspan font-style="italic">I</tspan>
+              <tspan>E</tspan>
+              <tspan font-size="28" baseline-shift="super" font-style="normal">®</tspan>
+            </text>
+          </svg>
+        </div>
+        <div class="subtitle">Projector Service Report - ${reportType} done on Date - ${reportDate}</div>
+      </div>
       
       <div class="info-grid">
         <div class="info-box">
@@ -508,74 +680,110 @@ const generateASCOMPReportHTML = (report: any): string => {
             // OPTICALS Section - Use actual form data
             if (opticals && opticals.length > 0) {
               opticals.forEach((item, index) => {
+                const description = safeAccess(item, ['description'], '');
+                const status = safeAccess(item, ['status'], '');
+                const result = safeAccess(item, ['result'], '');
+                // Only show default 'OK' if result is truly empty (not just whitespace)
+                const displayResult = result && result.trim() !== '' ? result : 'OK';
+                
                 rows += `
                   <tr>
                     ${index === 0 ? `<td class="section-header" rowspan="${opticals.length}">OPTICALS</td>` : ''}
-                    <td>${safeAccess(item, ['description'], '')}</td>
-                    <td>${safeAccess(item, ['status'], '')}</td>
-                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                    <td>${description || ''}</td>
+                    <td>${status || ''}</td>
+                    <td class="status-ok">${displayResult}</td>
                   </tr>
                 `;
               });
+            } else {
+              // Fallback: Show empty rows if no opticals data
+              console.warn('⚠️ No opticals data found in report');
             }
             
             // ELECTRONICS Section - Use actual form data
             if (electronics && electronics.length > 0) {
               electronics.forEach((item, index) => {
+                const description = safeAccess(item, ['description'], '');
+                const status = safeAccess(item, ['status'], '');
+                const result = safeAccess(item, ['result'], '');
+                const displayResult = result && result.trim() !== '' ? result : 'OK';
+                
                 rows += `
                   <tr>
                     ${index === 0 ? `<td class="section-header" rowspan="${electronics.length}">ELECTRONICS</td>` : ''}
-                    <td>${safeAccess(item, ['description'], '')}</td>
-                    <td>${safeAccess(item, ['status'], '')}</td>
-                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                    <td>${description || ''}</td>
+                    <td>${status || ''}</td>
+                    <td class="status-ok">${displayResult}</td>
                   </tr>
                 `;
               });
+            } else {
+              console.warn('⚠️ No electronics data found in report');
             }
             
             // Serial Number verified
+            const serialDesc = safeAccess(serialNumberVerified, ['description'], 'Chassis label vs Touch Panel');
+            const serialStatus = safeAccess(serialNumberVerified, ['status'], '');
+            const serialResult = safeAccess(serialNumberVerified, ['result'], '');
+            const displaySerialResult = serialResult && serialResult.trim() !== '' ? serialResult : 'OK';
+            
             rows += `
               <tr>
                 <td class="section-header" rowspan="1">Serial Number verified</td>
-                <td>${safeAccess(serialNumberVerified, ['description'], 'Chassis label vs Touch Panel')}</td>
-                <td>${safeAccess(serialNumberVerified, ['status'], '')}</td>
-                <td class="status-ok">${safeAccess(serialNumberVerified, ['result'], 'OK')}</td>
+                <td>${serialDesc}</td>
+                <td>${serialStatus || ''}</td>
+                <td class="status-ok">${displaySerialResult}</td>
               </tr>
             `;
             
             // Disposable Consumables
             if (disposableConsumables && disposableConsumables.length > 0) {
               disposableConsumables.forEach((item, index) => {
+                const desc = safeAccess(item, ['description'], 'Air Intake, LAD and RAD');
+                const status = safeAccess(item, ['status'], '');
+                const result = safeAccess(item, ['result'], '');
+                const displayResult = result && result.trim() !== '' ? result : 'OK';
+                
                 rows += `
                   <tr>
                     ${index === 0 ? `<td class="section-header" rowspan="${disposableConsumables.length}">Disposable Consumables</td>` : ''}
-                    <td>${safeAccess(item, ['description'], 'Air Intake, LAD and RAD')}</td>
-                    <td>${safeAccess(item, ['status'], 'replaced')}</td>
-                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                    <td>${desc}</td>
+                    <td>${status || ''}</td>
+                    <td class="status-ok">${displayResult}</td>
                   </tr>
                 `;
               });
             }
             
             // Coolant
+            const coolantDesc = safeAccess(coolant, ['description'], 'Level and Color');
+            const coolantStatus = safeAccess(coolant, ['status'], '');
+            const coolantResult = safeAccess(coolant, ['result'], '');
+            const displayCoolantResult = coolantResult && coolantResult.trim() !== '' ? coolantResult : 'OK';
+            
             rows += `
               <tr>
                 <td class="section-header" rowspan="1">Coolant</td>
-                <td>${safeAccess(coolant, ['description'], 'Level and Color')}</td>
-                <td>${safeAccess(coolant, ['status'], '')}</td>
-                <td class="status-ok">${safeAccess(coolant, ['result'], 'OK')}</td>
+                <td>${coolantDesc}</td>
+                <td>${coolantStatus || ''}</td>
+                <td class="status-ok">${displayCoolantResult}</td>
               </tr>
             `;
             
             // Light Engine Test Pattern
             if (lightEngineTestPatterns && lightEngineTestPatterns.length > 0) {
               lightEngineTestPatterns.forEach((item, index) => {
+                const color = safeAccess(item, ['color'], '');
+                const status = safeAccess(item, ['status'], '');
+                const result = safeAccess(item, ['result'], '');
+                const displayResult = result && result.trim() !== '' ? result : 'OK';
+                
                 rows += `
                   <tr>
                     ${index === 0 ? `<td class="section-header" rowspan="${lightEngineTestPatterns.length}">Light Engine Test Pattern</td>` : ''}
-                    <td>${safeAccess(item, ['color'], '')}</td>
-                    <td>${safeAccess(item, ['status'], '')}</td>
-                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                    <td>${color || ''}</td>
+                    <td>${status || ''}</td>
+                    <td class="status-ok">${displayResult}</td>
                   </tr>
                 `;
               });
@@ -584,15 +792,22 @@ const generateASCOMPReportHTML = (report: any): string => {
             // MECHANICAL Section - Use actual form data
             if (mechanical && mechanical.length > 0) {
               mechanical.forEach((item, index) => {
+                const description = safeAccess(item, ['description'], '');
+                const status = safeAccess(item, ['status'], '');
+                const result = safeAccess(item, ['result'], '');
+                const displayResult = result && result.trim() !== '' ? result : 'OK';
+                
                 rows += `
                   <tr>
                     ${index === 0 ? `<td class="section-header" rowspan="${mechanical.length}">MECHANICAL</td>` : ''}
-                    <td>${safeAccess(item, ['description'], '')}</td>
-                    <td>${safeAccess(item, ['status'], '')}</td>
-                    <td class="status-ok">${safeAccess(item, ['result'], 'OK')}</td>
+                    <td>${description || ''}</td>
+                    <td>${status || ''}</td>
+                    <td class="status-ok">${displayResult}</td>
                   </tr>
                 `;
               });
+            } else {
+              console.warn('⚠️ No mechanical data found in report');
             }
             
             return rows;
@@ -614,122 +829,8 @@ const generateASCOMPReportHTML = (report: any): string => {
           </div>
         </div>
         
-        <table class="sections-table">
-          <thead>
-            <tr>
-              <th>SECTIONS</th>
-              <th>DESCRIPTION</th>
-              <th>STATUS</th>
-              <th>YES/NO - OK</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="section-header" rowspan="2">ICP Board</td>
-              <td>ICP Board</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>IMB/S Board</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="1">Serial Number verified</td>
-              <td>Chassis label vs Touch Panel</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="1">Disposable Consumables</td>
-              <td>Air Intake, LAD and RAD</td>
-              <td>Replaced</td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="1">Coolant</td>
-              <td>Level and Color</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="5">Light Engine Test Pattern</td>
-              <td></td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td></td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="3">MECHANICAL</td>
-              <td>AC blower and Vane Switch</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Extractor Vane Switch</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Exhaust CFM</td>
-              <td>7.5 M/S</td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td class="section-header" rowspan="6">Light Engine 4 fans with LAD fan</td>
-              <td>Light Engine 4 fans with LAD fan</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Card Cage Top and Bottom fans</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Radiator fan and Pump</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Connector and hose for the Pump</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Security and lamp house lock switch</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-            <tr>
-              <td>Lamp LOC Mechanism X, Y and Z movement</td>
-              <td></td>
-              <td class="status-ok">OK</td>
-            </tr>
-          </tbody>
-        </table>
-        
         <div class="technical-tables">
+          <!-- Left Column -->
           <div>
             <div class="section-title">VOLTAGE PARAMETERS</div>
             <table class="technical-table">
@@ -754,8 +855,142 @@ const generateASCOMPReportHTML = (report: any): string => {
                 </tr>
               </tbody>
             </table>
+            
+            <div class="section-title" style="margin-top: 8px;">CONTENT PLAYING SERVER</div>
+            <div style="margin-bottom: 8px; font-size: 11px;">${safeAccess(contentFunctionality, ['serverContentPlaying'], '-')}</div>
+            
+            <div class="section-title" style="margin-top: 8px;">FL ON 100% LAMP POWER BEFORE AND AFTER</div>
+            <table class="technical-table" style="width: 100%; margin-bottom: 8px;">
+              <tbody>
+                <tr>
+                  <td>Before</td>
+                  <td>${safeAccess(contentFunctionality, ['lampPowerTestBefore'], '-')}</td>
+                </tr>
+                <tr>
+                  <td>After</td>
+                  <td>${safeAccess(contentFunctionality, ['lampPowerTestAfter'], '-')}</td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <div class="section-title" style="margin-top: 8px;">PROJECTOR PLACEMENT, ROOM, ENVIRONMENT</div>
+            <div style="margin-bottom: 8px; font-size: 11px;">${safeAccess(contentFunctionality, ['projectorPlacementEnvironment'], 'ok')}</div>
+            
+            <div class="section-title" style="margin-top: 8px;">OBSERVATIONS AND REMARKS</div>
+            <table class="observations-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Observation</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${observations && observations.length > 0 ? observations.map((obs, i) => {
+                  const desc = safeAccess(obs, ['description'], '');
+                  // Only show row if description exists or it's one of the first 2 rows
+                  if (desc && desc.trim() !== '' && desc !== '-') {
+                    return `
+                      <tr>
+                        <td>${safeAccess(obs, ['number'], i + 1)}</td>
+                        <td>${desc}</td>
+                      </tr>
+                    `;
+                  } else if (i < 2) {
+                    return `
+                      <tr>
+                        <td>${i + 1}</td>
+                        <td>${desc || '-'}</td>
+                      </tr>
+                    `;
+                  }
+                  return '';
+                }).filter(Boolean).join('') : Array.from({ length: 2 }, (_, i) => `
+                  <tr>
+                    <td>${i + 1}</td>
+                    <td>-</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <div class="section-title" style="margin-top: 8px;">RECOMMENDED PARTS TO CHANGE</div>
+            <table class="parts-table">
+              <thead>
+                <tr>
+                  <th>S. No.</th>
+                  <th>Part Name</th>
+                  <th>Part Number</th>
+                  <th>Qty</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recommendedParts && recommendedParts.length > 0 ? recommendedParts.map((part, i) => {
+                  const partName = safeAccess(part, ['partName'], '');
+                  // Only show rows with actual data or first 2 empty rows
+                  if (partName && partName.trim() !== '' && partName !== '-') {
+                    return `
+                      <tr>
+                        <td>${i + 1}</td>
+                        <td>${partName}</td>
+                        <td>${safeAccess(part, ['partNumber'], '-')}</td>
+                        <td>${safeAccess(part, ['quantity'], '-')}</td>
+                        <td>${safeAccess(part, ['notes'], '-')}</td>
+                      </tr>
+                    `;
+                  } else if (i < 2) {
+                    return `
+                      <tr>
+                        <td>${i + 1}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                    `;
+                  }
+                  return '';
+                }).filter(Boolean).join('') : Array.from({ length: 2 }, (_, i) => `
+                  <tr>
+                    <td>${i + 1}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <div class="section-title" style="margin-top: 8px;">MEASURED COLOR COORDINATES (MCGD)</div>
+            <table class="color-coordinates-table">
+              <thead>
+                <tr>
+                  <th>Test Pattern</th>
+                  <th>fL</th>
+                  <th>x</th>
+                  <th>y</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${measuredColorCoordinates && measuredColorCoordinates.length > 0 ? measuredColorCoordinates.filter((coord) => {
+                  const fl = safeAccess(coord, ['fl'], '');
+                  const x = safeAccess(coord, ['x'], '');
+                  const y = safeAccess(coord, ['y'], '');
+                  return (fl && fl.trim() !== '' && fl !== '-') || (x && x.trim() !== '' && x !== '-') || (y && y.trim() !== '' && y !== '-');
+                }).map((coord) => `
+                  <tr>
+                    <td>${safeAccess(coord, ['testPattern'], '-')}</td>
+                    <td>${safeAccess(coord, ['fl'], '-')}</td>
+                    <td>${safeAccess(coord, ['x'], '-')}</td>
+                    <td>${safeAccess(coord, ['y'], '-')}</td>
+                  </tr>
+                `).join('') : ''}
+              </tbody>
+            </table>
           </div>
           
+          <!-- Right Column -->
           <div>
             <div class="section-title">IMAGE EVALUATION</div>
             <table class="technical-table">
@@ -804,118 +1039,112 @@ const generateASCOMPReportHTML = (report: any): string => {
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-        
-        <div class="section-title">CONTENT PLAYING SERVER</div>
-        <div style="margin-bottom: 20px;">${safeAccess(contentFunctionality, ['serverContentPlaying'], '-')}</div>
-        
-        <div class="section-title">FL ON 100% LAMP POWER BEFORE AND AFTER</div>
-        <table class="technical-table" style="width: 300px;">
-          <tbody>
-            <tr>
-              <td>Before</td>
-              <td>${safeAccess(contentFunctionality, ['lampPowerTestBefore'], '-')}</td>
-            </tr>
-            <tr>
-              <td>After</td>
-              <td>${safeAccess(contentFunctionality, ['lampPowerTestAfter'], '-')}</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="section-title">PROJECTOR PLACEMENT, ROOM, ENVIRONMENT</div>
-        <div style="margin-bottom: 20px;">${safeAccess(contentFunctionality, ['projectorPlacementEnvironment'], 'ok')}</div>
-        
-        <div class="section-title">OBSERVATIONS AND REMARKS</div>
-        <table class="observations-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Observation</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${observations && observations.length > 0 ? observations.map((obs, i) => `
-              <tr>
-                <td>${safeAccess(obs, ['number'], i + 1)}</td>
-                <td>${safeAccess(obs, ['description'], '-')}</td>
-              </tr>
-            `).join('') : Array.from({ length: 6 }, (_, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>-</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="technical-tables">
-          <div>
-            <div class="section-title">RECOMMENDED PARTS TO CHANGE</div>
-            <table class="parts-table">
-              <thead>
-                <tr>
-                  <th>S. No.</th>
-                  <th>Part Name</th>
-                  <th>Part Number</th>
-                  <th>Qty</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${recommendedParts && recommendedParts.length > 0 ? recommendedParts.map((part, i) => `
-                  <tr>
-                    <td>${i + 1}</td>
-                    <td>${safeAccess(part, ['partName'], '-')}</td>
-                    <td>${safeAccess(part, ['partNumber'], '-')}</td>
-                    <td>${safeAccess(part, ['quantity'], '-')}</td>
-                    <td>${safeAccess(part, ['notes'], '-')}</td>
-                  </tr>
-                `).join('') : Array.from({ length: 6 }, (_, i) => `
-                  <tr>
-                    <td>${i + 1}</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          
-          <div>
-            <div class="section-title">MEASURED COLOR COORDINATES (MCGD)</div>
+            
+            <div class="section-title" style="margin-top: 8px;">CIE XYZ COLOR ACCURACY</div>
             <table class="color-coordinates-table">
               <thead>
                 <tr>
                   <th>Test Pattern</th>
-                  <th>fL</th>
                   <th>x</th>
                   <th>y</th>
+                  <th>fL</th>
                 </tr>
               </thead>
               <tbody>
-                ${measuredColorCoordinates && measuredColorCoordinates.length > 0 ? measuredColorCoordinates.map((coord) => `
+                ${cieColorAccuracy && cieColorAccuracy.length > 0 ? cieColorAccuracy.filter((coord) => {
+                  const fl = safeAccess(coord, ['fl'], '');
+                  const x = safeAccess(coord, ['x'], '');
+                  const y = safeAccess(coord, ['y'], '');
+                  return (fl && fl.trim() !== '' && fl !== '-') || (x && x.trim() !== '' && x !== '-') || (y && y.trim() !== '' && y !== '-');
+                }).map((coord) => `
                   <tr>
                     <td>${safeAccess(coord, ['testPattern'], '-')}</td>
-                    <td>${safeAccess(coord, ['fl'], '-')}</td>
                     <td>${safeAccess(coord, ['x'], '-')}</td>
                     <td>${safeAccess(coord, ['y'], '-')}</td>
+                    <td>${safeAccess(coord, ['fl'], '-')}</td>
                   </tr>
-                `).join('') : Array.from({ length: 4 }, (_, i) => `
-                  <tr>
-                    <td>${['White', 'Red', 'Green', 'Blue'][i]}</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                  </tr>
-                `).join('')}
+                `).join('') : ''}
+              </tbody>
+            </table>
+            
+            <div class="section-title" style="margin-top: 8px;">SCREEN INFORMATION IN METRES</div>
+            <table class="screen-info-table">
+              <thead>
+                <tr>
+                  <th>Height</th>
+                  <th>Width</th>
+                  <th>Gain</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>SCOPE</td>
+                  <td>${safeAccess(screenInfo, ['scope', 'height'], '-')}</td>
+                  <td>${safeAccess(screenInfo, ['scope', 'width'], '-')}</td>
+                  <td>${safeAccess(screenInfo, ['scope', 'gain'], '-')}</td>
+                </tr>
+                <tr>
+                  <td>FLAT</td>
+                  <td>${safeAccess(screenInfo, ['flat', 'height'], '-')}</td>
+                  <td>${safeAccess(screenInfo, ['flat', 'width'], '-')}</td>
+                  <td>${safeAccess(screenInfo, ['flat', 'gain'], '-')}</td>
+                </tr>
+                <tr>
+                  <td>Screen Make</td>
+                  <td>${safeAccess(screenInfo, ['screenMake'], '-')}</td>
+                  <td>${safeAccess(screenInfo, ['throwDistance'], '-')}</td>
+                  <td>-</td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
+        
+        <div class="technical-tables" style="margin-top: 8px;">
+          <div>
+            <div class="section-title">AIR POLLUTION LEVEL</div>
+            <table class="pollution-table">
+              <thead>
+                <tr>
+                  <th>Air Pollution Level</th>
+                  <th>HCHO</th>
+                  <th>TVOC</th>
+                  <th>PM 1.0</th>
+                  <th>PM 2.5</th>
+                  <th>PM 10</th>
+                  <th>Temperature C</th>
+                  <th>Humidity %</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${safeAccess(airPollutionLevels, ['overall'], '4')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['hcho'], '32')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['tvoc'], '3')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['pm1'], '3')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['pm25'], '4')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['pm10'], '3')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['temperature'], '-')}</td>
+                  <td>${safeAccess(airPollutionLevels, ['humidity'], '-')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="status-section">
+          <div class="status-item">LE Status During PM: ${safeAccess(finalStatus, ['leStatusDuringPM'], '-')}</div>
+          <div class="status-item">AC Status: ${safeAccess(finalStatus, ['acStatus'], '-')}</div>
+          <div class="status-item">Photos Before: ${safeAccess(finalStatus, ['photosBefore'], '-')}</div>
+          <div class="status-item">Photos After: ${safeAccess(finalStatus, ['photosAfter'], '-')}</div>
+          <div class="status-item">Review Photos: <a href="#" style="color: #0066cc; text-decoration: underline;">Click Here.</a></div>
+        </div>
+        
+        <div class="footer-note" style="margin-top: 10px;">
+          Note: The ODD file number is BEFORE and EVEN file number is AFTER, PM
+        </div>
+        
+        <div style="text-align: right; margin-top: 5px; font-size: 10px;">PM version 6.3</div>
         
         <div class="page-number">2/3</div>
       </div>
@@ -932,104 +1161,31 @@ const generateASCOMPReportHTML = (report: any): string => {
           </div>
         </div>
         
-        <div class="section-title">CIE XYZ COLOR ACCURACY</div>
-        <table class="color-coordinates-table">
-          <thead>
-            <tr>
-              <th>Test Pattern</th>
-              <th>x</th>
-              <th>y</th>
-              <th>fL</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${cieColorAccuracy && cieColorAccuracy.length > 0 ? cieColorAccuracy.map((coord) => `
-              <tr>
-                <td>${safeAccess(coord, ['testPattern'], '-')}</td>
-                <td>${safeAccess(coord, ['x'], '-')}</td>
-                <td>${safeAccess(coord, ['y'], '-')}</td>
-                <td>${safeAccess(coord, ['fl'], '-')}</td>
-              </tr>
-            `).join('') : Array.from({ length: 4 }, (_, i) => `
-              <tr>
-                <td>${['White', 'Red', 'Green', 'Blue'][i]}</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="section-title">SCREEN INFORMATION IN METRES</div>
-        <table class="screen-info-table">
-          <thead>
-            <tr>
-              <th>Height</th>
-              <th>Width</th>
-              <th>Gain</th>
-              <th>Throw Distance</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>SCOPE</td>
-              <td>${safeAccess(screenInfo, ['scope', 'height'], '-')}</td>
-              <td>${safeAccess(screenInfo, ['scope', 'width'], '-')}</td>
-              <td>${safeAccess(screenInfo, ['scope', 'gain'], '-')}</td>
-            </tr>
-            <tr>
-              <td>FLAT</td>
-              <td>${safeAccess(screenInfo, ['flat', 'height'], '-')}</td>
-              <td>${safeAccess(screenInfo, ['flat', 'width'], '-')}</td>
-              <td>${safeAccess(screenInfo, ['flat', 'gain'], '-')}</td>
-            </tr>
-            <tr>
-              <td>Screen Make</td>
-              <td>${safeAccess(screenInfo, ['screenMake'], '-')}</td>
-              <td>${safeAccess(screenInfo, ['throwDistance'], '-')}</td>
-              <td>-</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="section-title">AIR POLLUTION LEVEL</div>
-        <table class="pollution-table">
-          <thead>
-            <tr>
-              <th>Air Pollution Level</th>
-              <th>HCHO</th>
-              <th>TVOC</th>
-              <th>PM 1.0</th>
-              <th>PM 2.5</th>
-              <th>PM 10</th>
-              <th>Temperature C</th>
-              <th>Humidity %</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${safeAccess(airPollutionLevels, ['overall'], '4')}</td>
-              <td>${safeAccess(airPollutionLevels, ['hcho'], '32')}</td>
-              <td>${safeAccess(airPollutionLevels, ['tvoc'], '3')}</td>
-              <td>${safeAccess(airPollutionLevels, ['pm1'], '3')}</td>
-              <td>${safeAccess(airPollutionLevels, ['pm25'], '4')}</td>
-              <td>${safeAccess(airPollutionLevels, ['pm10'], '3')}</td>
-              <td>${safeAccess(airPollutionLevels, ['temperature'], '-')}</td>
-              <td>${safeAccess(airPollutionLevels, ['humidity'], '-')}</td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div class="status-section">
-          <div class="status-item">LE Status During PM: ${safeAccess(finalStatus, ['leStatusDuringPM'], '-')}</div>
-          <div class="status-item">AC Status: ${safeAccess(finalStatus, ['acStatus'], '-')}</div>
-          <div class="status-item">Photos Before: ${safeAccess(finalStatus, ['photosBefore'], '-')}</div>
-          <div class="status-item">Photos After: ${safeAccess(finalStatus, ['photosAfter'], '-')}</div>
-          <div class="status-item">Review Photos: <a href="#" style="color: #0066cc; text-decoration: underline;">Click Here.</a></div>
+        <!-- Signatures Section -->
+        <div class="signature-section">
+          <div class="signature-box">
+            <h4>Client's Signature & Stamp</h4>
+            ${clientSignature ? `
+              <img src="${clientSignature}" alt="Client Signature" class="signature-img" />
+              <div class="signature-name">${siteInchargeName}</div>
+              <div class="signature-date">Date: ${reportDate}</div>
+            ` : `
+              <div class="signature-placeholder">No signature provided</div>
+            `}
+          </div>
+          
+          <div class="signature-box">
+            <h4>Engineer's Signature</h4>
+            ${engineerSignature ? `
+              <img src="${engineerSignature}" alt="Engineer Signature" class="signature-img" />
+              <div class="signature-name">${engineerName}</div>
+              <div class="signature-date">Date: ${reportDate}</div>
+            ` : `
+              <div class="signature-placeholder">No signature provided</div>
+            `}
+            ${engineerPhone ? `<div class="signature-date" style="margin-top: 10px;">Phone: ${engineerPhone}</div>` : ''}
+          </div>
         </div>
-        
-        <hr style="border: 1px solid #000; margin: 20px 0;">
         
         <div class="footer-note">
           Note: The ODD file number is BEFORE and EVEN file number is AFTER, PM
@@ -1044,7 +1200,16 @@ const generateASCOMPReportHTML = (report: any): string => {
 
 // Main export function for ASCOMP style reports
 export const exportASCOMPStyleReport = async (report: any): Promise<void> => {
-  console.log('exportASCOMPStyleReport called with report:', report);
+  console.log('📄 exportASCOMPStyleReport called with report:', report);
+  console.log('🔍 Report structure check:', {
+    hasReport: !!report,
+    reportType: typeof report,
+    hasInspectionSections: !!report?.inspectionSections,
+    hasSections: !!report?.sections,
+    inspectionSectionsKeys: report?.inspectionSections ? Object.keys(report.inspectionSections) : [],
+    sectionsKeys: report?.sections ? Object.keys(report.sections) : [],
+    sampleOptical: report?.inspectionSections?.opticals?.[0] || report?.sections?.opticals?.[0] || null
+  });
   
   if (!report) {
     console.error('exportASCOMPStyleReport: Report is undefined or null');
@@ -1090,54 +1255,66 @@ const generateASCOMPPDF = async (report: any): Promise<void> => {
         <meta charset="UTF-8">
         <title>ASCOMP Service Report</title>
         <style>
-          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.3; color: #000; background: white; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          body { margin: 0; padding: 15px; font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; color: #000; background: white; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; }
           .date-time { font-size: 11px; color: #333; }
           .report-title { text-align: center; font-size: 18px; font-weight: bold; margin: 10px 0; }
           .report-details { text-align: right; font-size: 11px; }
-          .company-section { display: flex; align-items: center; margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
-          .company-logo { width: 60px; height: 60px; background: #0066cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold; margin-right: 20px; }
-          .company-info { flex: 1; }
-          .company-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-          .company-address { font-size: 11px; margin-bottom: 5px; }
-          .company-contact { font-size: 11px; display: flex; gap: 20px; }
+          .logo-section { margin-bottom: 15px; }
+          .ascomp-logo-container { display: flex; align-items: flex-start; margin-bottom: 12px; }
+          .ascomp-logo-img { width: 85px; height: auto; margin-right: 18px; flex-shrink: 0; object-fit: contain; }
+          .ascomp-logo-svg { width: 85px; height: auto; margin-right: 18px; flex-shrink: 0; }
+          .company-info { flex: 1; padding-top: 3px; }
+          .company-name { font-size: 16px; font-weight: bold; margin-bottom: 6px; color: #000; }
+          .company-address { font-size: 11px; margin-bottom: 6px; color: #000; }
+          .company-contact { font-size: 11px; display: flex; gap: 20px; flex-wrap: wrap; }
           .contact-item { display: flex; align-items: center; gap: 5px; }
-          .brand-title { text-align: center; font-size: 24px; font-weight: bold; color: #0066cc; margin: 20px 0 10px 0; }
-          .subtitle { text-align: center; font-size: 14px; margin-bottom: 20px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-          .info-box { border: 2px solid #000; padding: 15px; background: #f8f8f8; margin-bottom: 15px; }
+          .christie-logo-section { margin: 12px 0 10px 0; padding-left: 0; }
+          .christie-logo-container { display: block; margin-bottom: 8px; }
+          .christie-logo-svg { height: 40px; width: auto; }
+          .brand-title { display: none; }
+          .subtitle { text-align: left; font-size: 12px; margin-bottom: 12px; margin-top: 3px; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
+          .info-box { border: 2px solid #000; padding: 10px; background: #f8f8f8; margin-bottom: 10px; }
           .info-box h3 { margin: 0 0 12px 0; font-size: 14px; font-weight: bold; text-decoration: underline; color: #000; }
           .info-item { margin: 3px 0; font-size: 12px; }
-          .sections-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; border: 2px solid #000; }
-          .sections-table th, .sections-table td { border: 1px solid #000; padding: 10px 8px; text-align: left; vertical-align: middle; }
+          .sections-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; border: 2px solid #000; }
+          .sections-table th, .sections-table td { border: 1px solid #000; padding: 6px 5px; text-align: left; vertical-align: middle; }
           .sections-table th { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 11px; border: 1px solid #000; }
           .section-header { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 11px; border: 1px solid #000; }
           .status-ok { text-align: center; font-weight: bold; color: #006600; font-size: 11px; }
           .page-break { page-break-before: always; }
-          .section-title { font-size: 14px; font-weight: bold; margin: 20px 0 10px 0; color: #0066cc; text-decoration: underline; }
-          .technical-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-          .technical-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-          .technical-table th, .technical-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .section-title { font-size: 12px; font-weight: bold; margin: 10px 0 5px 0; color: #0066cc; text-decoration: underline; }
+          .technical-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
+          .technical-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+          .technical-table th, .technical-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .technical-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .observations-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .observations-table th, .observations-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .observations-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+          .observations-table th, .observations-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .observations-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .parts-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .parts-table th, .parts-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .parts-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+          .parts-table th, .parts-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .parts-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .color-coordinates-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .color-coordinates-table th, .color-coordinates-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .color-coordinates-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+          .color-coordinates-table th, .color-coordinates-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .color-coordinates-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .screen-info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .screen-info-table th, .screen-info-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .screen-info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+          .screen-info-table th, .screen-info-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .screen-info-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .pollution-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
-          .pollution-table th, .pollution-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+          .pollution-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+          .pollution-table th, .pollution-table td { border: 1px solid #000; padding: 4px; text-align: left; }
           .pollution-table th { background: #e9e9e9; font-weight: bold; text-align: center; font-size: 10px; }
-          .status-section { margin: 20px 0; }
-          .status-item { margin: 5px 0; font-size: 12px; }
-          .footer-note { margin-top: 30px; text-align: center; font-size: 12px; font-weight: bold; }
+          .status-section { margin: 12px 0; }
+          .status-item { margin: 3px 0; font-size: 11px; }
+          .footer-note { margin-top: 15px; text-align: center; font-size: 11px; font-weight: bold; }
           .page-number { position: absolute; bottom: 20px; right: 20px; font-size: 10px; }
+          .signature-section { display: flex; justify-content: space-between; margin: 15px 0; padding: 12px 0; border-top: 2px solid #000; }
+          .signature-box { flex: 1; text-align: center; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; margin: 0 8px; }
+          .signature-box h4 { margin: 0 0 10px 0; font-size: 12px; font-weight: bold; color: #000; }
+          .signature-img { max-width: 200px; max-height: 80px; margin: 10px auto; display: block; border: 1px solid #ddd; background: white; }
+          .signature-placeholder { color: #999; font-style: italic; font-size: 11px; padding: 20px; border: 1px dashed #ccc; margin: 10px 0; }
+          .signature-name { margin-top: 10px; font-size: 11px; font-weight: bold; color: #000; }
+          .signature-date { margin-top: 5px; font-size: 10px; color: #666; }
         </style>
       </head>
       <body>

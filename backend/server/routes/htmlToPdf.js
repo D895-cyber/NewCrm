@@ -111,8 +111,33 @@ router.post('/generate/:reportId', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Template name is required' });
     }
 
-    // Get the report data
-    const report = await ASCOMPReport.findById(reportId).lean();
+    // Try ASCOMPReport first
+    let report = await ASCOMPReport.findById(reportId).lean();
+    
+    // If not found, try ServiceReport (for reports with ASCOMP- prefix)
+    if (!report) {
+      const ServiceReport = require('../models/ServiceReport');
+      const serviceReport = await ServiceReport.findById(reportId).lean();
+      if (serviceReport && serviceReport.reportNumber?.startsWith('ASCOMP-')) {
+        // Transform ServiceReport to ASCOMPReport format
+        report = {
+          ...serviceReport,
+          cinemaName: serviceReport.siteName,
+          address: serviceReport.siteAddress || '',
+          location: serviceReport.siteName || '',
+          contactDetails: serviceReport.siteIncharge?.contact || '',
+          // Map inspection sections
+          opticals: serviceReport.inspectionSections?.opticals || [],
+          electronics: serviceReport.inspectionSections?.electronics || [],
+          mechanical: serviceReport.inspectionSections?.mechanical || [],
+          serialNumberVerified: serviceReport.inspectionSections?.serialNumberVerified || {},
+          disposableConsumables: serviceReport.inspectionSections?.disposableConsumables || [],
+          coolant: serviceReport.inspectionSections?.coolant || {},
+          lightEngineTestPatterns: serviceReport.inspectionSections?.lightEngineTestPatterns || []
+        };
+        console.log(`📝 Found ServiceReport with ASCOMP- prefix: ${serviceReport.reportNumber}`);
+      }
+    }
     
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
@@ -125,6 +150,8 @@ router.post('/generate/:reportId', authenticateToken, async (req, res) => {
       ...report,
       // Format date
       formattedDate: report.date ? new Date(report.date).toLocaleDateString('en-GB') : '',
+      // Ensure cinemaName exists (use siteName if needed)
+      cinemaName: report.cinemaName || report.siteName || '',
       // Add any other computed fields
     };
 

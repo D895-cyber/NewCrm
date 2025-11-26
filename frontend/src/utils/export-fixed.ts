@@ -385,16 +385,17 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
     console.log('🔄 Attempting PDF export...');
     await generateAndDownloadPDF(report);
     console.log('✅ PDF export completed successfully');
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ PDF export failed with error:', error);
+    const err = error instanceof Error ? error : new Error('Unknown error');
     console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: err.message,
+      stack: err.stack,
+      name: err.name
     });
     
     // Show user-friendly error message with options
-    const userChoice = confirm(`PDF generation failed: ${error.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
+    const userChoice = confirm(`PDF generation failed: ${err.message || 'Unknown error'}.\n\nWould you like to open a print-friendly HTML version instead?\n\nClick OK for HTML version, Cancel to try again.`);
     
     if (userChoice) {
       // Fallback to HTML print version
@@ -491,9 +492,10 @@ const generateAndDownloadPDF = async (report: any): Promise<void> => {
     try {
       pdf.save(filename);
       console.log('✅ PDF generation and download completed successfully');
-    } catch (downloadError) {
+    } catch (downloadError: unknown) {
       console.error('❌ PDF download failed:', downloadError);
-      throw new Error(`Failed to download PDF: ${downloadError.message || 'Unknown download error'}`);
+      const err = downloadError instanceof Error ? downloadError : new Error('Unknown download error');
+      throw new Error(`Failed to download PDF: ${err.message}`);
     }
   } catch (error) {
     console.error('❌ Error generating PDF:', error);

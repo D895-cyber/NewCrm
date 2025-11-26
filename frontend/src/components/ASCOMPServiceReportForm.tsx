@@ -220,9 +220,30 @@ interface ServiceReportData {
 function mergeWithDefaults<T>(defaults: T, overrides: any): T {
   if (overrides == null) return defaults;
   if (Array.isArray(defaults)) {
-    // For arrays, only use overrides if they contain items; otherwise keep defaults
+    // For arrays, merge item by item to preserve default descriptions
     if (Array.isArray(overrides) && overrides.length > 0) {
-      return overrides as unknown as T;
+      const defaultArray = defaults as any[];
+      const overrideArray = overrides as any[];
+      const merged = defaultArray.map((defaultItem, index) => {
+        const overrideItem = overrideArray[index];
+        if (overrideItem) {
+          // Merge each item, preserving description from default if override doesn't have one
+          return {
+            ...defaultItem,
+            ...overrideItem,
+            // Preserve description from default if override doesn't have one
+            description: overrideItem.description || defaultItem.description || overrideItem.color || defaultItem.color || '',
+            // Preserve color from default if override doesn't have one
+            color: overrideItem.color || defaultItem.color || ''
+          };
+        }
+        return defaultItem;
+      });
+      // If override array is longer, append remaining items
+      if (overrideArray.length > defaultArray.length) {
+        return [...merged, ...overrideArray.slice(defaultArray.length)] as unknown as T;
+      }
+      return merged as unknown as T;
     }
     return defaults as unknown as T;
   }
@@ -242,6 +263,9 @@ function mergeWithDefaults<T>(defaults: T, overrides: any): T {
         typeof overrideValue === 'object' &&
         !Array.isArray(overrideValue)
       ) {
+        result[key] = mergeWithDefaults(defaultValue, overrideValue);
+      } else if (Array.isArray(defaultValue) && Array.isArray(overrideValue)) {
+        // Handle array merging for nested arrays
         result[key] = mergeWithDefaults(defaultValue, overrideValue);
       } else {
         result[key] = overrideValue;
@@ -906,7 +930,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="reportNumber">Report Number</Label>
+                    <Label htmlFor="reportNumber" className="text-gray-900">Report Number</Label>
                     <Input
                       id="reportNumber"
                       value={formData.reportNumber}
@@ -915,9 +939,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="reportType">Report Type</Label>
+                    <Label htmlFor="reportType" className="text-gray-900">Report Type</Label>
                     <Select value={formData.reportType} onValueChange={(value) => handleInputChange('reportType', value)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-gray-900">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -933,7 +957,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </div>
                 
                 <div>
-                  <Label htmlFor="date">Report Date</Label>
+                  <Label htmlFor="date" className="text-gray-900">Report Date</Label>
                   <Input
                     id="date"
                     type="date"
@@ -978,9 +1002,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                  Site & Projector Information
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="siteName">Site Name</Label>
+                    <Label htmlFor="siteName" className="text-gray-900">Site Name</Label>
                     <Input
                       id="siteName"
                       value={formData.siteName}
@@ -989,7 +1016,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="siteInchargeName">Site In-charge Name</Label>
+                    <Label htmlFor="siteInchargeName" className="text-gray-900">Site In-charge Name</Label>
                     <Input
                       id="siteInchargeName"
                       value={formData.siteIncharge.name}
@@ -1000,7 +1027,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </div>
                 
                 <div>
-                  <Label htmlFor="siteInchargeContact">Site In-charge Contact</Label>
+                  <Label htmlFor="siteInchargeContact" className="text-gray-900">Site In-charge Contact</Label>
                   <Input
                     id="siteInchargeContact"
                     value={formData.siteIncharge.contact}
@@ -1013,7 +1040,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="projectorModel">Projector Model</Label>
+                    <Label htmlFor="projectorModel" className="text-gray-900">Projector Model</Label>
                     <Input
                       id="projectorModel"
                       value={formData.projectorModel}
@@ -1022,7 +1049,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="projectorSerial">Serial Number</Label>
+                    <Label htmlFor="projectorSerial" className="text-gray-900">Serial Number</Label>
                     <Input
                       id="projectorSerial"
                       value={formData.projectorSerial}
@@ -1034,7 +1061,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="brand">Brand</Label>
+                    <Label htmlFor="brand" className="text-gray-900">Brand</Label>
                     <Input
                       id="brand"
                       value={formData.brand}
@@ -1043,7 +1070,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="softwareVersion">Software Version</Label>
+                    <Label htmlFor="softwareVersion" className="text-gray-900">Software Version</Label>
                     <Input
                       id="softwareVersion"
                       value={formData.softwareVersion}
@@ -1055,7 +1082,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="projectorRunningHours">Projector Running Hours</Label>
+                    <Label htmlFor="projectorRunningHours" className="text-gray-900">Projector Running Hours</Label>
                     <Input
                       id="projectorRunningHours"
                       value={formData.projectorRunningHours}
@@ -1064,7 +1091,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lampModel">Lamp Model</Label>
+                    <Label htmlFor="lampModel" className="text-gray-900">Lamp Model</Label>
                     <Input
                       id="lampModel"
                       value={formData.lampModel}
@@ -1076,7 +1103,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="lampRunningHours">Lamp Running Hours</Label>
+                    <Label htmlFor="lampRunningHours" className="text-gray-900">Lamp Running Hours</Label>
                     <Input
                       id="lampRunningHours"
                       value={formData.lampRunningHours}
@@ -1085,7 +1112,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="currentLampHours">Current Lamp Hours</Label>
+                    <Label htmlFor="currentLampHours" className="text-gray-900">Current Lamp Hours</Label>
                     <Input
                       id="currentLampHours"
                       value={formData.currentLampHours}
@@ -1101,14 +1128,14 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     checked={formData.replacementRequired}
                     onCheckedChange={(checked) => handleInputChange('replacementRequired', checked)}
                   />
-                  <Label htmlFor="replacementRequired">Lamp Replacement Required</Label>
+                  <Label htmlFor="replacementRequired" className="text-gray-900">Lamp Replacement Required</Label>
                 </div>
 
                 <Separator />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="engineerName">Engineer Name</Label>
+                    <Label htmlFor="engineerName" className="text-gray-900">Engineer Name</Label>
                     <Input
                       id="engineerName"
                       value={formData.engineer.name}
@@ -1117,7 +1144,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     />
                   </div>
                   <div>
-                    <Label htmlFor="engineerPhone">Engineer Phone</Label>
+                    <Label htmlFor="engineerPhone" className="text-gray-900">Engineer Phone</Label>
                     <Input
                       id="engineerPhone"
                       value={formData.engineer.phone}
@@ -1147,29 +1174,31 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </div>
                 {/* OPTICALS Section */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">OPTICALS Section</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    OPTICALS Section
+                  </div>
                   <div className="space-y-3">
                     {formData.inspectionSections.opticals.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">
-                            {item.description}
-                          </Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
+                            {(item as any).description || (item as any).color || '-'}
+                          </div>
                         </div>
                         <div>
                           <Input
-                            value={item.status}
+                            value={item.status || ''}
                             onChange={(e) => handleSectionItemChange('opticals', index, 'status', e.target.value)}
                             placeholder="Status"
-                            className="text-center"
+                            className="text-center text-gray-900"
                           />
                         </div>
                         <div>
                           <Select 
-                            value={item.result} 
+                            value={item.result || 'OK'} 
                             onValueChange={(value) => handleSectionItemChange('opticals', index, 'result', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="text-gray-900">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1188,29 +1217,31 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* ELECTRONICS Section */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">ELECTRONICS Section</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    ELECTRONICS Section
+                  </div>
                   <div className="space-y-3">
                     {formData.inspectionSections.electronics.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">
-                            {item.description}
-                          </Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
+                            {(item as any).description || (item as any).color || '-'}
+                          </div>
                         </div>
                         <div>
                           <Input
-                            value={item.status}
+                            value={item.status || ''}
                             onChange={(e) => handleSectionItemChange('electronics', index, 'status', e.target.value)}
                             placeholder="Status"
-                            className="text-center"
+                            className="text-center text-gray-900"
                           />
                         </div>
                         <div>
                           <Select 
-                            value={item.result} 
+                            value={item.result || 'OK'} 
                             onValueChange={(value) => handleSectionItemChange('electronics', index, 'result', value)}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="text-gray-900">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1229,19 +1260,21 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Serial Number Verification */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Serial Number Verification</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Serial Number Verification
+                  </div>
                   <div className="grid grid-cols-3 gap-4 items-center">
                     <div>
-                      <Label className="text-sm font-medium text-gray-700">
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
                         Chassis label vs Touch Panel
-                      </Label>
+                      </div>
                     </div>
                     <div>
                       <Input
                         value={formData.inspectionSections?.serialNumberVerified?.status || 'OK'}
                         onChange={(e) => handleInputChange('inspectionSections.serialNumberVerified.status', e.target.value)}
                         placeholder="Status"
-                        className="text-center"
+                        className="text-center text-gray-900"
                       />
                     </div>
                     <div>
@@ -1249,7 +1282,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         value={formData.inspectionSections?.serialNumberVerified?.result || 'OK'} 
                         onValueChange={(value) => handleInputChange('inspectionSections.serialNumberVerified.result', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1279,29 +1312,31 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-6">
                 {/* MECHANICAL Section */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">MECHANICAL Section</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    MECHANICAL Section
+                  </div>
                   <div className="space-y-3">
                     {formData.inspectionSections.mechanical.map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">
-                            {item.description}
-                          </Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
+                            {(item as any).description || (item as any).color || '-'}
+                          </div>
                         </div>
                         <div>
                           <Input
-                            value={item.status}
+                            value={item.status || ''}
                             onChange={(e) => handleSectionItemChange('mechanical', index, 'status', e.target.value)}
                             placeholder="Status"
-                            className="text-center mechanical-input"
+                            className="text-center text-gray-900"
                           />
                         </div>
                         <div>
                           <Select 
-                            value={item.result} 
+                            value={item.result || 'OK'} 
                             onValueChange={(value) => handleSectionItemChange('mechanical', index, 'result', value)}
                           >
-                            <SelectTrigger className="mechanical-input">
+                            <SelectTrigger className="text-gray-900">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1320,29 +1355,39 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Disposable Consumables */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Disposable Consumables</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Disposable Consumables
+                  </div>
                   <div className="space-y-3">
                     {(formData.inspectionSections?.disposableConsumables || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">
-                            {item.description}
-                          </Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
+                            {(item as any).description || (item as any).color || '-'}
+                          </div>
                         </div>
                         <div>
                           <Input
-                            value={item.status}
-                            onChange={(e) => handleInputChange('inspectionSections.disposableConsumables', [{ ...item, status: e.target.value }])}
+                            value={item.status || ''}
+                            onChange={(e) => {
+                              const newConsumables = [...(formData.inspectionSections?.disposableConsumables || [])];
+                              newConsumables[index] = { ...newConsumables[index], status: e.target.value };
+                              handleInputChange('inspectionSections.disposableConsumables', newConsumables);
+                            }}
                             placeholder="Status"
-                            className="text-center"
+                            className="text-center text-gray-900"
                           />
                         </div>
                         <div>
                           <Select 
-                            value={item.result} 
-                            onValueChange={(value) => handleInputChange('inspectionSections.disposableConsumables', [{ ...item, result: value }])}
+                            value={item.result || 'OK'} 
+                            onValueChange={(value) => {
+                              const newConsumables = [...(formData.inspectionSections?.disposableConsumables || [])];
+                              newConsumables[index] = { ...newConsumables[index], result: value };
+                              handleInputChange('inspectionSections.disposableConsumables', newConsumables);
+                            }}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="text-gray-900">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1361,19 +1406,21 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Coolant */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Coolant</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Coolant
+                  </div>
                   <div className="grid grid-cols-3 gap-4 items-center">
                     <div>
-                      <Label className="text-sm font-medium text-gray-700">
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center whitespace-nowrap">
                         Level and Color
-                      </Label>
+                      </div>
                     </div>
                     <div>
                       <Input
                         value={formData.inspectionSections?.coolant?.status || 'OK'}
                         onChange={(e) => handleInputChange('inspectionSections.coolant.status', e.target.value)}
                         placeholder="Status"
-                        className="text-center"
+                        className="text-center text-gray-900"
                       />
                     </div>
                     <div>
@@ -1381,7 +1428,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         value={formData.inspectionSections?.coolant?.result || 'OK'} 
                         onValueChange={(value) => handleInputChange('inspectionSections.coolant.result', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1398,37 +1445,39 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Light Engine Test Patterns */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Light Engine Test Patterns</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Light Engine Test Patterns
+                  </div>
                   <div className="space-y-3">
                     {(formData.inspectionSections?.lightEngineTestPatterns || []).map((item, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-center">
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">
-                            {item.color}
-                          </Label>
+                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                            {item.color || '-'}
+                          </div>
                         </div>
                         <div>
                           <Input
-                            value={item.status}
+                            value={item.status || ''}
                             onChange={(e) => handleInputChange('inspectionSections.lightEngineTestPatterns', 
                               formData.inspectionSections?.lightEngineTestPatterns?.map((pattern, i) => 
                                 i === index ? { ...pattern, status: e.target.value } : pattern
                               ) || []
                             )}
                             placeholder="Status"
-                            className="text-center"
+                            className="text-center text-gray-900"
                           />
                         </div>
                         <div>
                           <Select 
-                            value={item.result} 
+                            value={item.result || 'OK'} 
                             onValueChange={(value) => handleInputChange('inspectionSections.lightEngineTestPatterns', 
                               formData.inspectionSections?.lightEngineTestPatterns?.map((pattern, i) => 
                                 i === index ? { ...pattern, result: value } : pattern
                               ) || []
                             )}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className="text-gray-900">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1455,79 +1504,22 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-4">
+                <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                  Image Evaluation
+                </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <Label htmlFor="focusBoresight">Focus/boresight</Label>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Focus/boresight
+                      </div>
+                    </div>
+                    <div>
                       <Select 
-                        value={formData.imageEvaluation.focusBoresight} 
+                        value={formData.imageEvaluation.focusBoresight || 'Yes'} 
                         onValueChange={(value) => handleInputChange('imageEvaluation.focusBoresight', value)}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="integratorPosition">Integrator Position</Label>
-                      <Select 
-                        value={formData.imageEvaluation.integratorPosition} 
-                        onValueChange={(value) => handleInputChange('imageEvaluation.integratorPosition', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="spotOnScreen">Any Spot on the Screen after PPM</Label>
-                      <Select 
-                        value={formData.imageEvaluation.spotOnScreen} 
-                        onValueChange={(value) => handleInputChange('imageEvaluation.spotOnScreen', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="screenCropping">Check Screen Cropping - FLAT and SCOPE</Label>
-                      <Select 
-                        value={formData.imageEvaluation.screenCropping} 
-                        onValueChange={(value) => handleInputChange('imageEvaluation.screenCropping', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="convergenceChecked">Convergence Checked</Label>
-                      <Select 
-                        value={formData.imageEvaluation.convergenceChecked} 
-                        onValueChange={(value) => handleInputChange('imageEvaluation.convergenceChecked', value)}
-                      >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1538,14 +1530,106 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <Label htmlFor="channelsChecked">Channels Checked - Scope, Flat, Alternative</Label>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Integrator Position
+                      </div>
+                    </div>
+                    <div>
                       <Select 
-                        value={formData.imageEvaluation.channelsChecked} 
+                        value={formData.imageEvaluation.integratorPosition || 'Yes'} 
+                        onValueChange={(value) => handleInputChange('imageEvaluation.integratorPosition', value)}
+                      >
+                        <SelectTrigger className="text-gray-900">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Any Spot on the Screen after PPM
+                      </div>
+                    </div>
+                    <div>
+                      <Select 
+                        value={formData.imageEvaluation.spotOnScreen || 'No'} 
+                        onValueChange={(value) => handleInputChange('imageEvaluation.spotOnScreen', value)}
+                      >
+                        <SelectTrigger className="text-gray-900">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Check Screen Cropping - FLAT and SCOPE
+                      </div>
+                    </div>
+                    <div>
+                      <Select 
+                        value={formData.imageEvaluation.screenCropping || 'Yes'} 
+                        onValueChange={(value) => handleInputChange('imageEvaluation.screenCropping', value)}
+                      >
+                        <SelectTrigger className="text-gray-900">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Convergence Checked
+                      </div>
+                    </div>
+                    <div>
+                      <Select 
+                        value={formData.imageEvaluation.convergenceChecked || 'Yes'} 
+                        onValueChange={(value) => handleInputChange('imageEvaluation.convergenceChecked', value)}
+                      >
+                        <SelectTrigger className="text-gray-900">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Channels Checked - Scope, Flat, Alternative
+                      </div>
+                    </div>
+                    <div>
+                      <Select 
+                        value={formData.imageEvaluation.channelsChecked || 'Yes'} 
                         onValueChange={(value) => handleInputChange('imageEvaluation.channelsChecked', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1554,14 +1638,20 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <Label htmlFor="pixelDefects">Pixel defects</Label>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Pixel defects
+                      </div>
+                    </div>
+                    <div>
                       <Select 
-                        value={formData.imageEvaluation.pixelDefects} 
+                        value={formData.imageEvaluation.pixelDefects || 'No'} 
                         onValueChange={(value) => handleInputChange('imageEvaluation.pixelDefects', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1570,14 +1660,20 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <Label htmlFor="imageVibration">Excessive image vibration</Label>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        Excessive image vibration
+                      </div>
+                    </div>
+                    <div>
                       <Select 
-                        value={formData.imageEvaluation.imageVibration} 
+                        value={formData.imageEvaluation.imageVibration || 'No'} 
                         onValueChange={(value) => handleInputChange('imageEvaluation.imageVibration', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1586,14 +1682,20 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <Label htmlFor="liteLOC">LiteLOC</Label>
+                      <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm font-medium text-gray-900 min-h-[40px] flex items-center">
+                        LiteLOC
+                      </div>
+                    </div>
+                    <div>
                       <Select 
-                        value={formData.imageEvaluation.liteLOC} 
+                        value={formData.imageEvaluation.liteLOC || 'No'} 
                         onValueChange={(value) => handleInputChange('imageEvaluation.liteLOC', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1620,7 +1722,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-6">
                 {/* Measured Color Coordinates (MCGD) */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Measured Color Coordinates (MCGD)</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Measured Color Coordinates (MCGD)
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse border border-gray-300">
                       <thead>
@@ -1634,29 +1738,31 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <tbody>
                         {formData.measuredColorCoordinates.map((item, index) => (
                           <tr key={index}>
-                            <td className="border border-gray-300 px-3 py-2 font-medium">{item.testPattern}</td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 font-medium bg-white text-gray-900">
+                              {item.testPattern || '-'}
+                            </td>
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.fl}
                                 onChange={(e) => handleArrayItemChange('measuredColorCoordinates', index, 'fl', e.target.value)}
                                 placeholder="fL"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.x}
                                 onChange={(e) => handleArrayItemChange('measuredColorCoordinates', index, 'x', e.target.value)}
                                 placeholder="x"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.y}
                                 onChange={(e) => handleArrayItemChange('measuredColorCoordinates', index, 'y', e.target.value)}
                                 placeholder="y"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
                           </tr>
@@ -1670,7 +1776,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* CIE XYZ Color Accuracy */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">CIE XYZ Color Accuracy</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    CIE XYZ Color Accuracy
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse border border-gray-300">
                       <thead>
@@ -1684,29 +1792,31 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       <tbody>
                         {formData.cieColorAccuracy.map((item, index) => (
                           <tr key={index}>
-                            <td className="border border-gray-300 px-3 py-2 font-medium">{item.testPattern}</td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 font-medium bg-white text-gray-900">
+                              {item.testPattern || '-'}
+                            </td>
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.x}
                                 onChange={(e) => handleArrayItemChange('cieColorAccuracy', index, 'x', e.target.value)}
                                 placeholder="x"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.y}
                                 onChange={(e) => handleArrayItemChange('cieColorAccuracy', index, 'y', e.target.value)}
                                 placeholder="y"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
-                            <td className="border border-gray-300 px-3 py-2">
+                            <td className="border border-gray-300 px-3 py-2 bg-white">
                               <Input
                                 value={item.fl}
                                 onChange={(e) => handleArrayItemChange('cieColorAccuracy', index, 'fl', e.target.value)}
                                 placeholder="fL"
-                                className="text-center border-0"
+                                className="text-center border-0 text-gray-900"
                               />
                             </td>
                           </tr>
@@ -1731,14 +1841,16 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-6">
                 {/* Screen Information */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Screen Information in metres</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Screen Information in metres
+                  </div>
                   <div className="grid grid-cols-2 gap-6">
                     {/* SCOPE Screen */}
                     <div>
-                      <h4 className="font-medium text-gray-700 mb-3">SCOPE</h4>
+                      <h4 className="font-medium text-gray-900 mb-3">SCOPE</h4>
                       <div className="space-y-3">
                         <div>
-                          <Label htmlFor="scopeHeight">Height</Label>
+                          <Label htmlFor="scopeHeight" className="text-gray-900">Height</Label>
                           <Input
                             id="scopeHeight"
                             value={formData.screenInfo?.scope?.height || ''}
@@ -1747,7 +1859,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           />
                         </div>
                         <div>
-                          <Label htmlFor="scopeWidth">Width</Label>
+                          <Label htmlFor="scopeWidth" className="text-gray-900">Width</Label>
                           <Input
                             id="scopeWidth"
                             value={formData.screenInfo?.scope?.width || ''}
@@ -1756,7 +1868,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           />
                         </div>
                         <div>
-                          <Label htmlFor="scopeGain">Gain</Label>
+                          <Label htmlFor="scopeGain" className="text-gray-900">Gain</Label>
                           <Input
                             id="scopeGain"
                             value={formData.screenInfo?.scope?.gain || ''}
@@ -1769,10 +1881,10 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                     {/* FLAT Screen */}
                     <div>
-                      <h4 className="font-medium text-gray-700 mb-3">FLAT</h4>
+                      <h4 className="font-medium text-gray-900 mb-3">FLAT</h4>
                       <div className="space-y-3">
                         <div>
-                          <Label htmlFor="flatHeight">Height</Label>
+                          <Label htmlFor="flatHeight" className="text-gray-900">Height</Label>
                           <Input
                             id="flatHeight"
                             value={formData.screenInfo?.flat?.height || ''}
@@ -1781,7 +1893,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           />
                         </div>
                         <div>
-                          <Label htmlFor="flatWidth">Width</Label>
+                          <Label htmlFor="flatWidth" className="text-gray-900">Width</Label>
                           <Input
                             id="flatWidth"
                             value={formData.screenInfo?.flat?.width || ''}
@@ -1790,7 +1902,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                           />
                         </div>
                         <div>
-                          <Label htmlFor="flatGain">Gain</Label>
+                          <Label htmlFor="flatGain" className="text-gray-900">Gain</Label>
                           <Input
                             id="flatGain"
                             value={formData.screenInfo?.flat?.gain || ''}
@@ -1804,7 +1916,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <Label htmlFor="screenMake">Screen Make</Label>
+                      <Label htmlFor="screenMake" className="text-gray-900">Screen Make</Label>
                       <Input
                         id="screenMake"
                         value={formData.screenInfo?.screenMake || ''}
@@ -1813,7 +1925,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       />
                     </div>
                     <div>
-                      <Label htmlFor="throwDistance">Throw Distance</Label>
+                      <Label htmlFor="throwDistance" className="text-gray-900">Throw Distance</Label>
                       <Input
                         id="throwDistance"
                         value={formData.screenInfo?.throwDistance || ''}
@@ -1828,10 +1940,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Voltage Parameters */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Voltage Parameters</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Voltage Parameters
+                  </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="pVsN">P vs N</Label>
+                      <Label htmlFor="pVsN" className="text-gray-900">P vs N</Label>
                       <Input
                         id="pVsN"
                         value={formData.voltageParameters.pVsN}
@@ -1840,7 +1954,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       />
                     </div>
                     <div>
-                      <Label htmlFor="pVsE">P vs E</Label>
+                      <Label htmlFor="pVsE" className="text-gray-900">P vs E</Label>
                       <Input
                         id="pVsE"
                         value={formData.voltageParameters.pVsE}
@@ -1849,7 +1963,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       />
                     </div>
                     <div>
-                      <Label htmlFor="nVsE">N vs E</Label>
+                      <Label htmlFor="nVsE" className="text-gray-900">N vs E</Label>
                       <Input
                         id="nVsE"
                         value={formData.voltageParameters.nVsE}
@@ -1864,7 +1978,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Content Playing Server */}
                 <div>
-                  <Label htmlFor="contentPlayingServer">Content Playing Server</Label>
+                  <Label htmlFor="contentPlayingServer" className="text-gray-900">Content Playing Server</Label>
                   <Input
                     id="contentPlayingServer"
                     value={formData.contentFunctionality?.serverContentPlaying || ''}
@@ -1875,10 +1989,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Lamp Power Measurements */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Lamp Power Measurements</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Lamp Power Measurements
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="flBeforePM">fL on 100% lamp power before PM</Label>
+                      <Label htmlFor="flBeforePM" className="text-gray-900">fL on 100% lamp power before PM</Label>
                       <Input
                         id="flBeforePM"
                         value={formData.contentFunctionality.lampPowerTestBefore}
@@ -1887,7 +2003,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       />
                     </div>
                     <div>
-                      <Label htmlFor="flAfterPM">fL on 100% lamp power after PM</Label>
+                      <Label htmlFor="flAfterPM" className="text-gray-900">fL on 100% lamp power after PM</Label>
                       <Input
                         id="flAfterPM"
                         value={formData.contentFunctionality.lampPowerTestAfter}
@@ -1913,15 +2029,17 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-6">
                 {/* Environment Status */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Environment Status</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Environment Status
+                  </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="projectorPlacement">Projector placement</Label>
+                      <Label htmlFor="projectorPlacement" className="text-gray-900">Projector placement</Label>
                       <Select 
                         value={formData.contentFunctionality?.projectorPlacementEnvironment || ''} 
                         onValueChange={(value) => handleInputChange('contentFunctionality.projectorPlacementEnvironment', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1931,12 +2049,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="room">Room</Label>
+                      <Label htmlFor="room" className="text-gray-900">Room</Label>
                       <Select 
                         value={formData.contentFunctionality?.roomStatus || 'OK'} 
                         onValueChange={(value) => handleInputChange('contentFunctionality.roomStatus', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1946,12 +2064,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="environment">Environment</Label>
+                      <Label htmlFor="environment" className="text-gray-900">Environment</Label>
                       <Select 
                         value={formData.contentFunctionality?.environmentStatus || 'OK'} 
                         onValueChange={(value) => handleInputChange('contentFunctionality.environmentStatus', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="text-gray-900">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1967,10 +2085,12 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* System Status */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">System Status</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    System Status
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="leStatus">LE Status During PM</Label>
+                      <Label htmlFor="leStatus" className="text-gray-900">LE Status During PM</Label>
                       <Input
                         id="leStatus"
                         value={formData.finalStatus?.leStatusDuringPM || ''}
@@ -1979,7 +2099,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                       />
                     </div>
                     <div>
-                      <Label htmlFor="acStatus">AC Status</Label>
+                      <Label htmlFor="acStatus" className="text-gray-900">AC Status</Label>
                       <Input
                         id="acStatus"
                         value={formData.finalStatus?.acStatus || ''}
@@ -1994,7 +2114,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Environmental Conditions */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Environmental Conditions</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Environmental Conditions
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <EnvironmentalField
@@ -2032,7 +2154,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
               <CardContent className="space-y-6">
                 {/* Observations and Remarks */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Observations and Remarks</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Observations and Remarks
+                  </div>
                   <div className="space-y-3">
                     {formData.observations.map((item, index) => (
                       <div key={index} className="flex items-start gap-3">
@@ -2204,7 +2328,9 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Air Pollution Level */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Air Pollution Level</h3>
+                  <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                    Air Pollution Level
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <EnvironmentalField
@@ -2276,9 +2402,35 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="px-4 py-3 bg-blue-600 text-white font-semibold text-base mb-3 rounded-t-md">
+                  Photos & Signatures
+                </div>
+                
                 {/* Photo Capture */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Service Photos</h3>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm mb-3 rounded">
+                    Service Photos
+                  </div>
+                  <div className="bg-white border-2 border-blue-500 rounded-lg p-4 mb-4 shadow-md">
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Photos are automatically <strong className="text-blue-700">compressed to reduce file size</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Use <strong className="text-blue-700">"Before Service"</strong> for initial state photos</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Use <strong className="text-blue-700">"After Service"</strong> for completed work photos</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900"><strong className="text-blue-700">Maximum 10 photos</strong> allowed</span>
+                      </div>
+                    </div>
+                  </div>
                   <PhotoCapture
                     onPhotosChange={setPhotos}
                     initialPhotos={photos}
@@ -2291,7 +2443,29 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Client Signature */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Client Signature</h3>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm mb-3 rounded">
+                    Client Signature
+                  </div>
+                  <div className="bg-white border-2 border-blue-500 rounded-lg p-4 mb-4 shadow-md">
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Draw your signature with <strong className="text-blue-700">mouse or finger</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Or <strong className="text-blue-700">upload a scanned signature image</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Signature will be <strong className="text-blue-700">embedded in the PDF report</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900"><strong className="text-red-600">This signature is required</strong></span>
+                      </div>
+                    </div>
+                  </div>
                   <SignaturePad
                     onSignatureChange={setClientSignature}
                     initialSignature={clientSignature}
@@ -2306,7 +2480,29 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Engineer Signature */}
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Engineer Signature</h3>
+                  <div className="px-4 py-2 bg-gray-100 text-gray-800 font-medium text-sm mb-3 rounded">
+                    Engineer Signature
+                  </div>
+                  <div className="bg-white border-2 border-blue-500 rounded-lg p-4 mb-4 shadow-md">
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Draw your signature with <strong className="text-blue-700">mouse or finger</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Or <strong className="text-blue-700">upload a scanned signature image</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900">Signature will be <strong className="text-blue-700">embedded in the PDF report</strong></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-base leading-tight">•</span>
+                        <span className="text-gray-900"><strong className="text-red-600">This signature is required</strong></span>
+                      </div>
+                    </div>
+                  </div>
                   <SignaturePad
                     onSignatureChange={setEngineerSignature}
                     initialSignature={engineerSignature}
@@ -2321,7 +2517,7 @@ export function ASCOMPServiceReportForm({ onSubmit, initialData, onClose, readon
 
                 {/* Additional Notes */}
                 <div>
-                  <Label htmlFor="notes">Additional Notes</Label>
+                  <Label htmlFor="notes" className="text-gray-900">Additional Notes</Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}

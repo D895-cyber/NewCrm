@@ -21,3 +21,4 @@ Looking at the error details, I can see several field mapping issues:
 Let me fix the field mapping issues in the import logic:
 
 
+

@@ -295,7 +295,7 @@ export function HtmlTemplateManager() {
                     onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
                   />
                   <p className="text-sm text-gray-500 mt-2">
-                    💡 Use placeholders like {{'{'}}{'{'}cinemaName{'}'}{'}'},  {{'{'}}{'{'}formattedDate{'}'}{'}'},  {{'{'}}{'{'}engineer.name{'}'}{'}'}, etc.
+                    💡 Use placeholders like {'{'}{'{'}cinemaName{'}'}{'}'}, {'{'}{'{'}formattedDate{'}'}{'}'}, {'{'}{'{'}engineer.name{'}'}{'}'}, etc.
                     <br />
                     📚 See full placeholder list in: <code>HTML_TEMPLATE_SYSTEM_GUIDE.md</code>
                   </p>
@@ -424,7 +424,7 @@ export function HtmlTemplateManager() {
             <div>
               <h4 className="font-semibold text-blue-900 mb-1">How to Use</h4>
               <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                <li>Create your HTML template with placeholders like <code>{{'{'}}{'{'}cinemaName{'}'}{'}'}</code></li>
+                <li>Create your HTML template with placeholders like <code>{'{'}{'{'}cinemaName{'}'}{'}'}</code></li>
                 <li>Upload it here or save to <code>backend/server/templates/html/</code></li>
                 <li>Use API: <code>POST /api/html-to-pdf/generate/:reportId</code> to generate PDF</li>
                 <li>Full guide: <code>HTML_TEMPLATE_SYSTEM_GUIDE.md</code></li>

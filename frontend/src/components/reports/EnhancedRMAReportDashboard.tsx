@@ -173,7 +173,7 @@ export function EnhancedRMAReportDashboard() {
       count: 7,
       trend: '0% WoW',
       color: 'from-green-500 to-green-600',
-      filters: { assignedTo: user?.id }
+      filters: { assignedTo: user?.userId || user?._id }
     },
     {
       id: 'cost-analysis',

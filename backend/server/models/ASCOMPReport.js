@@ -229,16 +229,39 @@ const ascompReportSchema = new mongoose.Schema({
     }
   },
   
+  // Original PDF uploaded from bulk import or manual upload
+  originalPdfReport: {
+    filename: { type: String },
+    originalName: { type: String },
+    cloudUrl: { type: String },
+    publicId: { type: String },
+    uploadedAt: { type: Date },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    source: { 
+      type: String, 
+      enum: ['drive', 'manual_upload', 'bulk_import'],
+      default: 'manual_upload'
+    },
+    driveLink: { type: String }, // Original Google Drive link if applicable
+    fileSize: { type: Number },
+    mimeType: { type: String }
+  },
+  
   // Generated PDF/DOC files
   generatedPdfReport: {
     filename: { type: String },
     cloudUrl: { type: String },
+    publicId: { type: String },
     generatedAt: { type: Date }
   },
   
   generatedDocReport: {
     filename: { type: String },
     cloudUrl: { type: String },
+    publicId: { type: String },
     generatedAt: { type: Date }
   },
   

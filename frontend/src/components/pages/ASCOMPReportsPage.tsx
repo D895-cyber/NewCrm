@@ -30,6 +30,7 @@ import { ASCOMPExactFormatForm } from '../ASCOMPExactFormatForm';
 import { apiClient } from '../../utils/api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { exportASCOMPReportToPDF } from '../../utils/ascomp-pdf-export';
+import { ASCOMPBulkImport } from './ASCOMPBulkImport';
 
 interface ASCOMPReport {
   _id: string;
@@ -261,13 +262,16 @@ export function ASCOMPReportsPage() {
               <h1 className="text-3xl font-bold text-gray-900">ASCOMP EW Reports</h1>
               <p className="text-gray-600">Preventive Maintenance Report Management</p>
             </div>
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Report
-            </Button>
+            <div className="flex space-x-3">
+              <ASCOMPBulkImport onImportComplete={loadReports} />
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Report
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}

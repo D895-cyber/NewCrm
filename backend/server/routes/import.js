@@ -287,22 +287,58 @@ const PRIORITY_MAPPING = {
 
 // Parse date from various formats
 function parseDate(dateString) {
-  if (!dateString || dateString.trim() === '') return null;
+  if (!dateString || dateString.trim() === '' || dateString === 'null' || dateString === 'N/A') {
+    return null;
+  }
   
-  // Handle various date formats
-  const formats = [
-    /^\d{1,2}\/\d{1,2}\/\d{4}$/, // MM/DD/YYYY
-    /^\d{1,2}-\d{1,2}-\d{4}$/, // MM-DD-YYYY
-    /^\d{4}-\d{1,2}-\d{1,2}$/, // YYYY-MM-DD
-    /^\d{1,2}\/\d{1,2}\/\d{2}$/, // MM/DD/YY
-    /^\d{1,2}-\d{1,2}-\d{2}$/ // MM-DD-YY
-  ];
+  const trimmed = dateString.trim();
   
   try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return null;
-    return date;
+    // Handle DD-MM-YYYY format (European format) - YOUR CSV FORMAT!
+    if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(trimmed)) {
+      const [day, month, year] = trimmed.split('-').map(Number);
+      // Create date with month-1 since JavaScript months are 0-indexed
+      const date = new Date(year, month - 1, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    
+    // Handle DD/MM/YYYY format
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+      const [day, month, year] = trimmed.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    
+    // Handle YYYY-MM-DD format (ISO format)
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(trimmed)) {
+      const date = new Date(trimmed);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    
+    // Handle MM/DD/YYYY format (US format)
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+      const [month, day, year] = trimmed.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    
+    // Fallback: Try to parse as is
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    return null;
   } catch (error) {
+    console.error('Error parsing date:', dateString, error);
     return null;
   }
 }
@@ -328,6 +364,18 @@ function cleanData(row) {
       cleaned[dbField] = STATUS_MAPPING[stringValue] || 'Under Review';
     } else if (dbField === 'priority') {
       cleaned[dbField] = PRIORITY_MAPPING[stringValue] || 'Medium';
+    } else if (dbField === 'warrantyStatus') {
+      // Map warranty status
+      const warranty = stringValue.toLowerCase();
+      if (warranty.includes('in warranty') || warranty.includes('active') || warranty.includes('warranty')) {
+        cleaned[dbField] = 'In Warranty';
+      } else if (warranty.includes('extended')) {
+        cleaned[dbField] = 'Extended Warranty';
+      } else if (warranty.includes('out') || warranty.includes('expired')) {
+        cleaned[dbField] = 'Expired';
+      } else {
+        cleaned[dbField] = 'In Warranty'; // Default
+      }
     } else if (dbField === 'rmaType') {
       // Map RMA types
       const rmaType = stringValue.toLowerCase();
@@ -522,6 +570,30 @@ function cleanData(row) {
     }
   }
   
+  // Provide defaults for required fields
+  cleaned.warrantyStatus = cleaned.warrantyStatus || 'In Warranty'; // Required field
+  cleaned.createdBy = cleaned.createdBy || 'Excel Import';
+  
+  // Remove all optional shipping fields that are null to avoid validation errors
+  // These are nested optional fields in the RMA model that shouldn't be in the base CSV
+  const optionalShippingFields = [
+    'outboundCarrier', 'outboundCarrierService', 'outboundShippedDate',
+    'outboundEstimatedDelivery', 'outboundActualDelivery', 'outboundStatus',
+    'outboundTrackingURL', 'outboundWeight', 'outboundInsuranceValue',
+    'outboundRequiresSignature', 'returnCarrier', 'returnCarrierService',
+    'returnShippedDate', 'returnEstimatedDelivery', 'returnActualDelivery',
+    'returnStatus', 'returnTrackingURL', 'returnWeight', 'returnInsuranceValue',
+    'returnRequiresSignature', 'targetDeliveryDays', 'actualDeliveryDays',
+    'slaBreached', 'breachReason'
+  ];
+  
+  // Remove null optional fields
+  optionalShippingFields.forEach(field => {
+    if (cleaned[field] === null || cleaned[field] === undefined) {
+      delete cleaned[field];
+    }
+  });
+  
   return cleaned;
 }
 
@@ -620,13 +692,34 @@ router.post('/rma/csv', upload.single('csvFile'), async (req, res) => {
               return;
             }
 
-            // Provide defaults for missing essential fields
-            if (!cleanedData.siteName) {
+            // Ensure required fields have valid values
+            if (!cleanedData.siteName || cleanedData.siteName.trim() === '' || cleanedData.siteName === 'null' || cleanedData.siteName === 'N/A') {
               cleanedData.siteName = 'Unknown Site';
             }
-            if (!cleanedData.productName) {
+            
+            if (!cleanedData.productName || cleanedData.productName.trim() === '' || cleanedData.productName === 'null' || cleanedData.productName === 'N/A') {
               cleanedData.productName = 'Unknown Product';
             }
+            
+            // Ensure dates are present - required fields
+            if (!cleanedData.ascompRaisedDate) {
+              cleanedData.ascompRaisedDate = new Date();
+            }
+            
+            if (!cleanedData.customerErrorDate) {
+              cleanedData.customerErrorDate = cleanedData.ascompRaisedDate || new Date();
+            }
+            
+            // Ensure createdBy is set
+            if (!cleanedData.createdBy || cleanedData.createdBy.trim() === '' || cleanedData.createdBy === 'null') {
+              cleanedData.createdBy = 'Excel Import';
+            }
+            
+            // Ensure warrantyStatus is set - required field
+            if (!cleanedData.warrantyStatus || cleanedData.warrantyStatus === 'null') {
+              cleanedData.warrantyStatus = 'In Warranty';
+            }
+            
             // Do not auto-generate serial numbers. Allow duplicates and blanks as provided.
 
             rmaData.push(cleanedData);
@@ -711,9 +804,29 @@ router.post('/rma/csv', upload.single('csvFile'), async (req, res) => {
                   name: upsertError.name,
                   code: upsertError.code,
                   errors: upsertError.errors,
+                  validationErrors: upsertError.errors ? Object.keys(upsertError.errors).map(key => ({
+                    field: key,
+                    message: upsertError.errors[key].message,
+                    value: upsertError.errors[key].value
+                  })) : null,
                   data: data
                 });
-                throw upsertError;
+                
+                // Add detailed error information
+                let errorMessage = upsertError.message;
+                if (upsertError.errors) {
+                  const fieldErrors = Object.keys(upsertError.errors).map(key => 
+                    `${key}: ${upsertError.errors[key].message}`
+                  ).join(', ');
+                  errorMessage = `Validation failed: ${fieldErrors}`;
+                }
+                
+                errors.push({
+                  row: globalIndex + 1,
+                  error: errorMessage,
+                  data: data
+                });
+                results.errors++;
               }
             }
           } catch (error) {

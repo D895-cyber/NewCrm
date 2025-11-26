@@ -1,168 +1,105 @@
 # Render Deployment Guide
 
-This guide will help you deploy your CRM application on Render with proper environment configuration.
+## Fixing "Node cannot be found" Warning
 
-## Prerequisites
+The "Node cannot be found" warning in the browser console is usually **harmless** and comes from browser extensions like React DevTools. It doesn't break functionality.
 
-1. **Render Account**: Sign up at [render.com](https://render.com)
-2. **GitHub Repository**: Your code should be in a GitHub repository
-3. **MongoDB Database**: Either MongoDB Atlas or a cloud MongoDB instance
+## Render Environment Setup
 
-## Important: Deploy as Separate Services
+### 1. Frontend Service (Static Site) on Render
 
-⚠️ **Critical**: This is a monorepo that needs to be deployed as **TWO SEPARATE SERVICES** on Render:
-1. Backend API Service
-2. Frontend Static Site
+1. **Build Command:**
+   ```
+   cd frontend && npm install && npm run build
+   ```
 
-## Deployment Steps
+2. **Publish Directory:**
+   ```
+   frontend/dist
+   ```
 
-### 1. Deploy Backend Service
+3. **Environment Variables (if needed):**
+   ```
+   VITE_API_URL=https://your-backend-service.onrender.com
+   ```
 
-1. **Create Web Service** on Render:
-   - Connect your GitHub repository
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
+### 2. Backend Service (Web Service) on Render
 
-2. **Environment Variables** for Backend:
+1. **Build Command:**
+   ```
+   cd backend && npm install
+   ```
+
+2. **Start Command:**
+   ```
+   npm start
+   ```
+
+3. **Environment Variables:**
    ```
    NODE_ENV=production
    PORT=4000
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/projector_warranty
-   JWT_SECRET=your-super-secret-jwt-key-here
-   FRONTEND_URL=https://your-frontend-url.onrender.com
-   ALLOWED_ORIGINS=https://your-frontend-url.onrender.com
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
    ```
 
-3. **Advanced Settings**:
-   - Auto-Deploy: Yes
-   - Health Check Path: `/api/health`
+### 3. CORS Configuration
 
-### 2. Deploy Frontend Service
+Make sure your backend allows requests from your frontend domain. Update `backend/server/server.js` or similar:
 
-1. **Create Static Site** on Render:
-   - Connect your GitHub repository
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
+```javascript
+const cors = require('cors');
 
-2. **Environment Variables** for Frontend:
-   ```
-   VITE_API_URL=https://your-backend-service.onrender.com/api
-   VITE_APP_NAME=Projector CRM
-   ```
-
-### 3. Configure MongoDB (if using Atlas)
-
-1. **Create MongoDB Atlas Cluster**:
-   - Go to [mongodb.com/atlas](https://www.mongodb.com/atlas)
-   - Create a free cluster
-   - Create a database user
-   - Whitelist IP addresses (0.0.0.0/0 for Render)
-
-2. **Get Connection String**:
-   ```
-   mongodb+srv://username:password@cluster.mongodb.net/projector_warranty
-   ```
-
-## Environment Variables Reference
-
-### Backend Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment mode | `production` |
-| `PORT` | Server port | `4000` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb+srv://...` |
-| `JWT_SECRET` | JWT signing secret | `your-secret-key` |
-| `FRONTEND_URL` | Frontend URL for CORS | `https://app.onrender.com` |
-| `ALLOWED_ORIGINS` | Additional allowed origins | `https://custom-domain.com` |
-
-### Frontend Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_API_URL` | Backend API URL | `https://api.onrender.com/api` |
-| `VITE_APP_NAME` | Application name | `Projector CRM` |
-
-## Troubleshooting
-
-### Build Errors
-
-#### "vite: not found" Error
-This happens when you try to deploy the entire monorepo as a single service. **Solution**:
-1. Delete the failed deployment
-2. Create **two separate services** as described above
-3. Use `backend` and `frontend` as root directories respectively
-
-#### Workspace Build Issues
-If you see workspace-related errors:
-1. Make sure you're deploying each service separately
-2. Don't use the root directory for deployment
-3. Each service should have its own build process
-
-### CORS Issues
-- Ensure `FRONTEND_URL` in backend matches your frontend URL
-- Check that both services are deployed and running
-- Verify environment variables are set correctly
-
-### Connection Issues
-- Check backend logs for MongoDB connection errors
-- Verify `VITE_API_URL` points to correct backend service
-- Ensure backend service is healthy at `/api/health`
-
-### Build Issues
-- Check build logs for missing dependencies
-- Verify Node.js version compatibility
-- Ensure all required files are committed to repository
-- **Most Important**: Deploy as separate services, not as a monorepo
-
-## Health Checks
-
-### Backend Health Check
-```bash
-curl https://your-backend-service.onrender.com/api/health
+app.use(cors({
+  origin: [
+    'https://your-frontend-service.onrender.com',
+    'http://localhost:3000' // for local development
+  ],
+  credentials: true
+}));
 ```
 
-Should return:
-```json
-{
-  "status": "OK",
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "database": "connected"
-}
-```
+## Testing the Deployment
 
-### Frontend Health Check
-Visit your frontend URL and check browser console for:
-- API URL configuration
-- Successful backend connection
-- No CORS errors
+1. **Check Backend Health:**
+   Visit: `https://your-backend-service.onrender.com/api/health`
 
-## Deployment Checklist
+2. **Check Frontend:**
+   Visit: `https://your-frontend-service.onrender.com`
 
-- [ ] Backend service deployed and running
-- [ ] Frontend static site deployed
-- [ ] MongoDB database accessible
-- [ ] Environment variables configured
-- [ ] CORS properly configured
-- [ ] Health checks passing
-- [ ] Authentication working
-- [ ] API endpoints responding
+3. **Browser Console:**
+   - Open DevTools (F12)
+   - Check Console tab
+   - Look for the API URL being used
+   - Check Network tab for failed API requests
 
-## Support
+## Common Issues
 
-If you encounter issues:
+### API URL Not Configured
+- **Symptom**: Frontend can't connect to backend
+- **Fix**: Set `VITE_API_URL` environment variable in Render frontend service
 
-1. Check Render service logs
-2. Verify environment variables
-3. Test API endpoints manually
-4. Check MongoDB connection
-5. Review CORS configuration
+### CORS Errors
+- **Symptom**: Network requests blocked
+- **Fix**: Update CORS settings in backend to include frontend domain
 
-## Security Notes
+### Build Failures
+- **Symptom**: Deployment fails during build
+- **Fix**: Check build logs, ensure all dependencies are in `package.json`
 
-- Never commit sensitive environment variables to repository
-- Use strong JWT secrets in production
-- Regularly rotate database passwords
-- Monitor service logs for security issues
+## Quick Fix for Current Issue
+
+If you're seeing the "Node cannot be found" warning:
+
+1. **Ignore it** - It's usually harmless (from browser extensions)
+
+2. **If you want to suppress it**, add this to your `frontend/index.html`:
+   ```html
+   <script>
+     if (typeof window !== 'undefined') {
+       window.Node = window.Node || {};
+     }
+   </script>
+   ```
+
+3. **Focus on actual errors** - Check the Network tab for failed API calls instead

@@ -207,9 +207,10 @@ export function DTRReportDashboard() {
         console.error('Test connection failed:', response.status);
         alert(`Connection failed: ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Test connection error:', error);
-      alert(`Connection error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Connection error: ${errorMessage}`);
     }
   };
 

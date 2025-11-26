@@ -126,10 +126,11 @@ export function RMACommentSystem({
       console.log('📞 Calling onCommentAdded callback...');
       onCommentAdded?.();
       console.log('✅ onCommentAdded callback called');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error adding comment:', error);
-      console.error('❌ Error details:', error.message);
-      console.error('❌ Error stack:', error.stack);
+      const err = error instanceof Error ? error : new Error('Unknown error');
+      console.error('❌ Error details:', err.message);
+      console.error('❌ Error stack:', err.stack);
     } finally {
       setSubmitting(false);
     }
@@ -187,7 +188,7 @@ export function RMACommentSystem({
   };
 
   const canEditComment = (comment: Comment) => {
-    return comment.commentedBy.userId === user?.id || user?.role === 'admin';
+    return comment.commentedBy.userId === user?.userId || user?.role === 'admin';
   };
 
   if (compact) {

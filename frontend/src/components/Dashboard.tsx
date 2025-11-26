@@ -53,6 +53,7 @@ import { LLMTrafficPage } from "./pages/LLMTrafficPage";
 import { FSEServiceReportAnalytics } from "./pages/FSEServiceReportAnalytics";
 import { ServiceAssignmentPage } from "./pages/ServiceAssignmentPage";
 import { ASCOMPReportDownloader } from "./pages/ASCOMPReportDownloader";
+import { ASCOMPReportsPage } from "./pages/ASCOMPReportsPage";
 import { ReportTemplatesPage } from "./pages/ReportTemplatesPage";
 import { UploadOriginalPDF } from "./pages/UploadOriginalPDF";
 import { ProjectorTrackingPage } from "./pages/ProjectorTrackingPage";
@@ -96,6 +97,7 @@ const analyticsItems = [
   { icon: FileText, label: "Service Reports Analysis" },
   { icon: BarChart3, label: "FSE Analytics" },
   { icon: BarChart3, label: "FSE Service Report Analytics" },
+  { icon: FileText, label: "ASCOMP Reports" },
   { icon: Download, label: "ASCOMP Report Downloader" },
   { icon: Upload, label: "Upload Original PDF" },
 ];
@@ -308,6 +310,8 @@ export function Dashboard({ isMobile = false }: DashboardProps) {
         return <LLMTrafficPage />;
       case "FSE Service Report Analytics":
         return <FSEServiceReportAnalytics />;
+      case "ASCOMP Reports":
+        return <ASCOMPReportsPage />;
       case "ASCOMP Report Downloader":
         return <ASCOMPReportDownloader />;
       case "Upload Original PDF":

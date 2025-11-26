@@ -7,6 +7,7 @@ import { apiClient } from '../../utils/api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../ui/loading-spinner';
 import { exportASCOMPReportToPDF } from '../../utils/ascomp-pdf-export';
+import { transformToASCOMPReportFormat } from '../../utils/ascompReportTransformer';
 
 interface FileInfo {
   filename?: string;
@@ -136,19 +137,52 @@ export function ASCOMPReportDownloader() {
         console.log('🔄 Fetching ASCOMP report data for PDF generation...');
         const fullReport = await apiClient.getASCOMPReport(report._id);
         
+        console.log('📥 Raw report data received:', {
+          reportNumber: fullReport?.reportNumber,
+          hasCinemaName: !!fullReport?.cinemaName,
+          hasSiteName: !!fullReport?.siteName,
+          hasInspectionSections: !!fullReport?.inspectionSections,
+          hasOpticals: !!fullReport?.opticals,
+          reportKeys: Object.keys(fullReport || {})
+        });
+        
+        // Transform ServiceReport format to ASCOMPReport format for PDF generation
+        // This ensures all reports use the same ASCOMP PDF format regardless of storage format
+        console.log('🔄 Transforming report to ASCOMP PDF format...');
+        console.log('📊 Original report structure:', {
+          hasOpticals: !!fullReport.opticals,
+          hasInspectionSections: !!fullReport.inspectionSections,
+          opticalsType: Array.isArray(fullReport.opticals) ? 'array' : typeof fullReport.opticals,
+          inspectionSectionsOpticals: Array.isArray(fullReport.inspectionSections?.opticals) ? 'array' : typeof fullReport.inspectionSections?.opticals,
+          sampleOptical: fullReport.inspectionSections?.opticals?.[0] || fullReport.opticals?.[0] || 'N/A'
+        });
+        
+        const ascompFormattedReport = transformToASCOMPReportFormat(fullReport);
+        
+        console.log('✅ Report transformed for PDF generation', {
+          hasOpticals: !!ascompFormattedReport.opticals,
+          hasElectronics: !!ascompFormattedReport.electronics,
+          hasMechanical: !!ascompFormattedReport.mechanical,
+          cinemaName: ascompFormattedReport.cinemaName,
+          reflectorStatus: ascompFormattedReport.opticals?.reflector?.status,
+          reflectorYesNoOk: ascompFormattedReport.opticals?.reflector?.yesNoOk,
+          touchPanelStatus: ascompFormattedReport.electronics?.touchPanel?.status,
+          touchPanelYesNoOk: ascompFormattedReport.electronics?.touchPanel?.yesNoOk
+        });
+        
         // Validate report has required data
-        if (!fullReport || !fullReport.cinemaName) {
-          throw new Error('Report is missing required data (cinema name). Please edit and complete the report first.');
+        if (!ascompFormattedReport || !ascompFormattedReport.cinemaName) {
+          throw new Error('Report is missing required data (cinema/site name). Please edit and complete the report first.');
         }
         
         console.log('📄 Generating ASCOMP PDF in exact format...', {
-          reportNumber: fullReport.reportNumber,
-          cinema: fullReport.cinemaName,
-          hasOpticals: !!fullReport.opticals,
-          hasElectronics: !!fullReport.electronics
+          reportNumber: ascompFormattedReport.reportNumber,
+          cinema: ascompFormattedReport.cinemaName || ascompFormattedReport.siteName,
+          hasOpticals: !!(ascompFormattedReport.opticals || ascompFormattedReport.inspectionSections?.opticals),
+          hasElectronics: !!(ascompFormattedReport.electronics || ascompFormattedReport.inspectionSections?.electronics)
         });
         
-        await exportASCOMPReportToPDF(fullReport);
+        await exportASCOMPReportToPDF(ascompFormattedReport as any);
         
         setSuccess(`ASCOMP report ${report.reportNumber} downloaded successfully in exact format!`);
         setTimeout(() => setSuccess(null), 3000);

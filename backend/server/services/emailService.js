@@ -64,7 +64,7 @@ class EmailService {
 
     const mailOptions = {
         from: process.env.SMTP_USER,
-        to: process.env.ADMIN_EMAIL || 'admin@projectorcare.com',
+        to: process.env.ADMIN_EMAIL || 'helpdesk@ascompinc.in',
         cc: process.env.MANAGER_EMAIL || 'manager@projectorcare.com',
         subject: `Service Unable to Complete - ${serviceVisit.visitId}`,
         html: `

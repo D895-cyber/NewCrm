@@ -715,9 +715,49 @@ export const exportServiceReportToPDF = async (report: any): Promise<void> => {
     return;
   }
 
+  // Normalize report data structure to ensure inspectionSections is properly formatted
+  const normalizedReport = {
+    ...report,
+    // Ensure inspectionSections exists and has the correct structure
+    inspectionSections: report.inspectionSections || report.sections || {
+      opticals: [],
+      electronics: [],
+      mechanical: [],
+      serialNumberVerified: {},
+      disposableConsumables: [],
+      coolant: {},
+      lightEngineTestPatterns: []
+    },
+    // Ensure signatures are accessible from multiple possible locations
+    clientSignature: report.clientSignature || report.signatures?.customer || report.clientSignatureAndStamp?.signatureData || null,
+    engineerSignature: report.engineerSignature || report.signatures?.engineer || report.engineerSignature?.signatureData || null,
+    // Keep original signatures object for backward compatibility
+    signatures: report.signatures || {
+      customer: report.clientSignature || report.clientSignatureAndStamp?.signatureData || null,
+      engineer: report.engineerSignature || report.engineerSignature?.signatureData || null
+    }
+  };
+
+  // Log the normalized structure for debugging
+  console.log('📊 Normalized report structure:', {
+    hasInspectionSections: !!normalizedReport.inspectionSections,
+    hasOpticals: !!normalizedReport.inspectionSections?.opticals,
+    opticalsLength: normalizedReport.inspectionSections?.opticals?.length || 0,
+    firstOptical: normalizedReport.inspectionSections?.opticals?.[0] || null,
+    sampleOpticalData: normalizedReport.inspectionSections?.opticals?.[0] ? {
+      description: normalizedReport.inspectionSections.opticals[0].description,
+      status: normalizedReport.inspectionSections.opticals[0].status,
+      result: normalizedReport.inspectionSections.opticals[0].result
+    } : null,
+    hasClientSignature: !!normalizedReport.clientSignature,
+    hasEngineerSignature: !!normalizedReport.engineerSignature,
+    clientSignatureType: normalizedReport.clientSignature ? normalizedReport.clientSignature.substring(0, 30) : null,
+    engineerSignatureType: normalizedReport.engineerSignature ? normalizedReport.engineerSignature.substring(0, 30) : null
+  });
+
   try {
     console.log('🔄 Generating ASCOMP style report...');
-    await exportASCOMPStyleReport(report);
+    await exportASCOMPStyleReport(normalizedReport);
     console.log('✅ ASCOMP style report generated successfully');
   } catch (error: any) {
     console.error('❌ ASCOMP style report generation failed:', error);

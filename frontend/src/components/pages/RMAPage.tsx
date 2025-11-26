@@ -27,7 +27,8 @@ import {
   Loader2,
   Activity,
   Truck,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from "lucide-react";
 import { apiClient } from "../../utils/api/client";
 import { convertToCSV, downloadCSV, generateLabel, printLabel } from "../../utils/export";
@@ -52,6 +53,8 @@ export function RMAPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterPriority, setFilterPriority] = useState("All");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   
   // Map backend data to frontend display format
   const mapBackendDataToFrontend = (backendRMA: any) => {
@@ -109,6 +112,7 @@ export function RMAPage() {
       rmaOrderNumber: backendRMA.rmaOrderNumber || 'N/A',
       ascompRaisedDate: backendRMA.ascompRaisedDate ? new Date(backendRMA.ascompRaisedDate).toLocaleDateString() : 
                         backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
+      ascompRaisedDateRaw: backendRMA.ascompRaisedDate || backendRMA.issueDate || backendRMA.createdAt, // Keep raw date for filtering
       customerErrorDate: backendRMA.customerErrorDate ? new Date(backendRMA.customerErrorDate).toLocaleDateString() : 
                          backendRMA.issueDate ? new Date(backendRMA.issueDate).toLocaleDateString() : 'N/A',
       siteName: backendRMA.siteName || backendRMA.customerSite || 'N/A',
@@ -380,7 +384,7 @@ export function RMAPage() {
     setSerialNumberSearch("");
   };
 
-  // Only show these specific statuses
+  // Only show these specific statuses - filtered by date if date filter is active
   const availableStatuses = React.useMemo(() => {
     const allowedStatuses = [
       'Completed',
@@ -390,7 +394,49 @@ export function RMAPage() {
       'Under Review'
     ];
     
-    const statusCounts = (localRMAItems || []).reduce((acc, rma) => {
+    // First filter by date if date filter is active
+    let rmasToCount = localRMAItems || [];
+    if (filterStartDate || filterEndDate) {
+      console.log('🔍 Date Filter Active:', { filterStartDate, filterEndDate });
+      rmasToCount = rmasToCount.filter(rma => {
+        // Use raw date field for accurate filtering
+        const rawDate = rma.ascompRaisedDateRaw || rma.ascompRaisedDate || rma.raisedDate || rma.createdAt;
+        if (!rawDate || rawDate === 'N/A') return false;
+        
+        const rmaDate = new Date(rawDate);
+        if (isNaN(rmaDate.getTime())) {
+          console.warn('⚠️ Invalid date for RMA:', rma.rmaNumber, rawDate);
+          return false; // Invalid date
+        }
+        
+        if (filterStartDate && filterEndDate) {
+          const start = new Date(filterStartDate);
+          const end = new Date(filterEndDate);
+          end.setHours(23, 59, 59, 999);
+          return rmaDate >= start && rmaDate <= end;
+        } else if (filterStartDate) {
+          const start = new Date(filterStartDate);
+          return rmaDate >= start;
+        } else if (filterEndDate) {
+          const end = new Date(filterEndDate);
+          end.setHours(23, 59, 59, 999);
+          return rmaDate <= end;
+        }
+        return true;
+      });
+      
+      console.log('📊 Filtered RMAs count:', rmasToCount.length);
+      if (rmasToCount.length > 0) {
+        console.log('📅 Sample dates:', rmasToCount.slice(0, 5).map(rma => ({
+          rmaNumber: rma.rmaNumber,
+          rawDate: rma.ascompRaisedDateRaw,
+          displayDate: rma.ascompRaisedDate,
+          year: new Date(rma.ascompRaisedDateRaw).getFullYear()
+        })));
+      }
+    }
+    
+    const statusCounts = rmasToCount.reduce((acc, rma) => {
       const status = rma.caseStatus || 'Unknown';
       if (allowedStatuses.includes(status)) {
         acc[status] = (acc[status] || 0) + 1;
@@ -402,17 +448,79 @@ export function RMAPage() {
       .filter(status => statusCounts[status] > 0)
       .map(status => ({ status, count: statusCounts[status] }))
       .sort((a, b) => b.count - a.count);
-  }, [localRMAItems]);
+  }, [localRMAItems, filterStartDate, filterEndDate]);
+
+  // Calculate total count for date-filtered RMAs (for "All Status" display)
+  const dateFilteredRMAsCount = React.useMemo(() => {
+    if (!filterStartDate && !filterEndDate) {
+      return localRMAItems?.length || 0;
+    }
+    
+    let count = 0;
+    (localRMAItems || []).forEach(rma => {
+      // Use raw date field for accurate filtering
+      const rawDate = rma.ascompRaisedDateRaw || rma.ascompRaisedDate || rma.raisedDate || rma.createdAt;
+      if (!rawDate || rawDate === 'N/A') return;
+      
+      const rmaDate = new Date(rawDate);
+      if (isNaN(rmaDate.getTime())) return; // Invalid date
+      
+      if (filterStartDate && filterEndDate) {
+        const start = new Date(filterStartDate);
+        const end = new Date(filterEndDate);
+        end.setHours(23, 59, 59, 999);
+        if (rmaDate >= start && rmaDate <= end) count++;
+      } else if (filterStartDate) {
+        const start = new Date(filterStartDate);
+        if (rmaDate >= start) count++;
+      } else if (filterEndDate) {
+        const end = new Date(filterEndDate);
+        end.setHours(23, 59, 59, 999);
+        if (rmaDate <= end) count++;
+      }
+    });
+    
+    return count;
+  }, [localRMAItems, filterStartDate, filterEndDate]);
 
   const filteredRMAs = (localRMAItems || []).filter(rma => {
     // Normalize search term - handle case-insensitive and special characters
     const normalizedSearch = searchTerm.toLowerCase().trim();
     
+    // Date filter
+    let matchesDate = true;
+    if (filterStartDate || filterEndDate) {
+      // Use raw date field for accurate filtering
+      const rawDate = rma.ascompRaisedDateRaw || rma.ascompRaisedDate || rma.raisedDate || rma.createdAt;
+      if (!rawDate || rawDate === 'N/A') {
+        matchesDate = false;
+      } else {
+        const rmaDate = new Date(rawDate);
+        if (isNaN(rmaDate.getTime())) {
+          matchesDate = false; // Invalid date
+        } else {
+          if (filterStartDate && filterEndDate) {
+            const start = new Date(filterStartDate);
+            const end = new Date(filterEndDate);
+            end.setHours(23, 59, 59, 999); // Include the entire end date
+            matchesDate = rmaDate >= start && rmaDate <= end;
+          } else if (filterStartDate) {
+            const start = new Date(filterStartDate);
+            matchesDate = rmaDate >= start;
+          } else if (filterEndDate) {
+            const end = new Date(filterEndDate);
+            end.setHours(23, 59, 59, 999); // Include the entire end date
+            matchesDate = rmaDate <= end;
+          }
+        }
+      }
+    }
+    
     if (!normalizedSearch) {
       // If search is empty, match all (subject to filters)
       const matchesStatus = filterStatus === "All" || rma.caseStatus === filterStatus;
       const matchesPriority = filterPriority === "All" || rma.priority === filterPriority;
-      return matchesStatus && matchesPriority;
+      return matchesDate && matchesStatus && matchesPriority;
     }
     
     // Search across all relevant fields including replaced part name
@@ -431,7 +539,7 @@ export function RMAPage() {
     
     const matchesStatus = filterStatus === "All" || rma.caseStatus === filterStatus;
     const matchesPriority = filterPriority === "All" || rma.priority === filterPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesDate && matchesSearch && matchesStatus && matchesPriority;
   });
 
   const getStatusColor = (status: string) => {
@@ -884,6 +992,63 @@ export function RMAPage() {
     }
   };
 
+  const handleDeleteAllRMAs = async () => {
+    const confirmDelete = window.confirm(
+      `⚠️ WARNING: This will permanently delete ALL ${localRMAItems.length} RMA records!\n\n` +
+      `This action CANNOT be undone.\n\n` +
+      `Are you absolutely sure you want to proceed?`
+    );
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    const doubleConfirm = window.confirm(
+      `This is your final confirmation.\n\n` +
+      `Type 'DELETE ALL' in the next prompt to confirm deletion of all RMA records.`
+    );
+    
+    if (!doubleConfirm) {
+      return;
+    }
+
+    const finalConfirmation = window.prompt(
+      'Please type DELETE ALL to confirm:'
+    );
+
+    if (finalConfirmation !== 'DELETE ALL') {
+      setError('Deletion cancelled - confirmation text did not match');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Delete all RMAs one by one
+      const deletePromises = localRMAItems.map(rma => 
+        apiClient.delete(`/rma/${rma._id}`)
+      );
+
+      await Promise.all(deletePromises);
+
+      (window as any).showToast?.({
+        type: 'success',
+        title: 'All RMAs Deleted',
+        message: `Successfully deleted ${localRMAItems.length} RMA records`
+      });
+
+      // Refresh the RMA list
+      await refreshRMA();
+      await refreshData();
+    } catch (err: any) {
+      console.error('Error deleting all RMAs:', err);
+      setError('Failed to delete all RMAs: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -948,6 +1113,15 @@ export function RMAPage() {
             >
               <Download className="w-4 h-4" />
               Export
+            </button>
+            <button 
+              onClick={handleDeleteAllRMAs}
+              disabled={isLoading || localRMAItems.length === 0}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border border-red-400/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Delete all RMA records"
+            >
+              <XCircle className="w-4 h-4" />
+              Delete All
             </button>
             <ImportOptions onImportComplete={refreshRMA} />
             <button 
@@ -1056,7 +1230,18 @@ export function RMAPage() {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-4 py-2 bg-dark-bg border border-dark-color rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[150px] h-11"
               >
-                <option value="All">All Status ({localRMAItems?.length || 0})</option>
+                <option value="All">
+                  All Status ({dateFilteredRMAsCount})
+                  {(() => {
+                    const startDate = filterStartDate;
+                    const endDate = filterEndDate;
+                    const yearMatch = startDate && endDate && startDate.match(/^(\d{4})-01-01$/) && endDate.match(/^(\d{4})-12-31$/);
+                    if (yearMatch && startDate.substring(0, 4) === endDate.substring(0, 4)) {
+                      return ` - ${startDate.substring(0, 4)}`;
+                    }
+                    return '';
+                  })()}
+                </option>
                 {availableStatuses.map(({ status, count }) => (
                   <option key={status} value={status}>
                     {status} ({count})
@@ -1081,6 +1266,8 @@ export function RMAPage() {
                 setSearchTerm("");
                 setFilterStatus("All");
                 setFilterPriority("All");
+                setFilterStartDate("");
+                setFilterEndDate("");
               }}
               variant="outline"
               className="border-gray-300 text-gray-700 hover:bg-gray-50 h-11 px-6"
@@ -1107,8 +1294,120 @@ export function RMAPage() {
             
           </div>
           
+          {/* Date Filter Section */}
+          <div className="mt-4 pt-4 border-t border-dark-color">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                📅 Date Filter (Filter by Year/Month)
+              </h3>
+              
+              {/* Year Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {[2025, 2024, 2023, 2022, 2021, 2020].map(year => {
+                  const isSelected = filterStartDate === `${year}-01-01` && filterEndDate === `${year}-12-31`;
+                  return (
+                    <Button
+                      key={year}
+                      onClick={() => {
+                        setFilterStartDate(`${year}-01-01`);
+                        setFilterEndDate(`${year}-12-31`);
+                      }}
+                      size="sm"
+                      className={`h-9 px-4 ${
+                        isSelected
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white border-2 border-blue-400'
+                          : 'bg-dark-bg border border-dark-color text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {year}
+                    </Button>
+                  );
+                })}
+                {(filterStartDate || filterEndDate) && (
+                  <Button
+                    onClick={() => {
+                      setFilterStartDate("");
+                      setFilterEndDate("");
+                    }}
+                    size="sm"
+                    variant="outline"
+                    className="h-9 px-4 bg-red-500 hover:bg-red-600 text-white border-red-400"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear Date
+                  </Button>
+                )}
+              </div>
+              
+              {/* Manual Date Inputs */}
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Start Date</label>
+                  <Input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="bg-dark-bg border-dark-color text-white h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">End Date</label>
+                  <Input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="bg-dark-bg border-dark-color text-white h-9"
+                  />
+                </div>
+              </div>
+              
+              {/* Status Breakdown for Filtered Date */}
+              {(filterStartDate || filterEndDate) && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-lg border-2 border-blue-500/50">
+                  <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    📊 Status Breakdown {(() => {
+                      const startDate = filterStartDate;
+                      const endDate = filterEndDate;
+                      const yearMatch = startDate && endDate && startDate.match(/^(\d{4})-01-01$/) && endDate.match(/^(\d{4})-12-31$/);
+                      if (yearMatch && startDate.substring(0, 4) === endDate.substring(0, 4)) {
+                        return `for Year ${startDate.substring(0, 4)}`;
+                      }
+                      return '';
+                    })()}
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {(() => {
+                      // Calculate status breakdown for filtered RMAs
+                      const statusCounts: { [key: string]: number } = {};
+                      filteredRMAs.forEach(rma => {
+                        const status = rma.caseStatus || 'Unknown';
+                        statusCounts[status] = (statusCounts[status] || 0) + 1;
+                      });
+                      
+                      // Get top statuses
+                      return Object.entries(statusCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10)
+                        .map(([status, count]) => (
+                          <div key={status} className="bg-dark-bg/50 rounded-lg p-3 border border-gray-700">
+                            <p className="text-xs text-gray-400 mb-1 truncate" title={status}>{status}</p>
+                            <p className="text-2xl font-bold text-white">{count}</p>
+                          </div>
+                        ));
+                    })()}
+                  </div>
+                  <div className="mt-3 text-center">
+                    <p className="text-lg font-bold text-white">
+                      Total: {filteredRMAs.length} RMA{filteredRMAs.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
           {/* Active Filters Display */}
-          {(searchTerm || filterStatus !== "All" || filterPriority !== "All") && (
+          {(searchTerm || filterStatus !== "All" || filterPriority !== "All" || filterStartDate || filterEndDate) && (
             <div className="mt-4 pt-4 border-t border-dark-color">
               <div className="flex items-center gap-2 text-sm text-gray-300">
                 <span className="font-medium">Active Filters:</span>
@@ -1125,6 +1424,25 @@ export function RMAPage() {
                 {filterPriority !== "All" && (
                   <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
                     Priority: {filterPriority}
+                  </span>
+                )}
+                {(filterStartDate || filterEndDate) && (
+                  <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-semibold">
+                    📅 Date: {(() => {
+                      const startDate = filterStartDate;
+                      const endDate = filterEndDate;
+                      const yearMatch = startDate && endDate && startDate.match(/^(\d{4})-01-01$/) && endDate.match(/^(\d{4})-12-31$/);
+                      
+                      if (yearMatch && startDate.substring(0, 4) === endDate.substring(0, 4)) {
+                        return `Year ${startDate.substring(0, 4)}`;
+                      } else if (startDate && endDate) {
+                        return `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+                      } else if (startDate) {
+                        return `From ${new Date(startDate).toLocaleDateString()}`;
+                      } else {
+                        return `Until ${new Date(endDate).toLocaleDateString()}`;
+                      }
+                    })()}
                   </span>
                 )}
               </div>

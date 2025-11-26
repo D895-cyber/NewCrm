@@ -1,21 +1,14 @@
 services:
-  # Backend Service
+  # Unified Service - Serves both backend API and frontend
   - type: web
-    name: projector-crm-backend
+    name: projector-crm
     env: node
-    buildCommand: cd backend && npm install
+    # Build frontend first, then install backend dependencies
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
+    # Start backend which serves frontend from dist folder
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 4000
     healthCheckPath: /api/health
-    
-  # Frontend Service  
-  - type: web
-    name: projector-crm-frontend
-    env: static
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
 

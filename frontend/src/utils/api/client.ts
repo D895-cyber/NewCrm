@@ -163,12 +163,6 @@ class ApiClient {
     return this.request(endpoint, options);
   }
 
-  // Method to clear cache (useful after data updates)
-  clearCache() {
-    this.cache.clear();
-  }
-
-  
   async initializeDatabase() {
     return this.post('/settings/initialize', {});
   }
@@ -394,7 +388,8 @@ class ApiClient {
       return data;
     } catch (error) {
       console.error('API Client: Error fetching RMA data:', error);
-      throw new Error(`Failed to fetch RMA records: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to fetch RMA records: ${errorMessage}`);
     }
   }
 

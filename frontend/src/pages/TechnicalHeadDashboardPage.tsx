@@ -297,12 +297,13 @@ export function TechnicalHeadDashboardPage() {
         console.log('🧪 Test DTR API call result:', testResponse);
         console.log('🧪 Test response type:', typeof testResponse);
         console.log('🧪 Test response keys:', testResponse ? Object.keys(testResponse) : 'No response');
-      } catch (testError) {
+      } catch (testError: unknown) {
         console.error('❌ Test DTR API call failed:', testError);
+        const err = testError as any;
         console.error('❌ Test error details:', {
-          message: testError.message,
-          status: testError.response?.status,
-          data: testError.response?.data
+          message: err?.message || 'Unknown error',
+          status: err?.response?.status,
+          data: err?.response?.data
         });
       }
       
@@ -420,12 +421,13 @@ export function TechnicalHeadDashboardPage() {
         console.warn('Unexpected DTR response structure:', response);
         setDtrs([]);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading DTRs:', error);
+      const err = error as any;
       console.error('Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data
+        message: err?.message || 'Unknown error',
+        status: err?.response?.status,
+        data: err?.response?.data
       });
       setDtrs([]);
     }
@@ -1497,7 +1499,7 @@ export function TechnicalHeadDashboardPage() {
                   <Label className="text-dark-secondary">Assigned To</Label>
                   <p className="text-white">
                     {typeof selectedDTR.assignedTo === 'string' ? selectedDTR.assignedTo : 
-                     typeof selectedDTR.assignedTo === 'object' && selectedDTR.assignedTo?.name ? selectedDTR.assignedTo.name : 
+                     typeof selectedDTR.assignedTo === 'object' && selectedDTR.assignedTo && 'name' in selectedDTR.assignedTo ? (selectedDTR.assignedTo as any).name : 
                      'N/A'}
                   </p>
                 </div>
@@ -1522,7 +1524,7 @@ export function TechnicalHeadDashboardPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-4">
-                {selectedDTR.status === 'Open' && (
+                {(selectedDTR.status === 'Open' || selectedDTR.status === 'pending') && (
                   <Button 
                     onClick={() => {
                       handleAssignDTR(selectedDTR._id, 'technician-id');
@@ -1533,7 +1535,7 @@ export function TechnicalHeadDashboardPage() {
                     Assign DTR
                   </Button>
                 )}
-                {selectedDTR.assignedTo && selectedDTR.status !== 'Ready for RMA' && selectedDTR.status !== 'Closed' && (
+                {selectedDTR.assignedTo && selectedDTR.status !== 'Ready for RMA' && selectedDTR.status !== 'Closed' && selectedDTR.status !== 'closed' && (
                   <Button 
                     variant="outline"
                     onClick={() => {
@@ -1545,7 +1547,7 @@ export function TechnicalHeadDashboardPage() {
                     Finalize & Assign to RMA Handler
                   </Button>
                 )}
-                {selectedDTR.status === 'Ready for RMA' && (
+                {(selectedDTR.status === 'Ready for RMA' || selectedDTR.status === 'ready-for-rma') && (
                   <Button 
                     variant="outline"
                     disabled

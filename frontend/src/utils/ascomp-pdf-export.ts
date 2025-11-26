@@ -122,34 +122,67 @@ export async function exportASCOMPReportToPDF(reportData: ASCOMPReportData) {
 
   // ==================== SERIAL INFORMATION ====================
   
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
+  
+  // First row: SERIAL #, Equip and EW Service visit, LOCATION
+  // SERIAL # field
   pdf.text('SERIAL #:', 12, yPosition);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(reportData.serialNumber || '', 30, yPosition);
+  const serialNumber = (reportData.serialNumber || '').toString();
+  pdf.text(serialNumber, 30, yPosition);
   
+  // Equip and EW Service visit field
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Equip and EW Service visit:', 80, yPosition);
+  pdf.text('Equip and EW Service visit:', 60, yPosition);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(reportData.equipAndEWServiceVisit || '', 125, yPosition);
+  const equipVisit = (reportData.equipAndEWServiceVisit || '').toString();
+  pdf.text(equipVisit, 110, yPosition);
   
+  // LOCATION field - ensure it fits within page width (210mm total, leave margin)
   pdf.setFont('helvetica', 'bold');
-  pdf.text('LOCATION:', 160, yPosition);
+  pdf.text('LOCATION:', 155, yPosition);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(reportData.location || '', 180, yPosition);
+  const location = (reportData.location || '').toString();
+  // Calculate max width for location (page width - margin - start position)
+  const maxLocationWidth = pageWidth - 170; // 170mm from left edge to right margin
+  const locationLines = pdf.splitTextToSize(location, maxLocationWidth);
+  pdf.text(locationLines[0] || '', 170, yPosition);
+  
+  // If location wraps, move to next line
+  if (locationLines.length > 1) {
+    yPosition += 4;
+    pdf.text(locationLines.slice(1).join(' '), 170, yPosition);
+  }
   
   yPosition += 5;
   
+  // Second row: Projector Model, Serial No. and Running Hours
   pdf.setFont('helvetica', 'bold');
   pdf.text('Projector Model, Serial No. and Running Hours:', 12, yPosition);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(reportData.projectorModelSerialAndHours || '', 85, yPosition);
+  const projectorInfo = (reportData.projectorModelSerialAndHours || '').toString();
+  // Calculate max width for projector info (leave space for "Replacement Required" field)
+  const maxProjectorWidth = pageWidth - 20 - 50; // Leave 50mm for replacement field on right
+  const projectorLines = pdf.splitTextToSize(projectorInfo, maxProjectorWidth);
+  pdf.text(projectorLines[0] || '', 12, yPosition + 4);
   
+  // If projector info wraps, handle wrapping
+  if (projectorLines.length > 1) {
+    for (let i = 1; i < projectorLines.length; i++) {
+      yPosition += 4;
+      pdf.text(projectorLines[i], 12, yPosition + 4);
+    }
+  }
+  
+  // Replacement Required - always on a separate line to avoid overlap
+  yPosition += 5;
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Replacement Required:', 140, yPosition);
+  pdf.text('Replacement Required:', 12, yPosition + 4);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(reportData.replacementRequired ? '☑' : '☐', 175, yPosition);
+  pdf.text(reportData.replacementRequired ? '☑' : '☐', 55, yPosition + 4);
   
-  yPosition += 8;
+  yPosition += 6;
 
   // ==================== MAIN CHECKLIST TABLE ====================
   

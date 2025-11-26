@@ -251,24 +251,166 @@ const createMockDatabase = async () => {
   console.log('Mock database initialized');
 };
 
-// Connect to MongoDB and start server
-connectDB().then(() => {
-  console.log('✅ MongoDB connected, starting server...');
-  // Start scheduler service after database connection
-  schedulerService.start();
-  // Start server only after MongoDB is ready
-  startServerWithFallback();
-}).catch((error) => {
-  console.error('❌ Failed to connect to MongoDB:', error);
+// Start server with port conflict handling
+const startServer = async (port) => {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, '0.0.0.0', () => {
+      console.log(`✅ Server running on port ${port}`);
+      console.log(`📍 Health check: http://0.0.0.0:${port}/api/health`);
+      console.log(`🌐 Environment: ${NODE_ENV}`);
+      console.log(`🔗 Listening on all interfaces (0.0.0.0)`);
+      
+      // Initialize tracking service
+      try {
+        trackingUpdateService.start();
+        console.log('✅ Tracking update service initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize tracking service:', error);
+        // Don't fail server startup if tracking fails
+      }
+      
+      resolve(server);
+    });
+
+    server.on('error', (error) => {
+      console.error(`❌ Server error on port ${port}:`, error.message);
+      if (error.code === 'EADDRINUSE') {
+        console.log(`⚠️  Port ${port} is already in use. Trying next available port...`);
+        reject(error);
+      } else {
+        console.error(`❌ Fatal server error:`, error);
+        reject(error);
+      }
+    });
+  });
+};
+
+// Try to start server with fallback ports
+const startServerWithFallback = async () => {
+  // In production (like Render), only use the PORT env variable
+  // Don't try fallback ports as Render assigns a specific port
+  if (NODE_ENV === 'production' && process.env.PORT) {
+    console.log(`🚀 Production mode: Starting server on Render-assigned port ${PORT}`);
+    try {
+      await startServer(PORT);
+      return;
+    } catch (error) {
+      console.error('❌ Failed to start server on production port:', error);
+      process.exit(1);
+    }
+  }
+  
+  // Development: Try multiple ports
+  const ports = [PORT, 4001, 4002, 4003, 5000, 5001];
+  
+  for (const port of ports) {
+    try {
+      await startServer(port);
+      return; // Success, exit the function
+    } catch (error) {
+      if (error.code === 'EADDRINUSE') {
+        console.log(`Port ${port} in use, trying next...`);
+        continue; // Try next port
+      } else {
+        console.error('Server startup error:', error);
+        process.exit(1);
+      }
+    }
+  }
+  
+  console.error('Could not find an available port. Please check your system.');
   process.exit(1);
+};
+
+// Connect to MongoDB and start server
+// For production (Render/cloud), start server even if DB connection is slow
+const startApp = async () => {
+  // Start server first so health checks can pass
+  await startServerWithFallback();
+  
+  // Then try to connect to MongoDB (non-blocking)
+  connectDB().then(() => {
+    console.log('✅ MongoDB connected successfully');
+    // Start scheduler service after database connection
+    schedulerService.start();
+  }).catch((error) => {
+    console.error('❌ Failed to connect to MongoDB:', error.message);
+    // In production, don't exit - allow server to run and retry DB connection
+    if (NODE_ENV === 'production') {
+      console.log('⚠️  Server running without database connection. Will retry...');
+      // Retry connection after 10 seconds
+      setTimeout(() => {
+        console.log('🔄 Retrying MongoDB connection...');
+        connectDB().catch(err => {
+          console.error('❌ MongoDB retry failed:', err.message);
+        });
+      }, 10000);
+    } else {
+      // In development, exit if DB connection fails
+      console.error('❌ Exiting in development mode due to DB connection failure');
+      process.exit(1);
+    }
+  });
+};
+
+// Start the application
+startApp();
+
+// Root endpoint - redirects to frontend or returns basic info
+app.get('/', (req, res) => {
+  try {
+    // If frontend dist exists, let the SPA handler serve it
+    // Otherwise return basic server info
+    const indexPath = path.join(FRONTEND_DIST_PATH, 'index.html');
+    const fs = require('fs');
+    
+    if (fs.existsSync(indexPath)) {
+      console.log('📄 Serving frontend from:', indexPath);
+      return res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('❌ Error serving frontend:', err);
+          // Fallback to API info if frontend fails to serve
+          res.json({
+            message: 'Projector CRM Backend API',
+            status: 'running',
+            frontend: 'not available',
+            health: '/api/health',
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
+    }
+    
+    // No frontend, return API info
+    console.log('📄 Serving API info (frontend not found)');
+    res.json({
+      message: 'Projector CRM Backend API',
+      status: 'running',
+      frontend: 'not built',
+      health: '/api/health',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Error in root endpoint:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// Health check endpoint
+// Health check endpoint - always returns 200 so Render health checks pass
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const status = dbStatus === 'connected' ? 'healthy' : 'degraded';
+  
+  res.status(200).json({ 
+    status: status,
+    server: 'running',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     environment: NODE_ENV,
     version: process.env.npm_package_version || '1.0.0'
   });
@@ -312,14 +454,99 @@ app.use('/cloud-storage', express.static('cloud-storage'));
 
 // Serve static files from frontend build when available
 console.log('📁 Setting up static file serving from:', FRONTEND_DIST_PATH);
-app.use(express.static(FRONTEND_DIST_PATH, {
+
+// Explicit routes for critical static files to ensure they're served correctly
+// These MUST be before the static middleware to take precedence
+const fs = require('fs');
+
+app.get('/manifest.json', (req, res) => {
+  const manifestPath = path.join(FRONTEND_DIST_PATH, 'manifest.json');
+  
+  if (fs.existsSync(manifestPath)) {
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(manifestPath, (err) => {
+      if (err) {
+        console.error('❌ Error serving manifest.json:', err);
+        res.status(500).json({ error: 'Failed to serve manifest' });
+      }
+    });
+  } else {
+    console.warn('⚠️ manifest.json not found in dist folder');
+    res.status(404).json({ error: 'Manifest not found' });
+  }
+});
+
+app.get('/christie.svg', (req, res) => {
+  const svgPath = path.join(FRONTEND_DIST_PATH, 'christie.svg');
+  
+  if (fs.existsSync(svgPath)) {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.sendFile(svgPath, (err) => {
+      if (err) {
+        console.error('❌ Error serving christie.svg:', err);
+        res.status(500).json({ error: 'Failed to serve SVG' });
+      }
+    });
+  } else {
+    console.warn('⚠️ christie.svg not found in dist folder');
+    res.status(404).json({ error: 'SVG not found' });
+  }
+});
+
+app.get('/pwa.js', (req, res) => {
+  const pwaPath = path.join(FRONTEND_DIST_PATH, 'pwa.js');
+  
+  if (fs.existsSync(pwaPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(pwaPath, (err) => {
+      if (err) {
+        console.error('❌ Error serving pwa.js:', err);
+        res.status(500).json({ error: 'Failed to serve pwa.js' });
+      }
+    });
+  } else {
+    console.warn('⚠️ pwa.js not found in dist folder');
+    res.status(404).json({ error: 'pwa.js not found' });
+  }
+});
+
+app.get('/sw.js', (req, res) => {
+  const swPath = path.join(FRONTEND_DIST_PATH, 'sw.js');
+  
+  if (fs.existsSync(swPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(swPath, (err) => {
+      if (err) {
+        console.error('❌ Error serving sw.js:', err);
+        res.status(500).json({ error: 'Failed to serve sw.js' });
+      }
+    });
+  } else {
+    console.warn('⚠️ sw.js not found in dist folder');
+    res.status(404).json({ error: 'sw.js not found' });
+  }
+});
+
+// Explicitly set MIME types for critical static files
+const expressStatic = express.static(FRONTEND_DIST_PATH, {
   dotfiles: 'ignore',
   etag: false,
-  extensions: ['htm', 'html'],
   index: ['index.html'],
   maxAge: '1d',
-  redirect: false
-}));
+  redirect: false,
+  setHeaders: (res, path, stat) => {
+    // Set correct MIME types for specific file types
+    if (path.endsWith('.json')) {
+      res.setHeader('Content-Type', 'application/json');
+    } else if (path.endsWith('.svg')) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+    } else if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+});
+
+app.use(expressStatic);
 
 // Clear database endpoint - removes all sample data
 app.post('/api/clear-all-data', async (req, res) => {
@@ -399,56 +626,5 @@ app.get('*', (req, res, next) => {
     }
   });
 });
-
-// Start server with port conflict handling
-const startServer = async (port) => {
-  return new Promise((resolve, reject) => {
-    const server = app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-      console.log(`Health check: http://localhost:${port}/api/health`);
-      
-      // Initialize tracking service
-      try {
-        trackingUpdateService.start();
-        console.log('✅ Tracking update service initialized');
-      } catch (error) {
-        console.error('❌ Failed to initialize tracking service:', error);
-      }
-      
-      resolve(server);
-    });
-
-    server.on('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        console.log(`Port ${port} is already in use. Trying next available port...`);
-        reject(error);
-      } else {
-        reject(error);
-      }
-    });
-  });
-};
-
-// Try to start server with fallback ports
-const startServerWithFallback = async () => {
-  const ports = [PORT, 4001, 4002, 4003, 5000, 5001];
-  
-  for (const port of ports) {
-    try {
-      await startServer(port);
-      return; // Success, exit the function
-    } catch (error) {
-      if (error.code === 'EADDRINUSE') {
-        continue; // Try next port
-      } else {
-        console.error('Server startup error:', error);
-        process.exit(1);
-      }
-    }
-  }
-  
-  console.error('Could not find an available port. Please check your system.');
-  process.exit(1);
-};
 
 module.exports = app;
