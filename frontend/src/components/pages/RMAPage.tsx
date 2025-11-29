@@ -1622,7 +1622,7 @@ export function RMAPage() {
                           Part: {rma.defectivePartName || 'N/A'}
                         </div>
                         <div className="text-xs text-gray-300">
-                          Serial: {rma.defectivePartNumber || 'N/A'}
+                          Serial: {rma.defectiveSerialNumber || 'N/A'}
                         </div>
                         {rma.symptoms && rma.symptoms !== 'N/A' && (
                           <div className="text-xs text-gray-100 bg-gray-700 px-2 py-1 rounded border border-gray-600" title={rma.symptoms}>
