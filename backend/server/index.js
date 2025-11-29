@@ -157,7 +157,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Security middleware with CSP configuration for Cloudinary
+// Security middleware with CSP configuration for Cloudinary and Render deployment
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -166,7 +166,13 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      connectSrc: ["'self'", "https://api.cloudinary.com"],
+      // Allow connections to same origin and Cloudinary, plus Render domains for unified services
+      connectSrc: [
+        "'self'", 
+        "https://api.cloudinary.com",
+        "https://*.onrender.com",
+        "https://*.render.com"
+      ],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
