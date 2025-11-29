@@ -35,10 +35,6 @@
       "continue": true
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/index.html"
-    },
-    {
       "src": "/admin/(.*)",
       "dest": "/index.html"
     },

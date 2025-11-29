@@ -52,6 +52,28 @@ export const getApiUrl = (): string => {
 
     // Production detection: if not localhost, try to use same domain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // For Vercel (static hosting), backend must be on a separate service
+      const isVercel = hostname.includes('vercel.app') || hostname.includes('vercel.com');
+      if (isVercel) {
+        // Vercel is static-only, so backend must be on Render or another service
+        // Check for environment variable first, then try common Render backend pattern
+        try {
+          const viteEnv = (import.meta as any).env;
+          const backendUrl = viteEnv?.VITE_BACKEND_URL || viteEnv?.VITE_API_URL;
+          if (backendUrl) {
+            const vercelBackendUrl = backendUrl.endsWith('/api') ? backendUrl : `${backendUrl.replace(/\/$/, '')}/api`;
+            console.log('🌍 Vercel deployment detected, using backend URL from env:', vercelBackendUrl);
+            return vercelBackendUrl;
+          }
+        } catch (error) {
+          // Ignore env access errors
+        }
+        // Fallback to Render backend (update this to your actual backend URL)
+        const vercelBackendUrl = 'https://newcrm-zjnk.onrender.com/api';
+        console.log('🌍 Vercel deployment detected, using fallback backend URL:', vercelBackendUrl);
+        return vercelBackendUrl;
+      }
+      
       // For Render or similar platforms where backend serves both API and frontend
       // Since we're using a unified service, backend is on the same domain
       const isRender = hostname.includes('onrender.com') || hostname.includes('render.com');
