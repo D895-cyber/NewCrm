@@ -37,12 +37,32 @@ const webhookRoutes = require('./routes/webhooks');
 const schedulerService = require('./services/schedulerService');
 const trackingUpdateService = require('./services/TrackingUpdateService');
 const FRONTEND_DIST_PATH = path.resolve(__dirname, '../../frontend/dist');
+const FRONTEND_PUBLIC_PATH = path.resolve(__dirname, '../../frontend/public');
 
-// Verify frontend dist path on startup
+// Verify frontend dist path on startup and copy missing PWA files
 console.log('🔍 Checking frontend dist path...');
 console.log('📁 FRONTEND_DIST_PATH:', FRONTEND_DIST_PATH);
+console.log('📁 FRONTEND_PUBLIC_PATH:', FRONTEND_PUBLIC_PATH);
 console.log('📄 index.html exists:', require('fs').existsSync(path.join(FRONTEND_DIST_PATH, 'index.html')));
 console.log('📂 dist folder exists:', require('fs').existsSync(FRONTEND_DIST_PATH));
+
+// Ensure PWA files exist in dist folder
+const requiredPwaFiles = ['manifest.json', 'pwa.js', 'sw.js', 'christie.svg'];
+requiredPwaFiles.forEach(file => {
+  const distFile = path.join(FRONTEND_DIST_PATH, file);
+  const publicFile = path.join(FRONTEND_PUBLIC_PATH, file);
+  
+  if (!require('fs').existsSync(distFile) && require('fs').existsSync(publicFile)) {
+    try {
+      require('fs').copyFileSync(publicFile, distFile);
+      console.log(`✅ Copied ${file} from public to dist`);
+    } catch (error) {
+      console.warn(`⚠️ Failed to copy ${file}:`, error.message);
+    }
+  } else if (!require('fs').existsSync(distFile)) {
+    console.warn(`⚠️ ${file} not found in dist or public folder`);
+  }
+});
 
 // Load environment variables
 dotenv.config({ path: __dirname + '/.env' });

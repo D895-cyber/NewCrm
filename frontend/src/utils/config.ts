@@ -52,16 +52,13 @@ export const getApiUrl = (): string => {
 
     // Production detection: if not localhost, try to use same domain
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // For Render or similar platforms where backend is on same domain or subdomain
-      // Try common patterns: api.yourdomain.com or yourdomain.com/api
+      // For Render or similar platforms where backend serves both API and frontend
+      // Since we're using a unified service, backend is on the same domain
       const isRender = hostname.includes('onrender.com') || hostname.includes('render.com');
       if (isRender) {
-        // For Render, backend is usually on a separate service
-        // Check for environment variable or try common Render pattern
-        const renderApiUrl = (window as any).__RENDER_API_URL__ || 
-                           `https://${hostname.replace(/^[^.]+/, 'newcrm-backend')}/api` ||
-                           `${protocol}//${host.split('.')[0]}-backend.onrender.com/api`;
-        console.log('🌍 Render environment detected, using API URL:', renderApiUrl);
+        // For unified Render service, API is on the same domain
+        const renderApiUrl = `${protocol}//${host}/api`;
+        console.log('🌍 Render unified service detected, using API URL:', renderApiUrl);
         return renderApiUrl;
       }
       
